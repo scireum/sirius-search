@@ -10,6 +10,12 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.*;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+
+
 /**
  * Represents a relational filter which can be used to filter &lt; or &lt;=, along with &gt; or &gt;=
  *
@@ -51,18 +57,18 @@ public class FieldOperator implements Constraint {
     }
 
     /*
-     * Converts Java 8 Time API objects JodaTime which is used by Elasticsearch
+     * Converts Java 8 Time API objects into ISO strings accepted by ES (Joda-Time)
      */
     protected static Object convertJava8Times(Object value) {
-//        if (value != null && value instanceof Instant) {
-//            return new org.joda.time.Instant(((Instant) value).toEpochMilli());
-//        } else if (value != null && value instanceof TemporalAccessor) {
-//            if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
-//                return new DateTime(Value.of(value).asInstant(null).toEpochMilli());
-//            } else {
-//                return new LocalDate(Value.of(value).asInstant(null).toEpochMilli());
-//            }
-//        }
+        if (value != null && value instanceof Instant) {
+            return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
+        } else if (value != null && value instanceof TemporalAccessor) {
+            if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
+                return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
+            } else {
+                return DateTimeFormatter.ISO_LOCAL_DATE.format((TemporalAccessor) value);
+            }
+        }
 
         return value;
     }
