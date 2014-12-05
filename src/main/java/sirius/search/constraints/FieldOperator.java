@@ -11,6 +11,8 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.*;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
@@ -61,8 +63,9 @@ public class FieldOperator implements Constraint {
      */
     protected static Object convertJava8Times(Object value) {
         if (value != null && value instanceof Instant) {
-            return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
-        } else if (value != null && value instanceof TemporalAccessor) {
+            value = LocalDateTime.ofInstant((Instant) value, ZoneId.systemDefault());
+        }
+        if (value != null && value instanceof TemporalAccessor) {
             if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
                 return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
             } else {

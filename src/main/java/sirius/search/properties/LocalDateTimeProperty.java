@@ -89,7 +89,7 @@ public class LocalDateTimeProperty extends Property {
         if (o == null || !(o instanceof LocalDateTime)) {
             return null;
         }
-        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(((LocalDateTime) o).atZone(ZoneId.systemDefault()));
+        return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(((LocalDateTime) o).atZone(ZoneId.systemDefault()));
     }
 
     /*
