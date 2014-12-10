@@ -280,7 +280,7 @@ public abstract class Entity {
      * @param previousError Can be used to signal that an error was already found. In this case the given exception
      *                      will be returned as result even if the value was <tt>null</tt>. In most cases this
      *                      parameter will be <tt>null</tt>.
-     * @param property     the field to check
+     * @param property      the field to check
      * @param value         the value to check. If the value is <tt>null</tt> an error will be generated.
      * @return an error if either the given <tt>previousError</tt> was non null or if the given value was <tt>null</tt>
      */
@@ -572,14 +572,21 @@ public abstract class Entity {
     }
 
     /**
+     * Runs all checks to determine if the entity is consistent and can be saved into the database.
+     */
+    public void check() {
+        beforeSaveChecks();
+        performSaveChecks();
+    }
+
+    /**
      * Invoked before an entity is saved into the database.
      * <p>
      * This method is not intended to be overridden. Override {@link #onSave()} or {@link #internalOnSave()}.
      * </p>
      */
     protected final void beforeSave() {
-        beforeSaveChecks();
-        performSaveChecks();
+        check();
         internalOnSave();
         onSave();
     }

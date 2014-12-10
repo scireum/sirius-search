@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
-    <description>Todo</description>
+    <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)</description>
 
     <licenses>
         <license>
