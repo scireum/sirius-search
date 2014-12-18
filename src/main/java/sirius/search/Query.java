@@ -12,7 +12,6 @@ import com.google.common.collect.Lists;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.Version;
 import org.elasticsearch.action.count.CountRequestBuilder;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.deletebyquery.DeleteByQueryRequestBuilder;
@@ -21,7 +20,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.facet.FacetBuilders;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.cache.ValueComputer;
@@ -227,7 +226,7 @@ public class Query<E extends Entity> {
     public Query<E> query(String query) {
         return query(query, DEFAULT_FIELD, s -> {
             List<List<String>> result = Lists.newArrayList();
-            StandardAnalyzer std = new StandardAnalyzer(Version.LUCENE_46);
+            StandardAnalyzer std = new StandardAnalyzer();
             try {
                 TokenStream stream = std.tokenStream("std", s);
                 stream.reset();
@@ -571,7 +570,7 @@ public class Query<E extends Entity> {
             }
         }
         for (Facet field : termFacets) {
-            srb.addFacet(FacetBuilders.termsFacet(field.getName()).field(field.getName()));
+            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()));
         }
         QueryBuilder qb = buildQuery();
         if (qb != null) {
@@ -616,7 +615,7 @@ public class Query<E extends Entity> {
     public ResultList<E> queryResultList() {
         try {
             if (forceFail) {
-                return new ResultList<>(new ArrayList<Facet>(), null);
+                return new ResultList<>(Lists.newArrayList(), null);
             }
             SearchRequestBuilder srb = buildSearch();
             if (Index.LOG.isFINE()) {
@@ -1003,8 +1002,7 @@ public class Query<E extends Entity> {
 
     protected void deleteByQuery(EntityDescriptor ed) {
         DeleteByQueryRequestBuilder builder = Index.getClient()
-                                                   .prepareDeleteByQuery(index != null ? index : Index.getIndex(
-                                                           clazz))
+                                                   .prepareDeleteByQuery(index != null ? index : Index.getIndex(clazz))
                                                    .setTypes(ed.getType());
         if (Strings.isFilled(routing)) {
             if (!ed.hasRouting()) {

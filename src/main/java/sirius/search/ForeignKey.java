@@ -12,6 +12,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.script.ScriptService;
 import sirius.kernel.async.Async;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.health.Exceptions;
@@ -300,7 +301,7 @@ public class ForeignKey {
             Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), sb.toString());
         }
         try {
-            urb.setScript(sb.toString()).execute().actionGet();
+            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE).execute().actionGet();
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("UPDATE: %s.%s: SUCCEEDED", Index.getIndex(getLocalClass()), getLocalType());
             }

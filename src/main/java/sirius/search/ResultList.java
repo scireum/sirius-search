@@ -10,6 +10,7 @@ package sirius.search;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.facet.terms.TermsFacet;
 import sirius.kernel.commons.Monoflop;
 import sirius.web.controller.Facet;
@@ -95,10 +96,10 @@ public class ResultList<T> implements Iterable<T> {
     public List<Facet> getFacets() {
         if (factesProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
-                TermsFacet tf = response.getFacets().facet(TermsFacet.class, facet.getName());
-                for (TermsFacet.Entry entry : tf.getEntries()) {
-                    String key = entry.getTerm().string();
-                    facet.addItem(key, key, entry.getCount());
+                Terms terms = response.getAggregations().get(facet.getName());
+                for (Terms.Bucket bucket : terms.getBuckets()) {
+                    String key = bucket.getKey();
+                    facet.addItem(key, key, bucket.getDocCount());
                 }
             }
         }
