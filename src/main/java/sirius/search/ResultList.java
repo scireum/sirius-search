@@ -11,7 +11,6 @@ package sirius.search;
 import com.google.common.collect.Lists;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.facet.terms.TermsFacet;
 import sirius.kernel.commons.Monoflop;
 import sirius.web.controller.Facet;
 
@@ -33,7 +32,7 @@ public class ResultList<T> implements Iterable<T> {
     private final List<Facet> termFacets;
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
-    private Monoflop factesProcessed = Monoflop.create();
+    private Monoflop facetsProcessed = Monoflop.create();
 
     /**
      * Creates a new result list
@@ -94,7 +93,7 @@ public class ResultList<T> implements Iterable<T> {
      * @return the facet filters defined by the query
      */
     public List<Facet> getFacets() {
-        if (factesProcessed.firstCall() && response != null) {
+        if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
                 Terms terms = response.getAggregations().get(facet.getName());
                 for (Terms.Bucket bucket : terms.getBuckets()) {
