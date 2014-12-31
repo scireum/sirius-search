@@ -314,4 +314,12 @@ public class IndexAccess {
         return Index.select(clazz);
     }
 
+    /**
+     * Determines if the framework is completely initialized.
+     *
+     * @return <tt>true</tt> if the framework is completely initialized, <tt>false</tt> otherwise
+     */
+    public boolean isReady() {
+        return Index.isReady();
+    }
 }

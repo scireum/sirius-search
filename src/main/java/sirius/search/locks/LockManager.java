@@ -123,6 +123,9 @@ public class LockManager {
      */
     protected boolean tryAcquire(CriticalSection section) {
         try {
+            if (!index.isReady()) {
+                return false;
+            }
             LockInfo li = index.find(LockInfo.class, section.getLock().getName());
             if (li == null) {
                 li = new LockInfo();
