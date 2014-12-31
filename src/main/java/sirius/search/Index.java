@@ -15,7 +15,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.CharStreams;
-import com.typesafe.config.Config;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -35,6 +34,7 @@ import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import sirius.kernel.Lifecycle;
+import sirius.kernel.Sirius;
 import sirius.kernel.async.Async;
 import sirius.kernel.async.CallContext;
 import sirius.kernel.async.Promise;
@@ -356,31 +356,31 @@ public class Index {
             ClusterHealthResponse res = getClient().admin().cluster().prepareHealth().execute().actionGet();
             collector.metric("ES-Nodes", res.getNumberOfNodes(), null, asMetricState(res.getStatus()));
             collector.metric("ES-InitializingShards",
-                    res.getInitializingShards(),
-                    null,
-                    res.getInitializingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
+                             res.getInitializingShards(),
+                             null,
+                             res.getInitializingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
             collector.metric("ES-RelocatingShards",
-                    res.getRelocatingShards(),
-                    null,
-                    res.getRelocatingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
+                             res.getRelocatingShards(),
+                             null,
+                             res.getRelocatingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
             collector.metric("ES-UnassignedShards",
-                    res.getUnassignedShards(),
-                    null,
-                    res.getUnassignedShards() > 0 ? MetricState.RED : MetricState.GRAY);
+                             res.getUnassignedShards(),
+                             null,
+                             res.getUnassignedShards() > 0 ? MetricState.RED : MetricState.GRAY);
             collector.metric("index-delay-line", "ES-DelayLine", oneSecondDelayLine.size(), null);
             collector.differentialMetric("index-blocks", "index-blocks", "ES-DelayBlocks", blocks.getCount(), "/min");
             collector.differentialMetric("index-delays", "index-delays", "ES-Delays", delays.getCount(), "/min");
             collector.differentialMetric("index-locking-errors",
-                    "index-locking-errors",
-                    "ES-OptimisticLock-Errors",
-                    optimisticLockErrors.getCount(),
-                    "/min");
+                                         "index-locking-errors",
+                                         "ES-OptimisticLock-Errors",
+                                         optimisticLockErrors.getCount(),
+                                         "/min");
             collector.metric("index-queryDuration", "ES-QueryDuration", queryDuration.getAndClearAverage(), "ms");
             collector.differentialMetric("index-queries",
-                    "index-queries",
-                    "ES-Queries",
-                    queryDuration.getCount(),
-                    "/min");
+                                         "index-queries",
+                                         "ES-Queries",
+                                         queryDuration.getCount(),
+                                         "/min");
         }
 
         private MetricState asMetricState(ClusterHealthStatus status) {
@@ -448,37 +448,38 @@ public class Index {
     @Register(classes = Lifecycle.class)
     public static class IndexLifecycle implements Lifecycle {
 
-        @Part
-        private static Config config;
-
         @Override
         public void started() {
-            if (Strings.isEmpty(config.getString("index.type"))) {
+            if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
                 return;
             }
 
-            boolean updateSchema = config.getBoolean("index.updateSchema");
+            boolean updateSchema = Sirius.getConfig().getBoolean("index.updateSchema");
 
-            if ("embedded".equalsIgnoreCase(config.getString("index.type"))) {
+            if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 client = NodeBuilder.nodeBuilder().data(true).local(true).build().client();
-            } else if ("in-memory".equalsIgnoreCase(config.getString("index.type"))) {
+            } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
                 updateSchema = true;
             } else {
-                LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", config.getString("index.cluster"), config.getString(
-                        "index.host"));
+                LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...",
+                         Sirius.getConfig().getString("index.cluster"),
+                         Sirius.getConfig().getString("index.host"));
                 Settings settings = ImmutableSettings.settingsBuilder()
-                        .put("cluster.name", config.getString("index.cluster"))
-                        .build();
-                client = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(config.getString(
-                        "index.host"), config.getInt("index.port")));
+                                                     .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
+                                                     .build();
+                client = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
+                                                                                                                .getString(
+                                                                                                                        "index.host"),
+                                                                                                          Sirius.getConfig()
+                                                                                                                .getInt("index.port")));
             }
 
             // Setup index
-            indexPrefix = config.getString("index.prefix");
+            indexPrefix = Sirius.getConfig().getString("index.prefix");
             if (!indexPrefix.endsWith("-")) {
                 indexPrefix = indexPrefix + "-";
             }
@@ -539,11 +540,11 @@ public class Index {
             } catch (OptimisticLockException e) {
                 if (retries <= 0) {
                     throw Exceptions.handle()
-                            .withSystemErrorMessage(
-                                    "Failed to update an entity after re-trying a unit of work several times: %s (%s)")
-                            .error(e)
-                            .to(LOG)
-                            .handle();
+                                    .withSystemErrorMessage(
+                                            "Failed to update an entity after re-trying a unit of work several times: %s (%s)")
+                                    .error(e)
+                                    .to(LOG)
+                                    .handle();
                 }
                 // Wait 0, 200ms, 400ms
                 Wait.millis((2 - retries) * 200);
@@ -553,11 +554,11 @@ public class Index {
                 throw e;
             } catch (Throwable e) {
                 throw Exceptions.handle()
-                        .withSystemErrorMessage(
-                                "An unexpected exception occurred while executing a unit of work: %s (%s)")
-                        .error(e)
-                        .to(LOG)
-                        .handle();
+                                .withSystemErrorMessage(
+                                        "An unexpected exception occurred while executing a unit of work: %s (%s)")
+                                .error(e)
+                                .to(LOG)
+                                .handle();
             }
         }
     }
@@ -570,33 +571,33 @@ public class Index {
     public static void ensureIndexExists(String name) {
         try {
             IndicesExistsResponse res = Index.getClient()
-                    .admin()
-                    .indices()
-                    .prepareExists(getIndexName(name))
-                    .execute()
-                    .get(10, TimeUnit.SECONDS);
+                                             .admin()
+                                             .indices()
+                                             .prepareExists(getIndexName(name))
+                                             .execute()
+                                             .get(10, TimeUnit.SECONDS);
             if (!res.isExists()) {
                 CreateIndexResponse createResponse = Index.getClient()
-                        .admin()
-                        .indices()
-                        .prepareCreate(getIndexName(name))
-                        .execute()
-                        .get(10, TimeUnit.SECONDS);
+                                                          .admin()
+                                                          .indices()
+                                                          .prepareCreate(getIndexName(name))
+                                                          .execute()
+                                                          .get(10, TimeUnit.SECONDS);
                 if (!createResponse.isAcknowledged()) {
                     throw Exceptions.handle()
-                            .to(LOG)
-                            .withSystemErrorMessage("Cannot create index: %s", getIndexName(name))
-                            .handle();
+                                    .to(LOG)
+                                    .withSystemErrorMessage("Cannot create index: %s", getIndexName(name))
+                                    .handle();
                 } else {
                     Index.blockThreadForUpdate();
                 }
             }
         } catch (Throwable e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Cannot create index: %s - %s (%s)", getIndexName(name))
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Cannot create index: %s - %s (%s)", getIndexName(name))
+                            .handle();
         }
     }
 
@@ -608,23 +609,23 @@ public class Index {
     public static void deleteIndex(String name) {
         try {
             DeleteIndexResponse res = Index.getClient()
-                    .admin()
-                    .indices()
-                    .prepareDelete(getIndexName(name))
-                    .execute()
-                    .get(10, TimeUnit.SECONDS);
+                                           .admin()
+                                           .indices()
+                                           .prepareDelete(getIndexName(name))
+                                           .execute()
+                                           .get(10, TimeUnit.SECONDS);
             if (!res.isAcknowledged()) {
                 throw Exceptions.handle()
-                        .to(LOG)
-                        .withSystemErrorMessage("Cannot delete index: %s", getIndexName(name))
-                        .handle();
+                                .to(LOG)
+                                .withSystemErrorMessage("Cannot delete index: %s", getIndexName(name))
+                                .handle();
             }
         } catch (Throwable e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Cannot delete index: %s - %s (%s)", getIndexName(name))
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Cannot delete index: %s - %s (%s)", getIndexName(name))
+                            .handle();
         }
     }
 
@@ -642,13 +643,13 @@ public class Index {
             PutMappingResponse putRes = null;
             try {
                 putRes = Index.getClient()
-                        .admin()
-                        .indices()
-                        .preparePutMapping(index)
-                        .setType(desc.getType())
-                        .setSource(desc.createMapping())
-                        .execute()
-                        .get(10, TimeUnit.SECONDS);
+                              .admin()
+                              .indices()
+                              .preparePutMapping(index)
+                              .setType(desc.getType())
+                              .setSource(desc.createMapping())
+                              .execute()
+                              .get(10, TimeUnit.SECONDS);
             } catch (ExecutionException e) {
                 // If we force the mapping, swallow this exception...
                 if (!force) {
@@ -658,28 +659,28 @@ public class Index {
             if (putRes == null || !putRes.isAcknowledged()) {
                 if (force) {
                     Index.getClient()
-                            .admin()
-                            .indices()
-                            .prepareDeleteMapping(index)
-                            .setType(desc.getType())
-                            .execute()
-                            .get(10, TimeUnit.SECONDS);
+                         .admin()
+                         .indices()
+                         .prepareDeleteMapping(index)
+                         .setType(desc.getType())
+                         .execute()
+                         .get(10, TimeUnit.SECONDS);
                     putRes = Index.getClient()
-                            .admin()
-                            .indices()
-                            .preparePutMapping(index)
-                            .setType(desc.getType())
-                            .setSource(desc.createMapping())
-                            .execute()
-                            .get(10, TimeUnit.SECONDS);
+                                  .admin()
+                                  .indices()
+                                  .preparePutMapping(index)
+                                  .setType(desc.getType())
+                                  .setSource(desc.createMapping())
+                                  .execute()
+                                  .get(10, TimeUnit.SECONDS);
                 }
                 if (!putRes.isAcknowledged()) {
                     throw Exceptions.handle()
-                            .to(LOG)
-                            .withSystemErrorMessage("Cannot create mapping %s in index: %s",
-                                    type.getSimpleName(),
-                                    index)
-                            .handle();
+                                    .to(LOG)
+                                    .withSystemErrorMessage("Cannot create mapping %s in index: %s",
+                                                            type.getSimpleName(),
+                                                            index)
+                                    .handle();
                 }
             }
         } catch (Throwable ex) {
@@ -687,12 +688,12 @@ public class Index {
                 ex = ex.getCause();
             }
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(ex)
-                    .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
-                            type.getSimpleName(),
-                            index)
-                    .handle();
+                            .to(LOG)
+                            .error(ex)
+                            .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
+                                                    type.getSimpleName(),
+                                                    index)
+                            .handle();
         }
     }
 
@@ -742,12 +743,12 @@ public class Index {
             return update(entity, true, false);
         } catch (OptimisticLockException e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
-                            entity.toString(),
-                            entity.getId())
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId())
+                            .handle();
         }
     }
 
@@ -791,11 +792,11 @@ public class Index {
 
             if (LOG.isFINE()) {
                 LOG.FINE("SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
-                        forceCreate,
-                        performVersionCheck,
-                        getIndex(entity),
-                        descriptor.getType(),
-                        Strings.join(source));
+                         forceCreate,
+                         performVersionCheck,
+                         getIndex(entity),
+                         descriptor.getType(),
+                         Strings.join(source));
             }
 
             String id = entity.getId();
@@ -807,8 +808,8 @@ public class Index {
             }
 
             IndexRequestBuilder irb = getClient().prepareIndex(getIndex(entity), descriptor.getType(), id)
-                    .setCreate(forceCreate)
-                    .setSource(source);
+                                                 .setCreate(forceCreate)
+                                                 .setSource(source);
             if (!entity.isNew() && performVersionCheck) {
                 irb.setVersion(entity.getVersion());
             }
@@ -816,8 +817,8 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Updating an entity of type %s (%s) without routing information!",
-                            entity.getClass().getName(),
-                            entity.getId());
+                             entity.getClass().getName(),
+                             entity.getId());
                 } else {
                     irb.setRouting(String.valueOf(routingKey));
                 }
@@ -827,10 +828,10 @@ public class Index {
             IndexResponse indexResponse = irb.execute().actionGet();
             if (LOG.isFINE()) {
                 LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
-                        getIndex(entity),
-                        descriptor.getType(),
-                        indexResponse.getId(),
-                        indexResponse.getVersion());
+                         getIndex(entity),
+                         descriptor.getType(),
+                         indexResponse.getId(),
+                         indexResponse.getVersion());
             }
             entity.id = indexResponse.getId();
             entity.version = indexResponse.getVersion();
@@ -846,12 +847,12 @@ public class Index {
             throw new OptimisticLockException(e, entity);
         } catch (Throwable e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
-                            entity.toString(),
-                            entity.getId())
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId())
+                            .handle();
         }
     }
 
@@ -936,26 +937,26 @@ public class Index {
             try {
                 if (descriptor.hasRouting() && routing == null) {
                     Exceptions.handle()
-                            .to(LOG)
-                            .withSystemErrorMessage(
-                                    "Trying to FIND an entity of type %s (with id %s) without providing a routing! This will most probably FAIL!",
-                                    clazz.getName(),
-                                    id)
-                            .handle();
+                              .to(LOG)
+                              .withSystemErrorMessage(
+                                      "Trying to FIND an entity of type %s (with id %s) without providing a routing! This will most probably FAIL!",
+                                      clazz.getName(),
+                                      id)
+                              .handle();
                 } else if (!descriptor.hasRouting() && routing != null) {
                     Exceptions.handle()
-                            .to(LOG)
-                            .withSystemErrorMessage(
-                                    "Trying to FIND an entity of type %s (with id %s) with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
-                                    clazz.getName(),
-                                    id)
-                            .handle();
+                              .to(LOG)
+                              .withSystemErrorMessage(
+                                      "Trying to FIND an entity of type %s (with id %s) with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
+                                      clazz.getName(),
+                                      id)
+                              .handle();
                 }
                 GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
-                        .setPreference("_primary")
-                        .setRouting(routing)
-                        .execute()
-                        .actionGet();
+                                             .setPreference("_primary")
+                                             .setRouting(routing)
+                                             .execute()
+                                             .actionGet();
                 if (!res.isExists()) {
                     if (LOG.isFINE()) {
                         LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
@@ -978,10 +979,10 @@ public class Index {
             }
         } catch (Throwable t) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(t)
-                    .withSystemErrorMessage("Failed to find '%s' (%s): %s (%s)", id, clazz.getName())
-                    .handle();
+                            .to(LOG)
+                            .error(t)
+                            .withSystemErrorMessage("Failed to find '%s' (%s): %s (%s)", id, clazz.getName())
+                            .handle();
         }
     }
 
@@ -1030,12 +1031,12 @@ public class Index {
         T freshEntity = refreshOrNull(entity);
         if (entity != null && freshEntity == null) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .withSystemErrorMessage("Failed to refresh the entity '%s' of type %s with id '%s'",
-                            entity,
-                            entity.getClass().getSimpleName(),
-                            entity.getId())
-                    .handle();
+                            .to(LOG)
+                            .withSystemErrorMessage("Failed to refresh the entity '%s' of type %s with id '%s'",
+                                                    entity,
+                                                    entity.getClass().getSimpleName(),
+                                                    entity.getId())
+                            .handle();
         } else {
             return freshEntity;
         }
@@ -1119,12 +1120,12 @@ public class Index {
             delete(entity, false);
         } catch (OptimisticLockException e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                            entity.toString(),
-                            entity.getId())
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId())
+                            .handle();
         }
     }
 
@@ -1159,16 +1160,16 @@ public class Index {
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             if (LOG.isFINE()) {
                 LOG.FINE("DELETE[FORCE: %b]: %s.%s: %s",
-                        force,
-                        getIndex(entity.getClass()),
-                        descriptor.getType(),
-                        entity.getId());
+                         force,
+                         getIndex(entity.getClass()),
+                         descriptor.getType(),
+                         entity.getId());
             }
             entity.beforeDelete();
             Watch w = Watch.start();
             DeleteRequestBuilder drb = getClient().prepareDelete(getIndex(entity),
-                    descriptor.getType(),
-                    entity.getId());
+                                                                 descriptor.getType(),
+                                                                 entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }
@@ -1176,8 +1177,8 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Deleting an entity of type %s (%s) without routing information!",
-                            entity.getClass().getName(),
-                            entity.getId());
+                             entity.getClass().getName(),
+                             entity.getId());
                 } else {
                     drb.setRouting(String.valueOf(routingKey));
                 }
@@ -1189,9 +1190,9 @@ public class Index {
             entity.afterDelete();
             if (LOG.isFINE()) {
                 LOG.FINE("DELETE: %s.%s: %s SUCCESS",
-                        getIndex(entity.getClass()),
-                        descriptor.getType(),
-                        entity.getId());
+                         getIndex(entity.getClass()),
+                         descriptor.getType(),
+                         entity.getId());
             }
         } catch (VersionConflictEngineException e) {
             if (LOG.isFINE()) {
@@ -1201,12 +1202,12 @@ public class Index {
             throw new OptimisticLockException(e, entity);
         } catch (Throwable e) {
             throw Exceptions.handle()
-                    .to(LOG)
-                    .error(e)
-                    .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                            entity.toString(),
-                            entity.getId())
-                    .handle();
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId())
+                            .handle();
         }
     }
 
@@ -1264,18 +1265,18 @@ public class Index {
         }
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"),
-                CallContext.getCurrent().getNodeName() + "_in_memory_es");
+                               CallContext.getCurrent().getNodeName() + "_in_memory_es");
         tmpDir.mkdirs();
 
         Settings settings = ImmutableSettings.settingsBuilder()
-                .put("node.http.enabled", false)
-                .put("path.data", tmpDir.getAbsolutePath())
-                .put("index.gateway.type", "none")
-                .put("gateway.type", "none")
-                .put("index.store.type", "memory")
-                .put("index.number_of_shards", 1)
-                .put("index.number_of_replicas", 0)
-                .build();
+                                             .put("node.http.enabled", false)
+                                             .put("path.data", tmpDir.getAbsolutePath())
+                                             .put("index.gateway.type", "none")
+                                             .put("gateway.type", "none")
+                                             .put("index.store.type", "memory")
+                                             .put("index.number_of_shards", 1)
+                                             .put("index.number_of_replicas", 0)
+                                             .build();
         inMemoryNode = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node();
         client = inMemoryNode.client();
         if (schema != null) {
@@ -1294,12 +1295,12 @@ public class Index {
         try {
             if (inMemoryNode == null) {
                 throw Exceptions.createHandled()
-                        .withSystemErrorMessage("Cannot load datasets when not running as 'in-memory'")
-                        .handle();
+                                .withSystemErrorMessage("Cannot load datasets when not running as 'in-memory'")
+                                .handle();
             }
             LOG.INFO("Loading dataset: %s", dataset);
             Resource res = content.resolve(dataset)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
+                                  .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
             String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
             JSONArray json = JSON.parseArray(contents);
             for (JSONObject obj : (List<JSONObject>) (Object) json) {
