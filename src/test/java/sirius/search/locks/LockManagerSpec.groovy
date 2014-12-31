@@ -32,6 +32,7 @@ class LockManagerSpec extends BaseSpecification {
         when:
         def result = lm.tryLock(SECTION_TEST, 1, TimeUnit.MILLISECONDS);
         then:
+        _ * lm.index.isReady() >> true;
         1 * lm.index.find(LockInfo.class, "L") >> null;
         2 * lm.index.tryUpdate(_) >> new LockInfo();
         result == true
@@ -46,6 +47,7 @@ class LockManagerSpec extends BaseSpecification {
         when:
         def result = lm.tryLock(SECTION_TEST, 1, TimeUnit.MILLISECONDS);
         then:
+        _ * lm.index.isReady() >> true;
         1 * lm.index.find(LockInfo.class, "L") >> li;
         0 * lm.index.tryUpdate(_) >> li;
         result == false
@@ -58,6 +60,7 @@ class LockManagerSpec extends BaseSpecification {
         when:
         def result = lm.tryLock(SECTION_TEST, 1, TimeUnit.MILLISECONDS);
         then:
+        _ * lm.index.isReady() >> true;
         1 * lm.index.find(LockInfo.class, "L") >> null;
         1 * lm.index.tryUpdate(_) >> { LockInfo l ->
             l.id == "L"
