@@ -18,7 +18,6 @@ import sirius.kernel.health.Exceptions;
  * <p>
  * This permits elegant lazy loading, as only the ID is eagerly loaded and stored into the database. The object
  * itself is only loaded on demand.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -35,7 +34,6 @@ public class EntityRef<E extends Entity> {
      * <p>
      * Fields of this type don't need to be initialized, as this is done by the
      * {@link sirius.search.properties.EntityProperty}.
-     * </p>
      *
      * @param ref the type of the referenced entity
      */
@@ -105,7 +103,6 @@ public class EntityRef<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the given local cache.
-     * </p>
      *
      * @param localCache the cache to used when looking up values
      * @return the value represented by this reference
@@ -118,7 +115,6 @@ public class EntityRef<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the given local cache.
-     * </p>
      *
      * @param routing    the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param localCache the cache to used when looking up values
@@ -141,7 +137,6 @@ public class EntityRef<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the global cache.
-     * </p>
      *
      * @return the value represented by this reference
      */
@@ -153,7 +148,6 @@ public class EntityRef<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the global cache.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @return the value represented by this reference
@@ -202,7 +196,6 @@ public class EntityRef<E extends Entity> {
      * <p>
      * Used to determine if RefField referencing this entity must be updated. This is also set to <tt>true</tt>
      * if the current value was fetched from a cache instead from the database.
-     * </p>
      *
      * @return <tt>true</tt> if the id has changed or <tt>false</tt> otherwise
      */
@@ -214,7 +207,6 @@ public class EntityRef<E extends Entity> {
      * Returns the ID of the represented value.
      * <p>
      * This can always be fetched without a DB lookup.
-     * </p>
      *
      * @return the ID of the represented value
      */
@@ -227,7 +219,6 @@ public class EntityRef<E extends Entity> {
      * <p>
      * If the object is available, consider using {@link #setValue(Entity)} as it also stores the value in a
      * temporary buffer which improves calls to {@link #getValue()} (which might happen in onSave handlers).
-     * </p>
      *
      * @param id the id of the represented value
      */
@@ -243,7 +234,6 @@ public class EntityRef<E extends Entity> {
      * <p>
      * This is not be confused with {@link #isValueLoaded()} which indicates if the value has already been
      * loaded from the database.
-     * </p>
      *
      * @return <tt>true</tt> if an entity is referenced, <tt>false</tt> otherwise
      */

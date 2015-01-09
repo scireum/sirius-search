@@ -61,7 +61,6 @@ public class OneInField implements Constraint {
      * Signals that this constraint is also fulfilled if the target field is empty.
      * <p>
      * This will convert this constraint into a filter.
-     * </p>
      *
      * @return the constraint itself for fluent method calls
      */

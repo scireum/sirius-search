@@ -66,7 +66,6 @@ import java.util.concurrent.TimeUnit;
  * Central access class to the persistence layer.
  * <p>
  * Provides CRUD access to the underlying ElasticSearch cluster.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -160,12 +159,12 @@ public class Index {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a given cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
      * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
@@ -206,12 +205,12 @@ public class Index {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a given cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
      * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
      * @return the resolved entity (or <tt>null</tt> if not found)
      */
     @Nullable
@@ -226,11 +225,11 @@ public class Index {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a global cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
@@ -268,11 +267,11 @@ public class Index {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a global cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
      * @return the resolved entity (or <tt>null</tt> if not found)
      */
     @Nullable
@@ -425,7 +424,6 @@ public class Index {
      * <p>
      * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
      * is absolutely necessary.
-     * </p>
      */
     public static void blockThreadForUpdate() {
         blocks.inc();
@@ -635,6 +633,7 @@ public class Index {
      * @param index the full name of the index.
      *              Note: The index prefix of the current system will NOT be added automatically
      * @param type  the entity class which mapping should be written to the given index.
+     * @param <E>   the generic of <tt>type</tt>
      * @param force will drop the mapping forcefully if the mapping already exists but cannot be changed as requested
      */
     public static <E extends Entity> void addMapping(String index, Class<E> type, boolean force) {
@@ -701,6 +700,7 @@ public class Index {
      * Creates this entity by storing an initial copy in the database.
      *
      * @param entity the entity to be stored in the database
+     * @param <E>    the type of the entity to create
      * @return the stored entity (with a filled ID etc.)
      */
     public static <E extends Entity> E create(E entity) {
@@ -717,9 +717,9 @@ public class Index {
      * <p>
      * If the same entity was modified in the database already, an
      * <tt>OptimisticLockException</tt> will be thrown
-     * </p>
      *
      * @param entity the entity to save
+     * @param <E>    the type of the entity to update
      * @return the saved entity
      * @throws OptimisticLockException if the entity was modified in the database and those changes where not reflected
      *                                 by the entity to be saved
@@ -733,9 +733,9 @@ public class Index {
      * <p>
      * If the entity was modified in the database and those changes where not reflected
      * by the entity to be saved, this operation will fail.
-     * </p>
      *
      * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to update
      * @return the updated entity
      */
     public static <E extends Entity> E update(E entity) {
@@ -757,9 +757,9 @@ public class Index {
      * <p>
      * As change tracking is disabled, this operation will override all previous changes which are not reflected
      * by the entity to be saved
-     * </p>
      *
      * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to override
      * @return the updated entity
      */
     public static <E extends Entity> E override(E entity) {
@@ -778,6 +778,7 @@ public class Index {
      * @param entity              the entity to save
      * @param performVersionCheck determines if change tracking will be enabled
      * @param forceCreate         determines if a new entity should be created
+     * @param <E>                 the type of the entity to update
      * @return the saved entity
      * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
      */
@@ -884,6 +885,7 @@ public class Index {
      *
      * @param clazz the type of the entity
      * @param id    the id of the entity
+     * @param <E>   the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public static <E extends Entity> E find(final Class<E> clazz, String id) {
@@ -896,6 +898,7 @@ public class Index {
      * @param routing the value used to compute the routing hash
      * @param clazz   the type of the entity
      * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public static <E extends Entity> E find(String routing, final Class<E> clazz, String id) {
@@ -905,10 +908,12 @@ public class Index {
     /**
      * Tries to find the entity of the given type with the given id.
      *
-     * @param index the index to use. The current index prefix will be automatically added. Can be left <tt>null</tt>
-     *              to use the default index
-     * @param clazz the type of the entity
-     * @param id    the id of the entity
+     * @param index   the index to use. The current index prefix will be automatically added. Can be left <tt>null</tt>
+     *                to use the default index
+     * @param routing the value used to compute the routing hash
+     * @param clazz   the type of the entity
+     * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public static <E extends Entity> E find(@Nullable String index,
@@ -988,11 +993,13 @@ public class Index {
 
     /**
      * Tries to load a "fresh" (updated) instance of the given entity from the cluster.
-     * <p>Will return <tt>null</tt> if <tt>null</tt> was passed in. If a non persisted entity was given. This
+     * <p>
+     * Will return <tt>null</tt> if <tt>null</tt> was passed in. If a non persisted entity was given. This
      * entity will be returned. If the entity is no longer available in the cluster,
-     * <tt>null</tt> will be returned</p>.
+     * <tt>null</tt> will be returned
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a refreshed instance of the entity or <tt>null</tt> if either the given entity was <tt>null</tt> or if
      * the given entity cannot be found in the cluster.
      */
@@ -1018,11 +1025,11 @@ public class Index {
     /**
      * Boilerplate method for {@link #refreshOrNull(Entity)}.
      * <p>
-     * Returns <tt>null</tt> if the given entity was <tt>null</tt>. Otherweise either a refreshed instance will
+     * Returns <tt>null</tt> if the given entity was <tt>null</tt>. Otherwise either a refreshed instance will
      * be returned or an exception will be thrown.
-     * </p>
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a fresh instance of the given entity or <tt>null</tt> if <tt>null</tt> was passed in
      * @throws sirius.kernel.health.HandledException if the entity is no longer available in the cluster
      */
@@ -1047,9 +1054,9 @@ public class Index {
      * <p>
      * Returns <tt>null</tt> if the given entity was <tt>null</tt>. Otherwise either a refreshed instance will
      * be returned or the original given instance.
-     * </p>
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a fresh instance of the given entity or <tt>null</tt> if <tt>null</tt> was passed in
      */
     @Nullable
@@ -1066,6 +1073,7 @@ public class Index {
      * Returns the name of the index associated with the given entity.
      *
      * @param entity the entity which index is requested
+     * @param <E>    the type of the entity to get the index for
      * @return the index name associated with the given entity
      */
     protected static <E extends Entity> String getIndex(E entity) {
@@ -1082,6 +1090,7 @@ public class Index {
      * Returns the name of the index associated with the given class.
      *
      * @param clazz the entity type which index is requested
+     * @param <E>   the type of the entity to get the index for
      * @return the index name associated with the given class
      */
     protected static <E extends Entity> String getIndex(Class<E> clazz) {
@@ -1092,8 +1101,9 @@ public class Index {
      * Qualifies the given index name with the prefix.
      *
      * @param name the index name to qualify
+     * @return the qualified name of the given index name
      */
-    protected static <E extends Entity> String getIndexName(String name) {
+    protected static String getIndexName(String name) {
         return indexPrefix + name;
     }
 
@@ -1101,6 +1111,7 @@ public class Index {
      * Tries to delete the given entity unless it was modified since the last read.
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      * @throws OptimisticLockException if the entity was modified since the last read
      */
     public static <E extends Entity> void tryDelete(E entity) throws OptimisticLockException {
@@ -1111,9 +1122,9 @@ public class Index {
      * Deletes the given entity
      * <p>
      * If the entity was modified since the last read, this operation will fail.
-     * </p>
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      */
     public static <E extends Entity> void delete(E entity) {
         try {
@@ -1134,6 +1145,7 @@ public class Index {
      * modified since the last read.
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      */
     public static <E extends Entity> void forceDelete(E entity) {
         try {
@@ -1149,6 +1161,7 @@ public class Index {
      *
      * @param entity the entity to delete
      * @param force  determines whether optimistic locking is suppressed (<tt>true</tt>) or not
+     * @param <E>    the type of the entity to delete
      * @throws OptimisticLockException if the entity was changed since the last read
      */
     protected static <E extends Entity> void delete(final E entity,
@@ -1215,6 +1228,7 @@ public class Index {
      * Creates a new query for objects of the given class.
      *
      * @param clazz the class of objects to query
+     * @param <E>   the type of the entity to query
      * @return a new query against the database
      */
     public static <E extends Entity> Query<E> select(Class<E> clazz) {

@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * Note that the locks created here are not reentrant. Therefore if a lock is held by a thread on a node,
  * it must not call lock again for the same lock as this would immediately lead to a deadlock!
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2014/11
@@ -63,7 +62,6 @@ public class LockManager {
      * Tries to acquire the given lock within the given timeout.
      * <p>
      * If the lock cannot be acquired within the given period, an exception is thrown.
-     * </p>
      *
      * @param section the critical section describing the lock to acquire
      * @param timeout the max time span to wait for the lock (cannot be longer than {@link #MAX_LOCK_WAIT_MILLIS}
@@ -86,7 +84,6 @@ public class LockManager {
      * <p>
      * If the lock cannot be acquired within the given period, <tt>false</tt> is returned. Note that if <tt>true</tt>
      * is returned, {@link #unlock(sirius.search.locks.CriticalSection)} MUST be called once the critical section is left.
-     * </p>
      *
      * @param section the critical section describing the lock to acquire
      * @param timeout the max time span to wait for the lock (cannot be longer than {@link #MAX_LOCK_WAIT_MILLIS}
@@ -152,7 +149,6 @@ public class LockManager {
      * Kills (removes) the lock without further checks.
      * <p>
      * This method must not be used in "normal" user code and is only intended for administrative tasks.
-     * </p>
      *
      * @param lock the lock to kill (forcefully unlock)
      */
@@ -168,7 +164,6 @@ public class LockManager {
      * Returns all currently active locks.
      * <p>
      * Intended for administrative tasks.
-     * </p>
      *
      * @return a list of all currently held locks
      */
@@ -180,7 +175,6 @@ public class LockManager {
      * Unlocks the given lock which is held for the given section.
      * <p>
      * Throws an exception if the lock is not held by the current node and section.
-     * </p>
      *
      * @param section the critical section describing the lock to unlock
      */
@@ -237,7 +231,6 @@ public class LockManager {
      * <p>
      * Automatically releases the lock once the criticalSection is completed. If the lock cannot be obtained,
      * nothing happens.
-     * </p>
      *
      * @param section         the critical section describing the lock to acquire
      * @param timeout         the max period to wait for  the lock
@@ -263,7 +256,6 @@ public class LockManager {
      * Performs the given runnable while obtaining the given lock.
      * <p>
      * Automatically releases the lock once the criticalSection is completed.
-     * </p>
      *
      * @param section         the critical section describing the lock to acquire
      * @param timeout         the max period to wait for  the lock

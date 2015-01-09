@@ -188,6 +188,7 @@ public class Schema {
      * Returns the entity descriptor for the given entity class
      *
      * @param entityType the class of the entity which descriptor is being searched
+     * @param <E>        the type to get the descriptor for
      * @return the entity descriptor for the given class or <tt>null</tt> if no descriptor is found
      */
     @Nullable

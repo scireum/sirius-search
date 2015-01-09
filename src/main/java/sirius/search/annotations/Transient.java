@@ -18,7 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * By default all fields of an entity are stored in the database. However, fields wearing this annotation will not
  * be stored in the DB.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12

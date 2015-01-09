@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
  * Therefore the constraint translates x,y,z for field f to: <code>f = x OR f = y OR f = z</code>. Empty strings
  * are gracefully handled (ignored). If {@link #orEmpty()} is used, the constraint also succeeds if
  * the target field is empty. This is only valid when <tt>containsAny</tt> is used.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2014/09
@@ -73,7 +72,6 @@ public class CSVFilter implements Constraint {
      * present.
      * <p>
      * The string can have a form like A,B,C or A|B|C.
-     * </p>
      *
      * @param field                the field to check
      * @param commaSeparatedValues the comma separated values to check for
@@ -88,7 +86,6 @@ public class CSVFilter implements Constraint {
      * present.
      * <p>
      * The string can have a form like A,B,C or A|B|C.
-     * </p>
      *
      * @param field                the field to check
      * @param commaSeparatedValues the comma separated values to check for

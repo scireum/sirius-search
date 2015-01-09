@@ -18,7 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * By default, fields are not analysed. However, using this annotation, Elasticsearch can be instructed to apply
  * an analyzer or to not index the field at all (relevant for large fields, not intended to be searched in).
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -32,10 +31,8 @@ public @interface IndexMode {
      * <p>
      * This will make elasticsearch use an analyzer to split the contents
      * of the field into separate tokens which are then searchable.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String MODE_ANALYZED = "analyzed";
 
@@ -43,10 +40,8 @@ public @interface IndexMode {
      * Sets the {@link #indexMode()} to "not_analyzed".
      * <p>
      * This will make elasticsearch treat the contents of the field as a single token which is then searchable.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String MODE_NOT_ANALYZED = "not_analyzed";
 
@@ -55,10 +50,8 @@ public @interface IndexMode {
      * <p>
      * This will disable indexing of the field entirely. Therefore no tokens are stored. This is essential for large
      * fields, as the token limit is 64k.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String MODE_NO = "no";
 
@@ -67,7 +60,6 @@ public @interface IndexMode {
      * Sets the {@link #normEnabled()} to "true".
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String NORMS_ENABLED = "true";
 
@@ -75,7 +67,6 @@ public @interface IndexMode {
      * Sets the {@link #normEnabled()} to "false".
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String NORMS_DISABLED = "false";
 
@@ -83,10 +74,8 @@ public @interface IndexMode {
      * Sets the {@link #indexMode()} ()} to "docs".
      * <p>
      * This will instruct elasticsearch to only store the doc id for a token.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String INDEX_OPTION_DOCS = "docs";
 
@@ -94,10 +83,8 @@ public @interface IndexMode {
      * Sets the {@link #indexMode()} ()} to "freqs".
      * <p>
      * This will instruct elasticsearch to store the doc id and the term frequency for a token.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String INDEX_OPTION_FREQS = "freqs";
 
@@ -105,10 +92,8 @@ public @interface IndexMode {
      * Sets the {@link #indexMode()} ()} to "positions".
      * <p>
      * This will instruct elasticsearch to store the doc id, the term frequency and the position for a token.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String INDEX_OPTION_POSITIONS = "positions";
 
@@ -117,10 +102,8 @@ public @interface IndexMode {
      * <p>
      * This will instruct elasticsearch to use the whitespace analyzer which creates a token for each whitespace
      * separated word.
-     * </p>
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
-     * </p>
      */
     public static final String ANALYZER_WHITESPACE = "whitespace";
 

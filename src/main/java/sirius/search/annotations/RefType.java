@@ -20,7 +20,6 @@ import java.lang.annotation.Target;
  * Marks a field as reference to another entity.
  * <p>
  * Fields wearing this annotation must be of type {@link sirius.search.EntityRef}.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -56,7 +55,6 @@ public @interface RefType {
      * referenced value.
      * <p>
      * This is required if RefFields point to this referenced entity.
-     * </p>
      *
      * @return the name of the property / field containing the routing value to be used when fetching the referenced
      * value.

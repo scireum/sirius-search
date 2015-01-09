@@ -19,7 +19,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * Provides a simple sequence generator using the optimistic locking of ElasticSearch.
  * <p>
  * Note that this method is not intended for high frequency use as at least two requests against ES are necessary.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/11
@@ -33,7 +32,6 @@ public class IdGenerator {
      * Returns the next globally unique number for the given sequence.
      * <p>
      * If the sequence doesn't exist, it will be created and 1 will be returned.
-     * </p>
      *
      * @param sequence the sequence to use
      * @return a globally unique number (within this sequence)

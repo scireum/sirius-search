@@ -16,7 +16,8 @@ import java.math.BigDecimal;
 
 /**
  * Represents an exactly mapped property for fields of type <tt>BigDecimal</tt>.
- * <p>Values are stored as string to ensure exact representation without any rounding errors.</p>
+ * <p>
+ * Values are stored as string to ensure exact representation without any rounding errors.
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2014/03

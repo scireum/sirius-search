@@ -33,7 +33,6 @@ import java.util.Map;
  * <p>
  * For each entity class an <tt>EntityDescriptor</tt> is automatically created and filled by the framework. Most of
  * this data is used by the framework to define the mapping (schema) in ElasticSearch, etc.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -202,7 +201,6 @@ public class EntityDescriptor {
      * <p>
      * Note that this is an ElasticSearch index and not to be confused with a database index. This would be more or
      * less something like a schema in a SQL db
-     * </p>
      *
      * @return the name of the ES index used to store entities
      */
@@ -214,7 +212,6 @@ public class EntityDescriptor {
      * Returns the type name used to store entities related to this descriptor.
      * <p>
      * A type in ElasticSearch can be compared to a table in a SQL db.
-     * </p>
      *
      * @return the type name used to store entities related to this descriptor
      */

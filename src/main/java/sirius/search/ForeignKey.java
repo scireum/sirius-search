@@ -27,14 +27,11 @@ import java.util.List;
  * <p>
  * In contrast to "real" foreign keys, these only try to achieve eventual consistency. Sometimes it is even preferable
  * to accept inconsistent datasets (like child objects without parents) for performance reasons.
- * </p>
  * <p>
  * Foreign keys are automatically created by {@link sirius.search.Schema#linkSchema()} based on {@link RefType} annotations.
- * </p>
  * <p>
  * Using {@link sirius.search.annotations.RefField} along a <tt>RefType</tt> annotation permits to have copies of fields,
  * like the name of a parent object, which is automatically updated once it changes.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12

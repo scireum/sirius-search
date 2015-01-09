@@ -17,7 +17,6 @@ import java.lang.reflect.Field;
  * <tt>PropertyFactory</tt> is queried. The first to return <tt>true</tt> as result of
  * {@link #accepts(java.lang.reflect.Field)} will be used to compute the property fro a field by calling
  * {@link #create(java.lang.reflect.Field)}.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12

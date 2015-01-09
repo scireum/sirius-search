@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
  * <p>
  * This permits elegant lazy loading, as only the IDs are eagerly loaded and stored into the database. The objects
  * itself are only loaded on demand.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -40,7 +39,6 @@ public class EntityRefList<E extends Entity> {
      * <p>
      * Fields of this type don't need to be initialized, as this is done by the
      * {@link sirius.search.properties.EntityProperty}.
-     * </p>
      *
      * @param ref the type of the referenced entity
      */
@@ -116,7 +114,6 @@ public class EntityRefList<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from a given local cache.
-     * </p>
      *
      * @param localCache the cache to used when looking up values
      * @return the value represented by this reference
@@ -129,7 +126,6 @@ public class EntityRefList<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from a given local cache.
-     * </p>
      *
      * @param routing    the routing info used to lookup the entities (might be <tt>null</tt> if no routing is required).
      * @param localCache the cache to used when looking up values
@@ -160,7 +156,6 @@ public class EntityRefList<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the global cache.
-     * </p>
      *
      * @return the value represented by this reference
      */
@@ -172,7 +167,6 @@ public class EntityRefList<E extends Entity> {
      * Returns the entity value represented by this reference.
      * <p>
      * The framework is permitted to load the value from the global cache.
-     * </p>
      *
      * @param routing the routing info used to lookup the entities (might be <tt>null</tt> if no routing is required).
      * @return the value represented by this reference
@@ -233,7 +227,6 @@ public class EntityRefList<E extends Entity> {
      * Returns the IDs of the represented values.
      * <p>
      * This can always be fetched without a DB lookup.
-     * </p>
      *
      * @return the IDs of the represented values
      */

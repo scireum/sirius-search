@@ -18,7 +18,6 @@ import javax.annotation.Nullable;
  * Provides a wrapper for {@link Index} which can be injected using a {@link sirius.kernel.di.std.Part} annotation.
  * <p>
  * Using this wrapper instead of the static methods permits to mock the index access.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2014/11
@@ -30,12 +29,12 @@ public class IndexAccess {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a given cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
      * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
@@ -51,12 +50,12 @@ public class IndexAccess {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a given cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
      * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
      * @return the resolved entity (or <tt>null</tt> if not found)
      */
     @Nullable
@@ -71,11 +70,11 @@ public class IndexAccess {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a global cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
@@ -90,11 +89,11 @@ public class IndexAccess {
      * Fetches the entity of given type with the given id.
      * <p>
      * May use a global cache to load the entity.
-     * </p>
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
      * @return the resolved entity (or <tt>null</tt> if not found)
      */
     @Nullable
@@ -116,7 +115,6 @@ public class IndexAccess {
      * <p>
      * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
      * is absolutely necessary.
-     * </p>
      */
     public void blockThreadForUpdate() {
         Index.blockThreadForUpdate();
@@ -136,6 +134,7 @@ public class IndexAccess {
      * Creates this entity by storing an initial copy in the database.
      *
      * @param entity the entity to be stored in the database
+     * @param <E>    the type of the entity to create
      * @return the stored entity (with a filled ID etc.)
      */
     public <E extends Entity> E create(E entity) {
@@ -147,9 +146,9 @@ public class IndexAccess {
      * <p>
      * If the same entity was modified in the database already, an
      * <tt>OptimisticLockException</tt> will be thrown
-     * </p>
      *
      * @param entity the entity to save
+     * @param <E>    the type of the entity to update
      * @return the saved entity
      * @throws sirius.search.OptimisticLockException if the entity was modified in the database and those changes where not reflected
      *                                               by the entity to be saved
@@ -163,9 +162,9 @@ public class IndexAccess {
      * <p>
      * If the entity was modified in the database and those changes where not reflected
      * by the entity to be saved, this operation will fail.
-     * </p>
      *
      * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to update
      * @return the updated entity
      */
     public <E extends Entity> E update(E entity) {
@@ -177,9 +176,9 @@ public class IndexAccess {
      * <p>
      * As change tracking is disabled, this operation will override all previous changes which are not reflected
      * by the entity to be saved
-     * </p>
      *
      * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to override
      * @return the updated entity
      */
     public <E extends Entity> E override(E entity) {
@@ -191,6 +190,7 @@ public class IndexAccess {
      *
      * @param clazz the type of the entity
      * @param id    the id of the entity
+     * @param <E>   the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public <E extends Entity> E find(final Class<E> clazz, String id) {
@@ -203,6 +203,7 @@ public class IndexAccess {
      * @param routing the value used to compute the routing hash
      * @param clazz   the type of the entity
      * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public <E extends Entity> E find(String routing, final Class<E> clazz, String id) {
@@ -212,10 +213,12 @@ public class IndexAccess {
     /**
      * Tries to find the entity of the given type with the given id.
      *
-     * @param index the index to use. The current index prefix will be automatically added. Can be left <tt>null</tt>
-     *              to use the default index
-     * @param clazz the type of the entity
-     * @param id    the id of the entity
+     * @param index   the index to use. The current index prefix will be automatically added. Can be left <tt>null</tt>
+     * @param routing the value used to compute the routing hash
+     *                to use the default index
+     * @param clazz   the type of the entity
+     * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public <E extends Entity> E find(@Nullable String index,
@@ -227,11 +230,13 @@ public class IndexAccess {
 
     /**
      * Tries to load a "fresh" (updated) instance of the given entity from the cluster.
-     * <p>Will return <tt>null</tt> if <tt>null</tt> was passed in. If a non persisted entity was given. This
+     * <p>
+     * Will return <tt>null</tt> if <tt>null</tt> was passed in. If a non persisted entity was given. This
      * entity will be returned. If the entity is no longer available in the cluster,
-     * <tt>null</tt> will be returned</p>.
+     * <tt>null</tt> will be returned.
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a refreshed instance of the entity or <tt>null</tt> if either the given entity was <tt>null</tt> or if
      * the given entity cannot be found in the cluster.
      */
@@ -246,9 +251,9 @@ public class IndexAccess {
      * <p>
      * Returns <tt>null</tt> if the given entity was <tt>null</tt>. Otherweise either a refreshed instance will
      * be returned or an exception will be thrown.
-     * </p>
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a fresh instance of the given entity or <tt>null</tt> if <tt>null</tt> was passed in
      * @throws sirius.kernel.health.HandledException if the entity is no longer available in the cluster
      */
@@ -262,9 +267,9 @@ public class IndexAccess {
      * <p>
      * Returns <tt>null</tt> if the given entity was <tt>null</tt>. Otherwise either a refreshed instance will
      * be returned or the original given instance.
-     * </p>
      *
      * @param entity the entity to refresh
+     * @param <T>    the type of the entity to refresh
      * @return a fresh instance of the given entity or <tt>null</tt> if <tt>null</tt> was passed in
      */
     @Nullable
@@ -276,6 +281,7 @@ public class IndexAccess {
      * Tries to delete the given entity unless it was modified since the last read.
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      * @throws sirius.search.OptimisticLockException if the entity was modified since the last read
      */
     public <E extends Entity> void tryDelete(E entity) throws OptimisticLockException {
@@ -286,9 +292,9 @@ public class IndexAccess {
      * Deletes the given entity
      * <p>
      * If the entity was modified since the last read, this operation will fail.
-     * </p>
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      */
     public <E extends Entity> void delete(E entity) {
         Index.delete(entity);
@@ -299,6 +305,7 @@ public class IndexAccess {
      * modified since the last read.
      *
      * @param entity the entity to delete
+     * @param <E>    the type of the entity to delete
      */
     public <E extends Entity> void forceDelete(E entity) {
         Index.forceDelete(entity);
@@ -308,6 +315,7 @@ public class IndexAccess {
      * Creates a new query for objects of the given class.
      *
      * @param clazz the class of objects to query
+     * @param <E>   the type of the entity to query
      * @return a new query against the database
      */
     public <E extends Entity> Query<E> select(Class<E> clazz) {

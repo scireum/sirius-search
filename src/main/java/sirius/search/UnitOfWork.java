@@ -13,7 +13,6 @@ package sirius.search;
  * <p>
  * This is used by {@link Index#retry(UnitOfWork)} to signal that the given block can be safely re-executed if
  * a recoverable error like an optimistic lock error occurs.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12

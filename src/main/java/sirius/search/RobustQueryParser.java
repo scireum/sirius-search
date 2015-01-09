@@ -27,7 +27,6 @@ import java.util.function.Function;
  * Tries to emulate most of the lucene query syntax like "field:token", "-token", "AND", "OR" and prefix queries ("test*"). In
  * contrast to the regular query parser, this will never fail but do its best to create a query as intended
  * by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all usable tokens.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @see Query#query(String)

@@ -94,7 +94,6 @@ public class FieldOperator implements Constraint {
      * Makes the filter include its limit.
      * <p>
      * Essentially this converts &lt; to &lt;= and &gt; to &gt;=
-     * </p>
      *
      * @return the constraint itself for fluent method calls
      */
@@ -112,7 +111,6 @@ public class FieldOperator implements Constraint {
      * Signals that this constraint is also fulfilled if the target field is empty.
      * <p>
      * This will convert this constraint into a filter.
-     * </p>
      *
      * @return the constraint itself for fluent method calls
      */

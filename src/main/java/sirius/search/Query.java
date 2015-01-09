@@ -87,7 +87,6 @@ public class Query<E extends Entity> {
      * <p>
      * This method is intended for security checks which should not abort processing but just behave like the
      * query didn't match any entities.
-     * </p>
      *
      * @return the query itself for fluent method calls
      */
@@ -100,7 +99,6 @@ public class Query<E extends Entity> {
      * Adds the given constraints to the query.
      * <p>
      * All constraints are combined together using AND logic, meaning that all constraints need to be satisfied.
-     * </p>
      *
      * @param constraints the array of constraints to add
      * @return the query itself for fluent method calls
@@ -114,7 +112,6 @@ public class Query<E extends Entity> {
      * Adds the given list of alternative constraints to the query.
      * <p>
      * All constraints are combined together using OR logic, meaning that at least one constraint need to be satisfied.
-     * </p>
      *
      * @param constraints the array of constraints to add
      * @return the query itself for fluent method calls
@@ -180,7 +177,8 @@ public class Query<E extends Entity> {
 
     /**
      * Adds an <tt>in</tt> constraint for the given field and value.
-     * <p>This requires the field to have at least the given value in it (might have others as well).</p>
+     * <p>
+     * This requires the field to have at least the given value in it (might have others as well).
      *
      * @param field the field to check
      * @param value the value to compare against
@@ -197,7 +195,6 @@ public class Query<E extends Entity> {
      * <p>
      * It will try to parse queries in Lucene syntax (+token, -token, AND, OR and brackets are supported) but it
      * will never fail for a malformed query. If such a case, the valid tokens are sent to the server.
-     * </p>
      *
      * @param query        the query to search for
      * @param defaultField the default field to search in
@@ -218,7 +215,6 @@ public class Query<E extends Entity> {
      * Adds a textual query across all searchable fields.
      * <p>
      * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function)}.
-     * </p>
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -248,7 +244,6 @@ public class Query<E extends Entity> {
      * <p>
      * Consider using {@link #query(String)} which supports most of the Lucene syntax but will never fail for
      * a query.
-     * </p>
      *
      * @param query the query to search for. Does actually support the complete Lucene query syntax like
      *              <code>field:value OR field2:value1</code>
@@ -267,7 +262,6 @@ public class Query<E extends Entity> {
      * Sets the index to use.
      * <p>
      * For "normal" entities, the index is automatically computed but can be overridden by this method.
-     * </p>
      *
      * @param indexToUse the name of the index to use. The index prefix used by this system will be automatically
      *                   added
@@ -284,7 +278,6 @@ public class Query<E extends Entity> {
      * <p>
      * This must match the value of the field as specified in <tt>routing</tt> in
      * {@link sirius.search.annotations.Indexed}.
-     * </p>
      *
      * @param value the value used for custom routing
      * @return the query itself for fluent method calls
@@ -302,7 +295,6 @@ public class Query<E extends Entity> {
      * Therefore this method checks if by coincidence the given field and value (which is used by the foreign key
      * to filter entities) is also used to route those entities. If this is true, the routing is applied,
      * otherwise {@link #deliberatelyUnrouted()} is called.
-     * </p>
      *
      * @param field the field for which a filter value is available
      * @param value the value of the field
@@ -323,8 +315,9 @@ public class Query<E extends Entity> {
 
     /**
      * Marks the query as deliberately unrouted.
-     * <p>This can be used to signal the system that an entity with a routing
-     * (in {@link sirius.search.annotations.Indexed}) is deliberately queried without any routing</p>
+     * <p>
+     * This can be used to signal the system that an entity with a routing
+     * (in {@link sirius.search.annotations.Indexed}) is deliberately queried without any routing
      *
      * @return the query itself for fluent method calls
      */
@@ -492,7 +485,6 @@ public class Query<E extends Entity> {
      * Forces the framework to load the entities from their primary shard.
      * <p>
      * This can be used to minimize the risk of optimistic lock errors
-     * </p>
      *
      * @return the query itself for fluent method calls
      */
@@ -800,7 +792,6 @@ public class Query<E extends Entity> {
      *
      * @param builder the completed query
      * @return the result of the query
-     * @throws Exception in case on an error when executing the query
      */
     protected long transformCount(CountRequestBuilder builder) {
         Watch w = Watch.start();
@@ -854,7 +845,6 @@ public class Query<E extends Entity> {
      * Executes the result and calls the given <tt>handler</tt> for each item in the result.
      * <p>
      * This is intended to be used to process large result sets as these are automatically scrolls through.
-     * </p>
      *
      * @param handler the handler used to process each result item
      */

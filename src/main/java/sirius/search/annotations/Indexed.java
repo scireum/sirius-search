@@ -49,6 +49,8 @@ public @interface Indexed {
     /**
      * Determines the framework this entity belongs to. If a non empty string is given, the entity is only loaded, if
      * {@link sirius.kernel.Sirius#isFrameworkEnabled(String)} returns <tt>true</tt> for the given framework.
+     *
+     * @return the framework which must be enabled in order to load this entity class
      */
     String framework() default "";
 

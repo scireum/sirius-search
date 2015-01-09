@@ -38,7 +38,6 @@ import java.util.Set;
  * <p>
  * Each subclass should wear a {@link sirius.search.annotations.Indexed} annotation to indicate which index should be
  * used.
- * </p>
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2013/12
@@ -75,7 +74,6 @@ public abstract class Entity {
      * Creates and initializes a new instance.
      * <p>
      * All mapped properties will be initialized by their {@link Property} if necessary.
-     * </p>
      */
     public Entity() {
         if (Index.schema != null) {
@@ -120,7 +118,6 @@ public abstract class Entity {
      * Returns the unique ID of the entity.
      * <p>
      * Unless the entity is new, this is never <tt>null</tt>.
-     * </p>
      *
      * @return the id of this entity
      */
@@ -132,7 +129,6 @@ public abstract class Entity {
      * Returns an ID which is guaranteed to be globally unique.
      * <p>
      * Note that new entities always have default (non-unique) id.
-     * </p>
      *
      * @return the globally unique ID of this entity.
      */
@@ -275,7 +271,6 @@ public abstract class Entity {
      * This is internally used to check all properties which must not be null
      * ({@link sirius.search.properties.Property#isNullAllowed()}). If a field accepts a <tt>null</tt> value but
      * still must be field, this method can be called in {@link #beforeSaveChecks()}.
-     * </p>
      *
      * @param previousError Can be used to signal that an error was already found. In this case the given exception
      *                      will be returned as result even if the value was <tt>null</tt>. In most cases this
@@ -368,7 +363,6 @@ public abstract class Entity {
      * Invoked before an entity is deleted from the database.
      * <p>
      * This method is not intended to be overridden. Override {@link #onDelete()} or {@link #internalOnDelete()}.
-     * </p>
      */
     protected final void beforeDelete() {
         executeDeleteChecksOnForeignKeys();
@@ -391,7 +385,6 @@ public abstract class Entity {
      * <p>
      * This method SHOULD call <code>super.onDelete</code> to ensure that all save handlers are called. However,
      * frameworks should rely on internalOnDelete, which should not be overridden by application classes.
-     * </p>
      */
     protected void onDelete() {
 
@@ -404,7 +397,6 @@ public abstract class Entity {
      * This method MUST call <code>super.internalOnDelete</code> to ensure that all save handlers are called. This is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onDelete()</code>.
-     * </p>
      */
     protected void internalOnDelete() {
 
@@ -414,7 +406,6 @@ public abstract class Entity {
      * Invoked after an entity is deleted from the database.
      * <p>
      * This method is not intended to be overridden. Override {@link #onAfterDelete()} or {@link #internalOnAfterDelete()}.
-     * </p>
      */
     protected final void afterDelete() {
         executeDeleteChecksOnForeignKeys();
@@ -437,7 +428,6 @@ public abstract class Entity {
      * <p>
      * This method SHOULD call <code>super.onAfterDelete</code> to ensure that all save handlers are called. However,
      * frameworks should rely on internalOnAfterDelete, which should not be overridden by application classes.
-     * </p>
      */
     protected void onAfterDelete() {
 
@@ -450,7 +440,6 @@ public abstract class Entity {
      * This method MUST call <code>super.internalOnAfterDelete</code> to ensure that all save handlers are called. This is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onAfterDelete()</code>.
-     * </p>
      */
     protected void internalOnAfterDelete() {
 
@@ -506,7 +495,6 @@ public abstract class Entity {
      * Invoked after an entity is saved into the database.
      * <p>
      * This method is not intended to be overridden. Override {@link #onAfterSave()} or {@link #internalOnAfterSave()}.
-     * </p>
      */
     protected final void afterSave() {
         executeSaveOnForeignKeys();
@@ -530,7 +518,6 @@ public abstract class Entity {
      * This method MUST call <code>super.internalOnAfterSave</code> to ensure that all save handlers are called. This is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onAfterSave()</code>.
-     * </p>
      */
     protected void internalOnAfterSave() {
     }
@@ -541,7 +528,6 @@ public abstract class Entity {
      * <p>
      * This method SHOULD call <code>super.onAfterSave</code> to ensure that all save handlers are called. However,
      * frameworks should rely on internalOnAfterSave, which should not be overridden by application classes.
-     * </p>
      */
     protected void onAfterSave() {
     }
@@ -583,7 +569,6 @@ public abstract class Entity {
      * Invoked before an entity is saved into the database.
      * <p>
      * This method is not intended to be overridden. Override {@link #onSave()} or {@link #internalOnSave()}.
-     * </p>
      */
     protected final void beforeSave() {
         check();
@@ -598,7 +583,6 @@ public abstract class Entity {
      * This method MUST call <code>super.internalOnSave</code> to ensure that all save handlers are called. This is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onSave()</code>.
-     * </p>
      */
     protected void internalOnSave() {
 
@@ -610,7 +594,6 @@ public abstract class Entity {
      * <p>
      * This method SHOULD call <code>super.onSave</code> to ensure that all save handlers are called. However,
      * frameworks should rely on internalOnSave, which should not be overridden by application classes.
-     * </p>
      */
     protected void onSave() {
 
@@ -620,7 +603,6 @@ public abstract class Entity {
      * Enables tracking of source field (which contain the original state of the database before the entity was changed.
      * <p>
      * This will be set by @{@link Index#find(Class, String)}.
-     * </p>
      */
     protected void initSourceTracing() {
         source = Maps.newTreeMap();
@@ -630,7 +612,6 @@ public abstract class Entity {
      * Sets a source field when reading an entity from elasticsearch.
      * <p>
      * This is used by {@link Property#readFromSource(Entity, Object)}.
-     * </p>
      *
      * @param name name of the field
      * @param val  persisted value of the field.
@@ -664,8 +645,9 @@ public abstract class Entity {
     }
 
     /**
-     * Generates an unique ID used to store new objects of this type. By default three types of IDs are supported:
+     * Generates an unique ID used to store new objects of this type.
      * <p>
+     * By default three types of IDs are supported:
      * <ul>
      * <li><b>ELASTICSEARCH</b>: Let elasticsearch generate the IDs.
      * Works 100% but contains characters like '-' or '_'</li>
@@ -674,10 +656,8 @@ public abstract class Entity {
      * <li><b>BASE32HEX</b>: Use the internal generator (16 byte random data) represented as BASE32HEX
      * encoded string. This is the default setting.</li>
      * </ul>
-     * </p>
      * <p>
      * Note that the type of generation can be controlled by overriding {@link #getIdGeneratorType()}.
-     * </p>
      *
      * @return a unique ID used for new objects or <tt>null</tt> to let elasticsearch create one.
      */
