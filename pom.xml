@@ -161,6 +161,10 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <links>
+                        <link>http://sirius-lib.net/apidocs/sirius-kernel</link>
+                        <link>http://sirius-lib.net/apidocs/sirius-web</link>
+                    </links>
                     <failOnError>false</failOnError>
                 </configuration>
             </plugin>
