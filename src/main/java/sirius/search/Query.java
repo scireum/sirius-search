@@ -369,7 +369,7 @@ public class Query<E extends Entity> {
     public Query<E> addTermFacet(String field, String value, ValueComputer<String, String> translator) {
         final Property p = Index.getDescriptor(clazz).getProperty(field);
         if (p instanceof EnumProperty && translator == null) {
-            translator = (v) -> ((EnumProperty) p).transformFromSource(v).toString();
+            translator = (v) -> String.valueOf(((EnumProperty) p).transformFromSource(v));
         }
         termFacets.add(new Facet(NLS.get(p.getField().getDeclaringClass().getSimpleName() + "." + field),
                                  field,
