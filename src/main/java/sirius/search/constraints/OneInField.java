@@ -28,6 +28,7 @@ public class OneInField implements Constraint {
     private final String field;
     private boolean orEmpty = false;
     private boolean isFilter;
+    private boolean forceEmpty = false;
 
     /*
      * Use the #on(List, String) factory method
@@ -71,6 +72,20 @@ public class OneInField implements Constraint {
     }
 
     /**
+     * Signals that this constraint is also fulfilled if the target field is empty, even if values is empty.
+     * <p>
+     * This will convert this constraint into a filter.
+     *
+     * @return the constraint itself for fluent method calls
+     */
+    public OneInField forceEmpty() {
+        asFilter();
+        orEmpty = true;
+        forceEmpty = true;
+        return this;
+    }
+
+    /**
      * Forces this constraint to be applied as filter not as query.
      *
      * @return the constraint itself for fluent method calls
@@ -98,10 +113,17 @@ public class OneInField implements Constraint {
     @Override
     public FilterBuilder createFilter() {
         if (isFilter) {
-            if (values == null || values.isEmpty()) {
+            if (values == null) {
                 return null;
             }
             BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
+            if (values.isEmpty()) {
+                if (forceEmpty) {
+                    boolFilterBuilder.should(FilterBuilders.missingFilter(field));
+                    return boolFilterBuilder;
+                }
+                return null;
+            }
             for (Object value : values) {
                 boolFilterBuilder.should(FilterBuilders.termFilter(field, FieldOperator.convertJava8Times(value)));
             }
