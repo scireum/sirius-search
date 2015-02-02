@@ -72,7 +72,7 @@ public class OneInField implements Constraint {
     }
 
     /**
-     * Signals that this constraint is also fulfilled if the target field is empty, even if values is empty.
+     * Signals that an empty input list is not ignored but enforces the target field to be empty.
      * <p>
      * This will convert this constraint into a filter.
      *

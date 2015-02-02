@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.scireum</groupId>
     <artifactId>sirius-search</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -177,12 +177,12 @@
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.0</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
