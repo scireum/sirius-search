@@ -5,11 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.scireum</groupId>
     <artifactId>sirius-search</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
     <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)</description>
+    <url>http://www.sirius-lib.net</url>
 
     <licenses>
         <license>
