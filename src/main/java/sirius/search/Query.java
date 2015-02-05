@@ -61,6 +61,7 @@ public class Query<E extends Entity> {
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
     private boolean randomize;
+    private String randomizeField;
     private int start;
     private int limit = 999;
     private String query;
@@ -359,6 +360,21 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Picks random items from the result set instead of the first N.
+     * <p>
+     * A higher weight in the given field increases the chances of the entity to be part of the result.
+     * </p>
+     *
+     * @param field the field to use as weight for the randomization.
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> randomizeWeightened(String field) {
+        randomize = true;
+        randomizeField = field;
+        return this;
+    }
+
+    /**
      * Adds a term facet to be filled by the query.
      *
      * @param field      the field to scan
@@ -554,7 +570,12 @@ public class Query<E extends Entity> {
             srb.setPreference("_primary");
         }
         if (randomize) {
-            srb.addSort(SortBuilders.scriptSort("Math.random()", "number").order(SortOrder.ASC));
+            if (randomizeField != null) {
+                srb.addSort(SortBuilders.scriptSort("Math.random()*doc['" + randomizeField + "'].value", "number")
+                                        .order(SortOrder.DESC));
+            } else {
+                srb.addSort(SortBuilders.scriptSort("Math.random()", "number").order(SortOrder.ASC));
+            }
 
         } else {
             for (Tuple<String, Boolean> sort : orderBys) {
