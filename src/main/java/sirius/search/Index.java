@@ -779,13 +779,13 @@ public class Index {
         try {
             return update(entity, true, false);
         } catch (OptimisticLockException e) {
+            reportClash(entity);
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
                             .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
                                                     entity.toString(),
-                                                    entity.getId())
-                            .handle();
+                                                    entity.getId()).handle();
         }
     }
 
@@ -882,7 +882,6 @@ public class Index {
             if (LOG.isFINE()) {
                 LOG.FINE("Version conflict on updating: %s", entity);
             }
-            reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
         } catch (Throwable e) {
