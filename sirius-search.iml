@@ -24,8 +24,8 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="Maven: com.scireum:sirius-web:1.0" level="project" />
-    <orderEntry type="library" name="Maven: com.scireum:sirius-kernel:1.0" level="project" />
+    <orderEntry type="library" name="Maven: com.scireum:sirius-web:1.1-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="Maven: com.scireum:sirius-kernel:1.1-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-all:4.0.25.Final" level="project" />
     <orderEntry type="library" name="Maven: com.scireum:server-sass:1.3.5" level="project" />
     <orderEntry type="library" name="Maven: com.scireum:parsii:1.3" level="project" />
@@ -61,6 +61,7 @@
     <orderEntry type="library" name="Maven: xml-apis:xml-apis:1.3.04" level="project" />
     <orderEntry type="library" name="Maven: org.apache.poi:poi:3.9" level="project" />
     <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.5" level="project" />
+    <orderEntry type="library" name="Maven: net.sf.opencsv:opencsv:2.3" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: com.scireum:sirius-kernel:test-jar:tests:1.0" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe:config:1.0.2" level="project" />
     <orderEntry type="library" name="Maven: com.google.guava:guava:14.0.1" level="project" />

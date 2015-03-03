@@ -8,6 +8,7 @@
 
 package sirius.search.locks;
 
+import sirius.kernel.async.Async;
 import sirius.kernel.async.CallContext;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Wait;
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * @author Andreas Haufler (aha@scireum.de)
  * @since 2014/11
  */
-@Register(framework = "search.locks", classes = LockManager.class)
+@Register(framework = "search.locks", classes = {LockManager.class})
 public class LockManager {
 
     private static final Log LOG = Log.get("locks");
@@ -105,6 +106,9 @@ public class LockManager {
         do {
             if (tryAcquire(section)) {
                 return true;
+            }
+            if (!Async.isRunning()) {
+                return false;
             }
             // Wait 500ms, 1s and then always 1.5s to check...
             pauseMillis = Math.min(pauseMillis + PAUSE_INCREMENT_MILLIS, maxPauseMillis);
