@@ -71,6 +71,12 @@ public abstract class Entity {
     protected Map<String, Object> source;
 
     /**
+     * Should foreign keys be skipped after updating an entity. This can be used to escape cyclic dependencies
+     */
+    @Transient
+    protected boolean skipForeignKeys;
+
+    /**
      * Creates and initializes a new instance.
      * <p>
      * All mapped properties will be initialized by their {@link Property} if necessary.
@@ -512,9 +518,21 @@ public abstract class Entity {
     }
 
     /**
+     * Skips the foreign key updates once this entity is updated.
+     * <p>
+     * This can be used to break cyclic dependencies
+     */
+    public void skipForeignKeys() {
+        skipForeignKeys = true;
+    }
+
+    /**
      * Executes the {@link sirius.search.ForeignKey#onSave(Entity)} handlers on all foreign keys...
      */
     protected void executeSaveOnForeignKeys() {
+        if (skipForeignKeys) {
+            return;
+        }
         for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
             fk.onSave(this);
         }
