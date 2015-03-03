@@ -44,9 +44,11 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.Wait;
 import sirius.kernel.commons.Watch;
+import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.*;
+import sirius.kernel.timer.EveryTenSeconds;
 import sirius.web.health.MetricProvider;
 import sirius.web.health.MetricState;
 import sirius.web.health.MetricsCollector;
@@ -131,6 +133,17 @@ public class Index {
      * Can be used to cache frequently used entities.
      */
     private static Cache<String, Object> globalCache = CacheManager.createCache("entity-cache");
+
+    /**
+     * Used when optimistic lock tracing is enabled to record all changes
+     */
+    private static Map<String, IndexTrace> traces = Maps.newConcurrentMap();
+
+    /**
+     * Determines if optimistic lock errors should be traced
+     */
+    @ConfigValue("index.traceOptimisticLockErrors")
+    private static boolean traceOptimisticLockErrors;
 
     /*
      * Average query duration for statistical measures
@@ -443,6 +456,26 @@ public class Index {
         return readyPromise;
     }
 
+    /**
+     * Removes outdated traces used to discover optimistic lock errors
+     */
+    @Register
+    public static class OptimisticLockTracer implements EveryTenSeconds {
+
+        @Override
+        public void runTimer() throws Exception {
+            if (traceOptimisticLockErrors) {
+                long limit = System.currentTimeMillis() - 10_000;
+                Iterator<IndexTrace> iter = traces.values().iterator();
+                while (iter.hasNext()) {
+                    if (iter.next().timestamp < limit) {
+                        iter.remove();
+                    }
+                }
+            }
+        }
+    }
+
     @Register(classes = Lifecycle.class)
     public static class IndexLifecycle implements Lifecycle {
 
@@ -536,6 +569,10 @@ public class Index {
                 uow.execute();
                 return;
             } catch (OptimisticLockException e) {
+                LOG.FINE(e);
+                if (Sirius.isDev()) {
+                    LOG.WARN("Retrying due to optimistic lock: %s", e);
+                }
                 if (retries <= 0) {
                     throw Exceptions.handle()
                                     .withSystemErrorMessage(
@@ -544,10 +581,10 @@ public class Index {
                                     .to(LOG)
                                     .handle();
                 }
-                // Wait 0, 200ms, 400ms
-                Wait.millis((2 - retries) * 200);
-                // Wait 0..200ms in 50% of all calls...
-                Wait.randomMillis(-200, 200);
+                // Wait 0, 500ms, 1000ms
+                Wait.millis((2 - retries) * 500);
+                // Wait 0..500ms in 50% of all calls...
+                Wait.randomMillis(-500, 500);
             } catch (HandledException e) {
                 throw e;
             } catch (Throwable e) {
@@ -804,7 +841,7 @@ public class Index {
             if (NEW.equals(id)) {
                 id = null;
             }
-            if (id == null || "".equals(id)) {
+            if (Strings.isEmpty(id)) {
                 id = entity.computePossibleId();
             }
 
@@ -839,11 +876,13 @@ public class Index {
             entity.afterSave();
             queryDuration.addValue(w.elapsedMillis());
             w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
+            traceChange(entity);
             return entity;
         } catch (VersionConflictEngineException e) {
             if (LOG.isFINE()) {
                 LOG.FINE("Version conflict on updating: %s", entity);
             }
+            reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
         } catch (Throwable e) {
@@ -1207,10 +1246,12 @@ public class Index {
                          descriptor.getType(),
                          entity.getId());
             }
+            traceChange(entity);
         } catch (VersionConflictEngineException e) {
             if (LOG.isFINE()) {
                 LOG.FINE("Version conflict on updating: %s", entity);
             }
+            reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
         } catch (Throwable e) {
@@ -1222,6 +1263,68 @@ public class Index {
                                                     entity.getId())
                             .handle();
         }
+    }
+
+    protected static <E extends Entity> void reportClash(E entity) {
+        if (!traceOptimisticLockErrors) {
+            return;
+        }
+        IndexTrace offendingTrace = traces.get(entity.getClass().getName() + "-" + entity.getId());
+        if (offendingTrace != null) {
+            StringBuilder msg = new StringBuilder("Detected optimistic locking error:\n");
+            msg.append("Current Thread: ");
+            msg.append(Thread.currentThread().getName());
+            msg.append("\n");
+            for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+                msg.append(e.getClassName())
+                   .append(".")
+                   .append(e.getMethodName())
+                   .append(" (")
+                   .append(e.getFileName())
+                   .append(":")
+                   .append(e.getLineNumber())
+                   .append(")\n");
+            }
+            msg.append("\n");
+            for (Tuple<String, String> t : CallContext.getCurrent().getMDC()) {
+                msg.append(t.getFirst()).append(": ").append(t.getSecond()).append("\n");
+            }
+            msg.append("\n");
+            msg.append("Offending Thread: ");
+            msg.append(offendingTrace.threadName);
+            msg.append("\n");
+            for (StackTraceElement e : offendingTrace.stackTrace) {
+                msg.append(e.getClassName())
+                   .append(".")
+                   .append(e.getMethodName())
+                   .append(" (")
+                   .append(e.getFileName())
+                   .append(":")
+                   .append(e.getLineNumber())
+                   .append(")\n");
+            }
+            msg.append("\n");
+            for (Tuple<String, String> t : offendingTrace.mdc) {
+                msg.append(t.getFirst()).append(": ").append(t.getSecond()).append("\n");
+            }
+            msg.append("\n");
+            LOG.SEVERE(msg.toString());
+        }
+
+    }
+
+    protected static <E extends Entity> void traceChange(E entity) {
+        if (!traceOptimisticLockErrors) {
+            return;
+        }
+        IndexTrace trace = new IndexTrace();
+        trace.threadName = Thread.currentThread().getName();
+        trace.id = entity.getId();
+        trace.type = entity.getClass().getName();
+        trace.timestamp = System.currentTimeMillis();
+        trace.mdc = CallContext.getCurrent().getMDC();
+        trace.stackTrace = Thread.currentThread().getStackTrace();
+        traces.put(trace.type + "-" + trace.id, trace);
     }
 
     /**
