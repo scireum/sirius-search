@@ -12,6 +12,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.script.ScriptService;
 import sirius.kernel.async.Async;
 import sirius.kernel.commons.Strings;
@@ -268,40 +269,54 @@ public class ForeignKey {
         }
     }
 
+    /*
+     * Tries to update all referenced fields. If we cannot update the entity with
+     * three retries, we give up and report a warning...
+     */
     private void updateReferencedFields(Entity parent, Entity child) {
-        StringBuilder sb = new StringBuilder();
-        UpdateRequestBuilder urb = Index.getClient()
-                                        .prepareUpdate()
-                                        .setIndex(Index.getIndex(getLocalClass()))
-                                        .setType(getLocalType())
-                                        .setId(child.getId());
-        EntityDescriptor descriptor = Index.getDescriptor(getLocalClass());
-        if (descriptor.hasRouting()) {
-            Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
-            if (Strings.isEmpty(routingKey)) {
-                Index.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
-                               child.getClass().getName(),
-                               child.getId());
-            } else {
-                urb.setRouting(String.valueOf(routingKey));
-            }
-        }
-        for (Reference ref : references) {
-            sb.append("ctx._source.");
-            sb.append(ref.getLocalProperty().getName());
-            sb.append("=");
-            sb.append(ref.getLocalProperty().getName());
-            sb.append(";");
-            urb.addScriptParam(ref.getLocalProperty().getName(), ref.getRemoteProperty().writeToSource(parent));
-        }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), sb.toString());
-        }
         try {
-            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE).execute().actionGet();
+            UpdateRequestBuilder urb = Index.getClient()
+                                            .prepareUpdate()
+                                            .setIndex(Index.getIndex(getLocalClass()))
+                                            .setType(getLocalType())
+                                            .setRetryOnConflict(3)
+                                            .setId(child.getId());
+            EntityDescriptor descriptor = Index.getDescriptor(getLocalClass());
+            if (descriptor.hasRouting()) {
+                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
+                if (Strings.isEmpty(routingKey)) {
+                    Index.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
+                                   child.getClass().getName(),
+                                   child.getId());
+                } else {
+                    urb.setRouting(String.valueOf(routingKey));
+                }
+            }
+            StringBuilder sb = new StringBuilder();
+            for (Reference ref : references) {
+                sb.append("ctx._source.");
+                sb.append(ref.getLocalProperty().getName());
+                sb.append("=");
+                sb.append(ref.getLocalProperty().getName());
+                sb.append(";");
+                urb.addScriptParam(ref.getLocalProperty().getName(), ref.getRemoteProperty().writeToSource(parent));
+            }
+            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
+            if (Index.LOG.isFINE()) {
+                Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), sb.toString());
+            }
+            urb.execute().actionGet();
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("UPDATE: %s.%s: SUCCEEDED", Index.getIndex(getLocalClass()), getLocalType());
             }
+            Index.traceChange(child);
+        } catch (VersionConflictEngineException t) {
+            // Ran out of retries -> report as warning
+            Index.LOG.WARN("UPDATE: %s.%s: FAILED DUE TO CONCURRENT UPDATE: %s",
+                           Index.getIndex(getLocalClass()),
+                           getLocalType(),
+                           t.getMessage());
+            Index.reportClash(child);
         } catch (DocumentMissingException t) {
             Exceptions.ignore(t);
         } catch (Throwable t) {

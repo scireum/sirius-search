@@ -445,8 +445,12 @@ public abstract class Entity {
 
     }
 
-    @Override
-    public String toString() {
+    /**
+     * Returns a verbose representation of the entity containing all fields.
+     *
+     * @return a string representation of the entity containing all fields
+     */
+    public String toDebugString() {
         StringBuilder sb = new StringBuilder();
         sb.append(id + " (Version: " + version + ") {");
         boolean first = true;
@@ -464,6 +468,11 @@ public abstract class Entity {
         }
         sb.append("}");
         return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return toDebugString();
     }
 
     @Override

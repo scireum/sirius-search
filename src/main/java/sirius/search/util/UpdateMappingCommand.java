@@ -30,19 +30,8 @@ public class UpdateMappingCommand implements Command {
             output.line("Usage: updateMapping <type> <force (y/N)>");
             output.line("If force is set to Yes, data loss might be possible!");
         } else {
-            Class<? extends Entity> type = Index.getType(params[0]);
-            if (type == null) {
-                output.line("Unknown type: " + params[0]);
-                Monoflop mf = Monoflop.create();
-                for(String name : Index.getSchema().getTypeNames()) {
-                    if (name.toLowerCase().contains(params[0].toLowerCase())) {
-                        if (mf.firstCall()) {
-                            output.line("Did you mean one of those: ");
-                        }
-                        output.line(" * "+name);
-                    }
-                }
-            } else {
+            Class<? extends Entity> type = findTypeOrReportError(output, params[0]);
+            if (type != null) {
                 EntityDescriptor ed = Index.getDescriptor(type);
                 try {
                     Index.addMapping(Index.getIndexPrefix() + ed.getIndex(),
@@ -55,6 +44,23 @@ public class UpdateMappingCommand implements Command {
                 }
             }
         }
+    }
+
+    protected static Class<? extends Entity> findTypeOrReportError(Output output, String typeName) {
+        Class<? extends Entity> type = Index.getType(typeName);
+        if (type == null) {
+            output.line("Unknown type: " + typeName);
+            Monoflop mf = Monoflop.create();
+            for(String name : Index.getSchema().getTypeNames()) {
+                if (name.toLowerCase().contains(typeName.toLowerCase())) {
+                    if (mf.firstCall()) {
+                        output.line("Did you mean one of those: ");
+                    }
+                    output.line(" * "+name);
+                }
+            }
+        }
+        return type;
     }
 
     @Override
