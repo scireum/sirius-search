@@ -16,6 +16,7 @@ import sirius.search.Index;
 import sirius.web.health.console.Command;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Provides <tt>es</tt> as console command to query, update or delete entities.
@@ -63,14 +64,16 @@ public class ESCommand implements Command {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
             EntityDescriptor ed = Index.getDescriptor(type);
-            int rows = 0;
-            for (Entity e : Index.select(type).query(values.at(2).asString()).limit(500).queryList()) {
+            AtomicInteger rows = new AtomicInteger();
+            Index.select(type).query(values.at(2).asString()).limit(500).iterate(e -> {
                 ed.getProperty(values.at(3).asString()).readFromSource(e, values.at(4).get());
                 Index.update(e);
-                rows++;
-            }
+                rows.incrementAndGet();
+                return true;
+
+            });
             output.separator();
-            output.apply("%s rows affected", rows);
+            output.apply("%s rows affected", rows.get());
             output.blankLine();
         }
     }
@@ -78,12 +81,13 @@ public class ESCommand implements Command {
     private void delete(Output output, Values values) {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
-            int rows = 0;
-            for (Entity e : Index.select(type).query(values.at(2).asString()).queryList()) {
+            AtomicInteger rows = new AtomicInteger();
+            Index.select(type).query(values.at(2).asString()).iterate(e -> {
                 Index.delete(e);
-                rows++;
-            }
-            output.apply("%s rows affected", rows);
+                rows.incrementAndGet();
+                return true;
+            });
+            output.apply("%s rows affected", rows.get());
             output.blankLine();
         }
     }
