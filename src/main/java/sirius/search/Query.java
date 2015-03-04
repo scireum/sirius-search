@@ -23,6 +23,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import sirius.kernel.async.TaskContext;
 import sirius.kernel.cache.ValueComputer;
 import sirius.kernel.commons.*;
 import sirius.kernel.health.Exceptions;
@@ -40,6 +41,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /**
@@ -885,6 +887,8 @@ public class Query<E extends Entity> {
 
             SearchResponse searchResponse = srb.execute().actionGet();
             try {
+                TaskContext ctx = TaskContext.get();
+                RateLimit limit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
                 while (true) {
                     Watch w = Watch.start();
                     searchResponse = Index.getClient()
@@ -914,6 +918,12 @@ public class Query<E extends Entity> {
                         try {
                             if (!handler.handleRow(entity)) {
                                 return;
+                            }
+                            if (limit.check()) {
+                                // Check is the user tries to cancel this task
+                                if (!ctx.isActive()) {
+                                    return;
+                                }
                             }
                         } catch (Exception e) {
                             Exceptions.handle().to(Index.LOG).error(e).handle();
