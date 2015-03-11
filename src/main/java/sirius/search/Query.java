@@ -42,6 +42,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -952,6 +953,22 @@ public class Query<E extends Entity> {
         } catch (Throwable t) {
             throw Exceptions.handle(Index.LOG, t);
         }
+    }
+
+    /**
+     * Executes the result and calls the given <tt>customer</tt> for each item in the result.
+     * <p>
+     * This is intended to be used to process large result sets as these are automatically scrolls through.
+     * <p>
+     * In contrast to {@link #iterate(ResultHandler)} this will consume all results and cannot be interrupted.
+     *
+     * @param consumer the handler used to process each result item
+     */
+    public void iterateAll(Consumer<? super E> consumer) {
+        iterate(c -> {
+            consumer.accept(c);
+            return true;
+        });
     }
 
     /**
