@@ -8,6 +8,7 @@
 
 package sirius.search.locks;
 
+import sirius.kernel.Sirius;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.nls.NLS;
@@ -28,7 +29,7 @@ public class LocksCommand implements Command {
     @Override
     public void execute(Output output, String... params) throws Exception {
         if (params.length > 0) {
-            if (params[0].equals("all")) {
+            if (params[0].equals("all") && Sirius.isDev()) {
                 output.apply("Unlocking all locks");
                 for (LockInfo li : lm.getLocks()) {
                     lm.killLock(li.getId());
@@ -38,7 +39,10 @@ public class LocksCommand implements Command {
                 lm.killLock(params[0]);
             }
         } else {
-            output.line("Use locks <name> to forcefully kill that lock or use locks all to kill all locks...");
+            output.line("Use locks <name> to forcefully kill that lock...");
+            if (Sirius.isDev()) {
+                output.line("Or use locks all to kill all locks...");
+            }
         }
         output.blankLine();
         output.apply("%-28s %15s %15s %19s", "NAME", "NODE", "SECTION", "SINCE");
