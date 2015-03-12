@@ -41,7 +41,7 @@ public class LocksCommand implements Command {
         } else {
             output.line("Use locks <name> to forcefully kill that lock...");
             if (Sirius.isDev()) {
-                output.line("Or use locks all to kill all locks...");
+                output.line("Or use locks \"all\" to kill all locks...");
             }
         }
         output.blankLine();
