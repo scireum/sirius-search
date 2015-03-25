@@ -48,10 +48,10 @@ import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.*;
+import sirius.kernel.health.metrics.MetricProvider;
+import sirius.kernel.health.metrics.MetricState;
+import sirius.kernel.health.metrics.MetricsCollector;
 import sirius.kernel.timer.EveryTenSeconds;
-import sirius.web.health.MetricProvider;
-import sirius.web.health.MetricState;
-import sirius.web.health.MetricsCollector;
 import sirius.web.templates.Content;
 import sirius.web.templates.Resource;
 
