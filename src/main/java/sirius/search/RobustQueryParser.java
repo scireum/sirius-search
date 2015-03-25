@@ -215,11 +215,12 @@ class RobustQueryParser {
             if (value.length() > 1 && value.endsWith("*")) {
                 if (negate) {
                     BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                    qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1)));
+                    qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1).toLowerCase()));
                     return Collections.singletonList(qry);
                 } else {
                     return Collections.singletonList(QueryBuilders.prefixQuery(field,
-                                                                               value.substring(0, value.length() - 1)));
+                                                                               value.substring(0, value.length() - 1)
+                                                                                    .toLowerCase()));
                 }
             }
 
