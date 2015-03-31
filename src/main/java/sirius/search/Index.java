@@ -480,6 +480,11 @@ public class Index {
     public static class IndexLifecycle implements Lifecycle {
 
         @Override
+        public int getPriority() {
+            return 75;
+        }
+
+        @Override
         public void started() {
             if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
@@ -785,7 +790,8 @@ public class Index {
                             .error(e)
                             .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
                                                     entity.toString(),
-                                                    entity.getId()).handle();
+                                                    entity.getId())
+                            .handle();
         }
     }
 
