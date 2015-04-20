@@ -909,6 +909,8 @@ public class Query<E extends Entity> {
                         w.submitMicroTiming("ES", "SCROLL: " + toString(true));
                     }
 
+                    int limitCounter = 0;
+
                     for (SearchHit hit : searchResponse.getHits()) {
                         E entity = clazz.newInstance();
                         entity.setId(hit.getId());
@@ -917,7 +919,10 @@ public class Query<E extends Entity> {
                         entityDescriptor.readSource(entity, hit.getSource());
 
                         try {
-                            if (!handler.handleRow(entity)) {
+                            boolean result = handler.handleRow(entity);
+                            limitCounter++;
+
+                            if (!result) {
                                 return;
                             }
                             if (limit.check()) {
@@ -925,6 +930,9 @@ public class Query<E extends Entity> {
                                 if (!ctx.isActive()) {
                                     return;
                                 }
+                            }
+                            if (this.limit > 0 && limitCounter >= this.limit) {
+                                return;
                             }
                         } catch (Exception e) {
                             Exceptions.handle().to(Index.LOG).error(e).handle();
