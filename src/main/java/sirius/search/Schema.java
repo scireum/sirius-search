@@ -197,6 +197,15 @@ public class Schema {
     }
 
     /**
+     * Returns a collection of all present entity classes
+     *
+     * @return a collection of entity classes or <tt>null</tt> if no entities are found
+     */
+    public Set<Class<? extends Entity>> getEntities() {
+        return descriptorTable.keySet();
+    }
+
+    /**
      * Returns the entity class for the given entity type.
      *
      * @param name the entity type which class is being searched
