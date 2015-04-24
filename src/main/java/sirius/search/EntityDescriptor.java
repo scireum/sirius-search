@@ -14,6 +14,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.health.Exceptions;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefField;
 import sirius.search.annotations.RefType;
@@ -21,6 +22,7 @@ import sirius.search.annotations.Transient;
 import sirius.search.properties.Property;
 import sirius.search.properties.PropertyFactory;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -194,6 +196,32 @@ public class EntityDescriptor {
         for (Property p : getProperties()) {
             p.readFromSource(entity, source.get(p.getName()));
         }
+    }
+
+    /**
+     * Converts the data of the given Entity object into json format
+     *
+     * @param entity     the entity to load the data from
+     * @param objectName a name for the given json object or <tt>null</tt> if no name should be added
+     * @return the entity json as string
+     */
+    public String toJson(Entity entity, @Nullable String objectName) {
+        try {
+            XContentBuilder builder = XContentFactory.jsonBuilder();
+            if (Strings.isFilled(objectName)) {
+                builder.startObject(objectName);
+            } else {
+                builder.startObject();
+            }
+            for (Property p : getProperties()) {
+                builder.field(p.getName(), p.writeToSource(entity));
+            }
+            builder.endObject();
+            return builder.string();
+        } catch (IOException e) {
+            Exceptions.handle(e);
+        }
+        return null;
     }
 
     /**
