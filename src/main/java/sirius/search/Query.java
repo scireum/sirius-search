@@ -53,6 +53,7 @@ import java.util.function.Function;
  */
 public class Query<E extends Entity> {
 
+    private static final int DEFAULT_LIMIT = 999;
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, java.util.function.Function)} to specify a custom field.
@@ -66,7 +67,7 @@ public class Query<E extends Entity> {
     private boolean randomize;
     private String randomizeField;
     private int start;
-    private int limit = 999;
+    private Integer limit = null;
     private String query;
     private int pageSize = 25;
     private boolean primary = false;
@@ -633,6 +634,9 @@ public class Query<E extends Entity> {
             if (forceFail) {
                 return new ResultList<>(Lists.newArrayList(), null);
             }
+            if (limit == null) {
+                limit = DEFAULT_LIMIT;
+            }
             SearchRequestBuilder srb = buildSearch();
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("SEARCH: %s.%s: %s",
@@ -879,6 +883,7 @@ public class Query<E extends Entity> {
             }
             SearchRequestBuilder srb = buildSearch();
             srb.setSearchType(SearchType.SCAN);
+            srb.setFrom(0);
             srb.setSize(10); // 10 per shard!
             srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(60));
             EntityDescriptor entityDescriptor = Index.getDescriptor(clazz);
@@ -889,7 +894,7 @@ public class Query<E extends Entity> {
             SearchResponse searchResponse = srb.execute().actionGet();
             try {
                 TaskContext ctx = TaskContext.get();
-                RateLimit limit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
+                RateLimit rateLimit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
                 while (true) {
                     Watch w = Watch.start();
                     searchResponse = Index.getClient()
@@ -909,7 +914,7 @@ public class Query<E extends Entity> {
                         w.submitMicroTiming("ES", "SCROLL: " + toString(true));
                     }
 
-                    int limitCounter = 0;
+                    Limit lim = new Limit(start, limit);
 
                     for (SearchHit hit : searchResponse.getHits()) {
                         E entity = clazz.newInstance();
@@ -919,25 +924,23 @@ public class Query<E extends Entity> {
                         entityDescriptor.readSource(entity, hit.getSource());
 
                         try {
-                            boolean result = handler.handleRow(entity);
-                            limitCounter++;
-
-                            if (!result) {
-                                return;
+                            if (lim.nextRow()) {
+                                if (!handler.handleRow(entity)) {
+                                    return;
+                                }
+                                if (!lim.shouldContinue()) {
+                                    return;
+                                }
                             }
-                            if (limit.check()) {
+                            if (rateLimit.check()) {
                                 // Check is the user tries to cancel this task
                                 if (!ctx.isActive()) {
                                     return;
                                 }
                             }
-                            if (this.limit > 0 && limitCounter >= this.limit) {
-                                return;
-                            }
                         } catch (Exception e) {
                             Exceptions.handle().to(Index.LOG).error(e).handle();
                         }
-
                     }
 
                     //Break condition: No hits are returned
@@ -956,8 +959,6 @@ public class Query<E extends Entity> {
                     Exceptions.handle(Index.LOG, e);
                 }
             }
-
-
         } catch (Throwable t) {
             throw Exceptions.handle(Index.LOG, t);
         }
