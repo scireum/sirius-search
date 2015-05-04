@@ -604,7 +604,7 @@ public class Query<E extends Entity> {
         if (start > 0) {
             srb.setFrom(start);
         }
-        if (limit > 0) {
+        if (limit != null && limit > 0) {
             srb.setSize(limit);
         }
         srb.setVersion(true);
@@ -843,6 +843,9 @@ public class Query<E extends Entity> {
      */
     @SuppressWarnings("unchecked")
     public Page<E> queryPage() {
+        if (limit == null) {
+            throw new IllegalStateException("limit must not be unset when using queryPage");
+        }
         Watch w = Watch.start();
         int originalLimit = limit;
         limit++;
@@ -1009,7 +1012,7 @@ public class Query<E extends Entity> {
                 sb.append(orderBy.getSecond() ? " ASC" : " DESC");
             }
         }
-        if (start > 0 || limit > 0) {
+        if (start > 0 || (limit != null &&  limit > 0)) {
             sb.append(" LIMIT ");
             sb.append(skipConstraintValues ? "?" : start);
             sb.append(", ");
