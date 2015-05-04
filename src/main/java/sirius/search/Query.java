@@ -844,11 +844,11 @@ public class Query<E extends Entity> {
     @SuppressWarnings("unchecked")
     public Page<E> queryPage() {
         if (limit == null) {
-            throw new IllegalStateException("limit must not be unset when using queryPage");
+            throw new IllegalStateException("limit must be set when using queryPage (Call .page(...)!)");
         }
-        Watch w = Watch.start();
         int originalLimit = limit;
         limit++;
+        Watch w = Watch.start();
         ResultList<E> result = new ResultList<>(termFacets, null);
         if (!forceFail) {
             try {
@@ -1012,7 +1012,7 @@ public class Query<E extends Entity> {
                 sb.append(orderBy.getSecond() ? " ASC" : " DESC");
             }
         }
-        if (start > 0 || (limit != null &&  limit > 0)) {
+        if (start > 0 || (limit != null && limit > 0)) {
             sb.append(" LIMIT ");
             sb.append(skipConstraintValues ? "?" : start);
             sb.append(", ");
