@@ -26,6 +26,7 @@ import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.TaskContext;
 import sirius.kernel.cache.ValueComputer;
 import sirius.kernel.commons.*;
+import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
@@ -59,6 +60,9 @@ public class Query<E extends Entity> {
      * {@link #query(String, String, java.util.function.Function)} to specify a custom field.
      */
     private static String DEFAULT_FIELD = "_all";
+
+    @ConfigValue("index.termFacetLimit")
+    private static int termFacetLimit;
 
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
@@ -587,7 +591,7 @@ public class Query<E extends Entity> {
             }
         }
         for (Facet field : termFacets) {
-            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()));
+            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()).size(termFacetLimit));
         }
         QueryBuilder qb = buildQuery();
         if (qb != null) {
