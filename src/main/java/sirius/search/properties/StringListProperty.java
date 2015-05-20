@@ -8,11 +8,12 @@
 
 package sirius.search.properties;
 
+import com.google.common.collect.Lists;
+import sirius.kernel.di.std.Register;
+import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.Index;
 import sirius.search.annotations.ListType;
-import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Exceptions;
 import sirius.web.http.WebContext;
 
 import java.lang.reflect.Field;
@@ -62,10 +63,17 @@ public class StringListProperty extends Property {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            field.set(entity, transformFromRequest(getName(), ctx));
+            List<Object> list = (List<Object>) field.get(entity);
+            if (list == null) {
+                list = Lists.newArrayList();
+            } else {
+                list.clear();
+            }
+            list.addAll((List<Object>) transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
             Exceptions.handle(Index.LOG, e);
         }
@@ -78,7 +86,7 @@ public class StringListProperty extends Property {
 
     @Override
     public void init(Entity entity) throws Exception {
-        field.set(entity, new ArrayList<String>());
+        field.set(entity, Lists.newArrayList());
     }
 
     @Override
