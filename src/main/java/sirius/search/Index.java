@@ -36,8 +36,9 @@ import org.elasticsearch.node.NodeBuilder;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Async;
+import sirius.kernel.async.Barrier;
 import sirius.kernel.async.CallContext;
-import sirius.kernel.async.Promise;
+import sirius.kernel.async.Future;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Strings;
@@ -119,9 +120,9 @@ public class Index {
     private static volatile boolean ready;
 
     /**
-     * Contains a promise which can be waited for
+     * Contains a future which can be waited for
      */
-    private static Promise<Boolean> readyPromise = new Promise<Boolean>();
+    private static Future readyFuture = new Future();
 
     /**
      * Internal timer which is used to delay some actions. This is necessary, as ES takes up to one second to make a
@@ -452,8 +453,28 @@ public class Index {
         return ready;
     }
 
-    public static Promise<Boolean> ready() {
-        return readyPromise;
+    /**
+     * Returns the readiness state of the index as {@link Future}.
+     *
+     * @return a future which is fullfilled once the index is ready
+     */
+    public static Future ready() {
+        return readyFuture;
+    }
+
+    /**
+     * Blocks the calling thread until the index is ready.
+     */
+    public static void waitForReady() {
+        if (!Index.isReady()) {
+            try {
+                Barrier b = Barrier.create();
+                b.add(readyFuture);
+                b.await();
+            } catch (InterruptedException e) {
+                Exceptions.handle(e);
+            }
+        }
     }
 
     /**
@@ -530,7 +551,7 @@ public class Index {
                 }
             }
             ready = true;
-            readyPromise.success(true);
+            readyFuture.success();
 
             delayLineTimer = new Timer("index-delay");
             delayLineTimer.schedule(new DelayLineHandler(), 1000, 1000);
