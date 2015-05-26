@@ -12,11 +12,13 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.BaseEncoding;
+import sirius.kernel.Sirius;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.kernel.health.Log;
 import sirius.kernel.nls.NLS;
 import sirius.search.annotations.RefField;
 import sirius.search.annotations.RefType;
@@ -226,12 +228,16 @@ public abstract class Entity {
             if (previousError == null) {
                 try {
                     return Exceptions.createHandled()
-                                     .withNLSKey("Entity.fieldMustBeUnique")
-                                     .set("field", p.getFieldTitle())
-                                     .set("value", NLS.toUserString(p.getField().get(this)))
-                                     .handle();
+                            .withNLSKey("Entity.fieldMustBeUnique")
+                            .set("field", p.getFieldTitle())
+                            .set("value", NLS.toUserString(p.getField().get(this)))
+                            .handle();
                 } catch (Throwable e) {
-                    Exceptions.handle(e);
+                    if (Sirius.getConfig().getBoolean("exceptions.uniqueness")) {
+                        Exceptions.handle(e);
+                    } else {
+                        Log.get("index").WARN(e.getMessage());
+                    }
                 }
             }
         }
@@ -249,21 +255,21 @@ public abstract class Entity {
                     } else {
                         qry.deliberatelyUnrouted();
                         Exceptions.handle()
-                                  .to(Index.LOG)
-                                  .withSystemErrorMessage(
-                                          "Performing a unique check on %s without any routing. This will be slow!",
-                                          this.getClass().getName())
-                                  .handle();
+                                .to(Index.LOG)
+                                .withSystemErrorMessage(
+                                        "Performing a unique check on %s without any routing. This will be slow!",
+                                        this.getClass().getName())
+                                .handle();
                     }
                 }
             } catch (Exception e) {
                 Exceptions.handle()
-                          .to(Index.LOG)
-                          .error(e)
-                          .withSystemErrorMessage("Cannot determine routing key for '%s' of type %s",
-                                                  this,
-                                                  this.getClass().getName())
-                          .handle();
+                        .to(Index.LOG)
+                        .error(e)
+                        .withSystemErrorMessage("Cannot determine routing key for '%s' of type %s",
+                                this,
+                                this.getClass().getName())
+                        .handle();
                 qry.deliberatelyUnrouted();
             }
         } else {
@@ -293,9 +299,9 @@ public abstract class Entity {
             UserContext.setFieldError(property.getName(), null);
             if (previousError == null) {
                 return Exceptions.createHandled()
-                                 .withNLSKey("Entity.fieldMustBeFilled")
-                                 .set("field", property.getFieldTitle())
-                                 .handle();
+                        .withNLSKey("Entity.fieldMustBeFilled")
+                        .set("field", property.getFieldTitle())
+                        .handle();
             }
         }
         return previousError;
@@ -307,15 +313,15 @@ public abstract class Entity {
             RefField ref = p.getField().getAnnotation(RefField.class);
             Property entityRef = descriptor.getProperty(ref.localRef());
             EntityDescriptor remoteDescriptor = Index.getDescriptor(entityRef.getField()
-                                                                             .getAnnotation(RefType.class)
-                                                                             .type());
+                    .getAnnotation(RefType.class)
+                    .type());
 
             EntityRef<?> value = (EntityRef<?>) entityRef.getField().get(this);
             if (value.isValueLoaded() && !value.isDirty()) {
                 // Update using value if present and not from cache
                 if (value.isFilled()) {
                     p.getField()
-                     .set(this, remoteDescriptor.getProperty(ref.remoteField()).getField().get(value.getValue()));
+                            .set(this, remoteDescriptor.getProperty(ref.remoteField()).getField().get(value.getValue()));
                 } else {
                     p.getField().set(this, null);
                 }
@@ -333,12 +339,12 @@ public abstract class Entity {
                     if (routingValue == null) {
                         // No routing available or value was null -> fail
                         Exceptions.handle()
-                                  .to(Index.LOG)
-                                  .withSystemErrorMessage(
-                                          "Error updating an RefField for an RefType: Property %s in class %s: No routing information was available to load the referenced value!",
-                                          p.getName(),
-                                          this.getClass().getName())
-                                  .handle();
+                                .to(Index.LOG)
+                                .withSystemErrorMessage(
+                                        "Error updating an RefField for an RefType: Property %s in class %s: No routing information was available to load the referenced value!",
+                                        p.getName(),
+                                        this.getClass().getName())
+                                .handle();
                     } else {
                         e = value.getValue((String) routingValue);
                     }
@@ -355,13 +361,13 @@ public abstract class Entity {
             }
         } catch (Throwable e) {
             Exceptions.handle()
-                      .to(Index.LOG)
-                      .error(e)
-                      .withSystemErrorMessage(
-                              "Error updating an RefField for an RefType: Property %s in class %s: %s (%s)",
-                              p.getName(),
-                              this.getClass().getName())
-                      .handle();
+                    .to(Index.LOG)
+                    .error(e)
+                    .withSystemErrorMessage(
+                            "Error updating an RefField for an RefType: Property %s in class %s: %s (%s)",
+                            p.getName(),
+                            this.getClass().getName())
+                    .handle();
         }
     }
 
