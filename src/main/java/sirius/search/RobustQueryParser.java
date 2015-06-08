@@ -30,9 +30,7 @@ import java.util.function.Function;
  * by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all usable
  * tokens.
  *
- * @author Andreas Haufler (aha@scireum.de)
  * @see Query#query(String)
- * @since 2014/07
  */
 class RobustQueryParser {
 

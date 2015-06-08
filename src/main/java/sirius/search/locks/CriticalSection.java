@@ -13,9 +13,6 @@ package sirius.search.locks;
  * <p>
  * A critical section is used to access and acquire a {@link Lock}. Its name is mainly used to debugging and
  * troubleshooting purposes.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
 public class CriticalSection {
     private final Lock lock;

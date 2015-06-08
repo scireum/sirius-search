@@ -16,9 +16,6 @@ import sirius.web.health.console.Command;
 
 /**
  * Provides an administrative command to show and kill locks.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
 @Register(framework = "search.locks")
 public class LocksCommand implements Command {

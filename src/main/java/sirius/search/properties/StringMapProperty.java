@@ -23,9 +23,6 @@ import java.util.Map;
  * Represents a property which contains a map of strings to strings. Such fields must wear a {@link
  * sirius.search.annotations.ListType} annotation with
  * <tt>String</tt> as their value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/03
  */
 public class StringMapProperty extends Property {
 

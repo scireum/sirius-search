@@ -18,9 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * By default, fields are not analysed. However, using this annotation, Elasticsearch can be instructed to apply
  * an analyzer or to not index the field at all (relevant for large fields, not intended to be searched in).
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

@@ -19,9 +19,6 @@ import java.lang.annotation.Target;
  * By default all fields, which don't have a {@link Transient} annotation, will be stored. Just {@link IndexMode}
  * fields
  * are not stored by default and need to marker annotation to be stored.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

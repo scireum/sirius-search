@@ -16,9 +16,6 @@ import java.util.List;
  * Used to trace optimistic lock errors.
  * <p>
  * Contains all relevant information recorded for a change event.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2015/03
  */
 class IndexTrace {
     String id;

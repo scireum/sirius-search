@@ -46,6 +46,10 @@ public abstract class Entity {
      */
     @Transient
     protected String id;
+
+    /**
+     * id field: Contains the unique id of the entity.
+     */
     public static final String ID = "id";
 
     /**
@@ -330,7 +334,8 @@ public abstract class Entity {
                         Exceptions.handle()
                                   .to(Index.LOG)
                                   .withSystemErrorMessage(
-                                          "Error updating an RefField for an RefType: Property %s in class %s: No routing information was available to load the referenced value!",
+                                          "Error updating an RefField for an RefType: Property %s in class %s: "
+                                          + "No routing information was available to load the referenced value!",
                                           p.getName(),
                                           this.getClass().getName())
                                   .handle();
@@ -430,7 +435,6 @@ public abstract class Entity {
      * frameworks should rely on internalOnAfterDelete, which should not be overridden by application classes.
      */
     protected void onAfterDelete() {
-
     }
 
     /**
@@ -607,7 +611,6 @@ public abstract class Entity {
      * <code>onSave()</code>.
      */
     protected void internalOnSave() {
-
     }
 
     /**

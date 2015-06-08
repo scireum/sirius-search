@@ -19,9 +19,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * Provides a simple sequence generator using the optimistic locking of ElasticSearch.
  * <p>
  * Note that this method is not intended for high frequency use as at least two requests against ES are necessary.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/11
  */
 @Register(classes = IdGenerator.class)
 public class IdGenerator {

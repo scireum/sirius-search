@@ -174,6 +174,9 @@ public class Index {
      */
     public static final String FETCH_DELIBERATELY_UNROUTED = "_DELIBERATELY_UNROUTED";
 
+    private Index() {
+    }
+
     /**
      * Fetches the entity of given type with the given id.
      * <p>
@@ -534,12 +537,12 @@ public class Index {
                 Settings settings = ImmutableSettings.settingsBuilder()
                                                      .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
                                                      .build();
-                client =
-                        new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
-                                                                                                               .getString(
-                                                                                                                       "index.host"),
-                                                                                                         Sirius.getConfig()
-                                                                                                               .getInt("index.port")));
+                TransportClient transportClient = new TransportClient(settings);
+                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
+                                                                                         .getString("index.host"),
+                                                                                   Sirius.getConfig()
+                                                                                         .getInt("index.port")));
+                client = transportClient;
             }
 
             // Setup index
@@ -1017,7 +1020,8 @@ public class Index {
                     Exceptions.handle()
                               .to(LOG)
                               .withSystemErrorMessage(
-                                      "Trying to FIND an entity of type %s (with id %s) without providing a routing! This will most probably FAIL!",
+                                      "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
+                                      + "This will most probably FAIL!",
                                       clazz.getName(),
                                       id)
                               .handle();
@@ -1025,7 +1029,9 @@ public class Index {
                     Exceptions.handle()
                               .to(LOG)
                               .withSystemErrorMessage(
-                                      "Trying to FIND an entity of type %s (with id %s) with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
+                                      "Trying to FIND an entity of type %s (with id %s) with a routing "
+                                      + "- but entity has no routing attribute (in @Indexed)! "
+                                      + "This will most probably FAIL!",
                                       clazz.getName(),
                                       id)
                               .handle();
@@ -1413,8 +1419,7 @@ public class Index {
             inMemoryNode.close();
         }
 
-        File tmpDir = new File(System.getProperty("java.io.tmpdir"),
-                               CallContext.getNodeName() + "_in_memory_es");
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"), CallContext.getNodeName() + "_in_memory_es");
         tmpDir.mkdirs();
 
         Settings settings = ImmutableSettings.settingsBuilder()

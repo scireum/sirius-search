@@ -69,9 +69,6 @@ import java.util.function.Function;
 
 /**
  * Represents a query against the database which are created via {@link Index#select(Class)}.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class Query<E extends Entity> {
 
@@ -580,27 +577,36 @@ public class Query<E extends Entity> {
         SearchRequestBuilder srb = Index.getClient()
                                         .prepareSearch(index != null ? index : Index.getIndexName(ed.getIndex()))
                                         .setTypes(ed.getType());
-        if (Strings.isFilled(routing)) {
-            if (!ed.hasRouting()) {
-                Exceptions.handle()
-                          .to(Index.LOG)
-                          .withSystemErrorMessage(
-                                  "Performing a search on %s with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
-                                  clazz.getName())
-                          .handle();
-            }
-            srb.setRouting(routing);
-        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-            Exceptions.handle()
-                      .to(Index.LOG)
-                      .withSystemErrorMessage(
-                              "Performing a search on %s without providing a routing. Consider providing a routing for better performance or call deliberatelyUnrouted() to signal that routing was intentionally skipped.",
-                              clazz.getName())
-                      .handle();
-        }
+        srb.setVersion(true);
         if (primary) {
             srb.setPreference("_primary");
         }
+
+        applyRouting(ed, srb);
+        applyOrderBys(srb);
+        applyFacets(srb);
+        applyQueriesAndFilters(srb);
+        applyLimit(srb);
+
+        return srb;
+    }
+
+    private void applyLimit(SearchRequestBuilder srb) {
+        if (start > 0) {
+            srb.setFrom(start);
+        }
+        if (limit != null && limit > 0) {
+            srb.setSize(limit);
+        }
+    }
+
+    private void applyFacets(SearchRequestBuilder srb) {
+        for (Facet field : termFacets) {
+            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()).size(termFacetLimit));
+        }
+    }
+
+    private void applyOrderBys(SearchRequestBuilder srb) {
         if (randomize) {
             if (randomizeField != null) {
                 srb.addSort(SortBuilders.scriptSort("Math.random()*doc['" + randomizeField + "'].value", "number")
@@ -613,9 +619,9 @@ public class Query<E extends Entity> {
                 srb.addSort(sort.getFirst(), sort.getSecond() ? SortOrder.ASC : SortOrder.DESC);
             }
         }
-        for (Facet field : termFacets) {
-            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()).size(termFacetLimit));
-        }
+    }
+
+    private void applyQueriesAndFilters(SearchRequestBuilder srb) {
         QueryBuilder qb = buildQuery();
         if (qb != null) {
             srb.setQuery(qb);
@@ -628,15 +634,31 @@ public class Query<E extends Entity> {
                 srb.setQuery(QueryBuilders.filteredQuery(qb == null ? QueryBuilders.matchAllQuery() : qb, sb));
             }
         }
-        if (start > 0) {
-            srb.setFrom(start);
-        }
-        if (limit != null && limit > 0) {
-            srb.setSize(limit);
-        }
-        srb.setVersion(true);
+    }
 
-        return srb;
+    private void applyRouting(EntityDescriptor ed, SearchRequestBuilder srb) {
+        if (Strings.isFilled(routing)) {
+            if (!ed.hasRouting()) {
+                Exceptions.handle()
+                          .to(Index.LOG)
+                          .withSystemErrorMessage(
+                                  "Performing a search on %s with a routing "
+                                  + "- but entity has no routing attribute (in @Indexed)! "
+                                  + "This will most probably FAIL!",
+                                  clazz.getName())
+                          .handle();
+            }
+            srb.setRouting(routing);
+        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
+            Exceptions.handle()
+                      .to(Index.LOG)
+                      .withSystemErrorMessage(
+                              "Performing a search on %s without providing a routing. "
+                              + "Consider providing a routing for better performance or call deliberatelyUnrouted() "
+                              + "to signal that routing was intentionally skipped.",
+                              clazz.getName())
+                      .handle();
+        }
     }
 
     /**
@@ -682,7 +704,8 @@ public class Query<E extends Entity> {
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
                 Index.LOG.WARN(
-                        "Default limit was hit when using Query.queryList or Query.queryResultList! Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
+                        "Default limit was hit when using Query.queryList or Query.queryResultList! "
+                        + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
                         this);
             }
             return resultList;
@@ -942,22 +965,8 @@ public class Query<E extends Entity> {
             if (forceFail) {
                 return;
             }
-            SearchRequestBuilder srb = buildSearch();
-            if (!orderBys.isEmpty()) {
-                Index.LOG.WARN("An iterated query cannot be sorted! Query: %s", this);
-            }
-            srb.setSearchType(SearchType.SCAN);
-            srb.setFrom(0);
-            // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
-            // Otherwise we limit to 10 documents per shard...
-            srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
-            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL));
             EntityDescriptor entityDescriptor = Index.getDescriptor(clazz);
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
-            }
-
-            SearchResponse searchResponse = srb.execute().actionGet();
+            SearchResponse searchResponse = createScroll(entityDescriptor);
             try {
                 TaskContext ctx = TaskContext.get();
                 RateLimit rateLimit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
@@ -965,36 +974,8 @@ public class Query<E extends Entity> {
                 Limit lim = new Limit(start, limit);
 
                 while (true) {
-                    Watch w = Watch.start();
-                    searchResponse = Index.getClient()
-                                          .prepareSearchScroll(searchResponse.getScrollId())
-                                          .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL))
-                                          .execute()
-                                          .actionGet();
-                    if (Index.LOG.isFINE()) {
-                        Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
-                                       Index.getIndex(clazz),
-                                       entityDescriptor.getType(),
-                                       searchResponse.getHits().hits().length,
-                                       searchResponse.getHits().totalHits(),
-                                       searchResponse.getTookInMillis());
-                    }
-
-                    long now = System.currentTimeMillis();
-                    if (lastScroll == 0) {
-                        // First response -> initialize time tracking
-                        lastScroll = now;
-                    } else {
-                        // Warn if processing of one scroll took longer thant our keep alive....
-                        if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrolTTL) {
-                            Exceptions.handle()
-                                      .withSystemErrorMessage(
-                                              "A scroll query against elasticserach took too long to process its data! The result is probably inconsistent! Query: %s",
-                                              this)
-                                      .to(Index.LOG)
-                                      .handle();
-                        }
-                    }
+                    searchResponse = scrollFurther(entityDescriptor, searchResponse);
+                    lastScroll = performScrollMonitoring(lastScroll);
 
                     for (SearchHit hit : searchResponse.getHits()) {
                         E entity = clazz.newInstance();
@@ -1027,19 +1008,77 @@ public class Query<E extends Entity> {
                     }
                 }
             } finally {
-                try {
-                    Index.getClient()
-                         .prepareClearScroll()
-                         .addScrollId(searchResponse.getScrollId())
-                         .execute()
-                         .actionGet();
-                } catch (Throwable e) {
-                    Exceptions.handle(Index.LOG, e);
-                }
+                clearScroll(searchResponse);
             }
         } catch (Throwable t) {
             throw Exceptions.handle(Index.LOG, t);
         }
+    }
+
+    private void clearScroll(SearchResponse searchResponse) {
+        try {
+            Index.getClient()
+                 .prepareClearScroll()
+                 .addScrollId(searchResponse.getScrollId())
+                 .execute()
+                 .actionGet();
+        } catch (Throwable e) {
+            Exceptions.handle(Index.LOG, e);
+        }
+    }
+
+    private long performScrollMonitoring(long lastScroll) {
+        long now = System.currentTimeMillis();
+        if (lastScroll == 0) {
+            // First response -> initialize time tracking
+            lastScroll = now;
+        } else {
+            // Warn if processing of one scroll took longer thant our keep alive....
+            if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrolTTL) {
+                Exceptions.handle()
+                          .withSystemErrorMessage(
+                                  "A scroll query against elasticserach took too long to process its data! The result is probably inconsistent! Query: %s",
+                                  this)
+                          .to(Index.LOG)
+                          .handle();
+            }
+        }
+        return lastScroll;
+    }
+
+    private SearchResponse scrollFurther(EntityDescriptor entityDescriptor, SearchResponse searchResponse) {
+        searchResponse = Index.getClient()
+                              .prepareSearchScroll(searchResponse.getScrollId())
+                              .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL))
+                              .execute()
+                              .actionGet();
+        if (Index.LOG.isFINE()) {
+            Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
+                           Index.getIndex(clazz),
+                           entityDescriptor.getType(),
+                           searchResponse.getHits().hits().length,
+                           searchResponse.getHits().totalHits(),
+                           searchResponse.getTookInMillis());
+        }
+        return searchResponse;
+    }
+
+    private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
+        SearchRequestBuilder srb = buildSearch();
+        if (!orderBys.isEmpty()) {
+            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s", this);
+        }
+        srb.setSearchType(SearchType.SCAN);
+        srb.setFrom(0);
+        // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
+        // Otherwise we limit to 10 documents per shard...
+        srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
+        srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL));
+        if (Index.LOG.isFINE()) {
+            Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
+        }
+
+        return srb.execute().actionGet();
     }
 
     /**
@@ -1134,7 +1173,9 @@ public class Query<E extends Entity> {
                 throw Exceptions.handle()
                                 .to(Index.LOG)
                                 .withSystemErrorMessage(
-                                        "Performing a delete on %s with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
+                                        "Performing a delete on %s with a routing "
+                                        + "- but entity has no routing attribute (in @Indexed)! "
+                                        + "This will most probably FAIL!",
                                         clazz.getName())
                                 .handle();
             }
@@ -1143,7 +1184,10 @@ public class Query<E extends Entity> {
             throw Exceptions.handle()
                             .to(Index.LOG)
                             .withSystemErrorMessage(
-                                    "Performing a delete on %s without providing a routing. Consider providing a routing for better performance or call deliberatelyUnrouted() to signal that routing was intentionally skipped.",
+                                    "Performing a delete on %s without providing a routing. "
+                                    + "Consider providing a routing for better performance "
+                                    + "or call deliberatelyUnrouted() to signal that routing was "
+                                    + "intentionally skipped.",
                                     clazz.getName())
                             .handle();
         }

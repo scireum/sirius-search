@@ -12,9 +12,6 @@ import org.elasticsearch.index.engine.VersionConflictEngineException;
 
 /**
  * Wrapper for VersionConflictEngineException to make it a checked exception again.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/09
  */
 public class OptimisticLockException extends Exception {
 

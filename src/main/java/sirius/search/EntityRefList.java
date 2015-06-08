@@ -79,7 +79,8 @@ public class EntityRefList<E extends Entity> {
                         Exceptions.handle()
                                   .to(Index.LOG)
                                   .withSystemErrorMessage(
-                                          "Fetching an entity of type %s (%s) without routing! Using SELECT which might be slower!",
+                                          "Fetching an entity of type %s (%s) without routing! "
+                                          + "Using SELECT which might be slower!",
                                           clazz.getName(),
                                           id)
                                   .handle();
@@ -90,7 +91,8 @@ public class EntityRefList<E extends Entity> {
                         Exceptions.handle()
                                   .to(Index.LOG)
                                   .withSystemErrorMessage(
-                                          "Fetching an entity of type %s (%s) with routing (which is not required for this type)!",
+                                          "Fetching an entity of type %s (%s) with routing "
+                                          + "(which is not required for this type)!",
                                           clazz.getName(),
                                           id)
                                   .handle();

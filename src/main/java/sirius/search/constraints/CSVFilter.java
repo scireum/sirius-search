@@ -35,6 +35,9 @@ import java.util.stream.Collectors;
  */
 public class CSVFilter implements Constraint {
 
+    /**
+     * Specifies the matching mode for a filter.
+     */
     enum Mode {
         CONTAINS_ANY, CONTAINS_ALL
     }
