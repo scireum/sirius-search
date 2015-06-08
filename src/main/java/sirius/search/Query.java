@@ -18,19 +18,36 @@ import org.elasticsearch.action.deletebyquery.DeleteByQueryRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.TaskContext;
 import sirius.kernel.cache.ValueComputer;
-import sirius.kernel.commons.*;
+import sirius.kernel.commons.Limit;
+import sirius.kernel.commons.Monoflop;
+import sirius.kernel.commons.RateLimit;
+import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
+import sirius.kernel.commons.ValueHolder;
+import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
-import sirius.search.constraints.*;
+import sirius.search.constraints.Constraint;
+import sirius.search.constraints.FieldEqual;
+import sirius.search.constraints.FieldNotEqual;
+import sirius.search.constraints.Filled;
+import sirius.search.constraints.Or;
+import sirius.search.constraints.QueryString;
+import sirius.search.constraints.ValueInField;
 import sirius.search.properties.EnumProperty;
 import sirius.search.properties.Property;
 import sirius.web.controller.Facet;
@@ -41,7 +58,11 @@ import sirius.web.security.UserContext;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -55,6 +76,10 @@ import java.util.function.Function;
 public class Query<E extends Entity> {
 
     private static final int DEFAULT_LIMIT = 999;
+    private static final int SCROLL_TTL_SECONDS = 60 * 5;
+    private static final int MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD = 50;
+    private static final int MAX_SCROLL_RESULTS_PER_SHARD = 10;
+
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, java.util.function.Function)} to specify a custom field.
@@ -80,6 +105,7 @@ public class Query<E extends Entity> {
     private String routing;
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
+    private int scrolTTL = SCROLL_TTL_SECONDS;
 
     /**
      * Used to create a nwe query for entities of the given class
@@ -223,7 +249,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -266,7 +293,6 @@ public class Query<E extends Entity> {
         return this;
     }
 
-
     /**
      * Sets the index to use.
      * <p>
@@ -281,7 +307,6 @@ public class Query<E extends Entity> {
         return this;
     }
 
-
     /**
      * Sets the value used to perform custom routing.
      * <p>
@@ -295,7 +320,6 @@ public class Query<E extends Entity> {
         this.routing = value;
         return this;
     }
-
 
     /**
      * If the entity being queries is routed, we try to preset the correct routing value or to disable routing.
@@ -584,7 +608,6 @@ public class Query<E extends Entity> {
             } else {
                 srb.addSort(SortBuilders.scriptSort("Math.random()", "number").order(SortOrder.ASC));
             }
-
         } else {
             for (Tuple<String, Boolean> sort : orderBys) {
                 srb.addSort(sort.getFirst(), sort.getSecond() ? SortOrder.ASC : SortOrder.DESC);
@@ -618,6 +641,9 @@ public class Query<E extends Entity> {
 
     /**
      * Executes the query and returns a list of all matching entities.
+     * <p>
+     * Note that a limit of <tt>999</tt> is enforced, if no limit is given. Use {@link #iterate(ResultHandler)} to
+     * process large results.
      *
      * @return the list of matching entities. If no entities match, an empty list will be returned
      */
@@ -628,7 +654,10 @@ public class Query<E extends Entity> {
 
     /**
      * Executes the query and returns a list of all matching entities as well as all filter facets
-     * in form of a {@link ResultList}
+     * in form of a {@link ResultList}.
+     * <p>
+     * Note that a limit of <tt>999</tt> is enforced, if no limit is given. Use {@link #iterate(ResultHandler)} to
+     * process large results.
      *
      * @return all matching entities along with the collected facet filters
      */
@@ -638,8 +667,10 @@ public class Query<E extends Entity> {
             if (forceFail) {
                 return new ResultList<>(Lists.newArrayList(), null);
             }
+            boolean defaultLimitEnforced = false;
             if (limit == null) {
                 limit = DEFAULT_LIMIT;
+                defaultLimitEnforced = true;
             }
             SearchRequestBuilder srb = buildSearch();
             if (Index.LOG.isFINE()) {
@@ -648,7 +679,13 @@ public class Query<E extends Entity> {
                                Index.getDescriptor(clazz).getType(),
                                buildQuery());
             }
-            return transform(srb);
+            ResultList<E> resultList = transform(srb);
+            if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
+                Index.LOG.WARN(
+                        "Default limit was hit when using Query.queryList or Query.queryResultList! Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
+                        this);
+            }
+            return resultList;
         } catch (Throwable e) {
             throw Exceptions.handle(Index.LOG, e);
         }
@@ -877,6 +914,23 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Sets the max. duration for a scroll request kept open by the elasticsearch cluster.
+     * <p>
+     * {@link #iterate(ResultHandler)} and {@link #iterateAll(Consumer)} internally use scroll requests. These
+     * required to specify a timeout so that the elasticsearch cluster knows how long to keep the resources. By
+     * Default the timeout is 5 minutes. If you processing loop is very slow you can extend the timeout using
+     * this method.
+     *
+     * @param scrollTimeoutInSeconds the timeout for a scroll request (time required to process one batch of entities)
+     *                               in seconds
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> withCustomScrollTTL(int scrollTimeoutInSeconds) {
+        this.scrolTTL = scrollTimeoutInSeconds;
+        return this;
+    }
+
+    /**
      * Executes the result and calls the given <tt>handler</tt> for each item in the result.
      * <p>
      * This is intended to be used to process large result sets as these are automatically scrolls through.
@@ -889,10 +943,15 @@ public class Query<E extends Entity> {
                 return;
             }
             SearchRequestBuilder srb = buildSearch();
+            if (!orderBys.isEmpty()) {
+                Index.LOG.WARN("An iterated query cannot be sorted! Query: %s", this);
+            }
             srb.setSearchType(SearchType.SCAN);
             srb.setFrom(0);
-            srb.setSize(10); // 10 per shard!
-            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(60));
+            // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
+            // Otherwise we limit to 10 documents per shard...
+            srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
+            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL));
             EntityDescriptor entityDescriptor = Index.getDescriptor(clazz);
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
@@ -902,26 +961,40 @@ public class Query<E extends Entity> {
             try {
                 TaskContext ctx = TaskContext.get();
                 RateLimit rateLimit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
+                long lastScroll = 0;
+                Limit lim = new Limit(start, limit);
+
                 while (true) {
                     Watch w = Watch.start();
                     searchResponse = Index.getClient()
                                           .prepareSearchScroll(searchResponse.getScrollId())
-                                          .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(60))
+                                          .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL))
                                           .execute()
                                           .actionGet();
-
                     if (Index.LOG.isFINE()) {
-                        Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d - %d ms",
+                        Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
                                        Index.getIndex(clazz),
                                        entityDescriptor.getType(),
+                                       searchResponse.getHits().hits().length,
                                        searchResponse.getHits().totalHits(),
                                        searchResponse.getTookInMillis());
                     }
-                    if (Microtiming.isEnabled()) {
-                        w.submitMicroTiming("ES", "SCROLL: " + toString(true));
-                    }
 
-                    Limit lim = new Limit(start, limit);
+                    long now = System.currentTimeMillis();
+                    if (lastScroll == 0) {
+                        // First response -> initialize time tracking
+                        lastScroll = now;
+                    } else {
+                        // Warn if processing of one scroll took longer thant our keep alive....
+                        if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrolTTL) {
+                            Exceptions.handle()
+                                      .withSystemErrorMessage(
+                                              "A scroll query against elasticserach took too long to process its data! The result is probably inconsistent! Query: %s",
+                                              this)
+                                      .to(Index.LOG)
+                                      .handle();
+                        }
+                    }
 
                     for (SearchHit hit : searchResponse.getHits()) {
                         E entity = clazz.newInstance();
@@ -949,10 +1022,8 @@ public class Query<E extends Entity> {
                             Exceptions.handle().to(Index.LOG).error(e).handle();
                         }
                     }
-
-                    //Break condition: No hits are returned
                     if (searchResponse.getHits().hits().length == 0) {
-                        break;
+                        return;
                     }
                 }
             } finally {
@@ -1100,5 +1171,4 @@ public class Query<E extends Entity> {
             throw error.get();
         }
     }
-
 }
