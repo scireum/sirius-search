@@ -8,7 +8,6 @@
 
 package sirius.search.properties;
 
-
 import sirius.kernel.di.std.Register;
 
 import java.lang.reflect.Field;
@@ -18,9 +17,6 @@ import java.math.BigDecimal;
  * Represents an exactly mapped property for fields of type <tt>BigDecimal</tt>.
  * <p>
  * Values are stored as string to ensure exact representation without any rounding errors.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/03
  */
 public class BigDecimalProperty extends Property {
 

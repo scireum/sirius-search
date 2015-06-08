@@ -38,9 +38,6 @@ import java.util.Set;
  * <p>
  * Each subclass should wear a {@link sirius.search.annotations.Indexed} annotation to indicate which index should be
  * used.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public abstract class Entity {
 
@@ -204,7 +201,6 @@ public abstract class Entity {
             if (p.getField().isAnnotationPresent(Unique.class) && !Strings.isEmpty(value)) {
                 error = checkUniqueness(error, descriptor, p, value);
             }
-
         }
         if (error != null) {
             throw error;
@@ -306,9 +302,8 @@ public abstract class Entity {
         try {
             RefField ref = p.getField().getAnnotation(RefField.class);
             Property entityRef = descriptor.getProperty(ref.localRef());
-            EntityDescriptor remoteDescriptor = Index.getDescriptor(entityRef.getField()
-                                                                             .getAnnotation(RefType.class)
-                                                                             .type());
+            EntityDescriptor remoteDescriptor =
+                    Index.getDescriptor(entityRef.getField().getAnnotation(RefType.class).type());
 
             EntityRef<?> value = (EntityRef<?>) entityRef.getField().get(this);
             if (value.isValueLoaded() && !value.isDirty()) {
@@ -393,7 +388,6 @@ public abstract class Entity {
      * frameworks should rely on internalOnDelete, which should not be overridden by application classes.
      */
     protected void onDelete() {
-
     }
 
     /**
@@ -405,13 +399,13 @@ public abstract class Entity {
      * <code>onDelete()</code>.
      */
     protected void internalOnDelete() {
-
     }
 
     /**
      * Invoked after an entity is deleted from the database.
      * <p>
-     * This method is not intended to be overridden. Override {@link #onAfterDelete()} or {@link #internalOnAfterDelete()}.
+     * This method is not intended to be overridden. Override {@link #onAfterDelete()} or {@link
+     * #internalOnAfterDelete()}.
      */
     protected final void afterDelete() {
         executeDeleteChecksOnForeignKeys();
@@ -443,12 +437,12 @@ public abstract class Entity {
      * Intended for classes providing additional after save handlers.
      * Will be invoked after the entity will was persisted.
      * <p>
-     * This method MUST call <code>super.internalOnAfterDelete</code> to ensure that all save handlers are called. This is
+     * This method MUST call <code>super.internalOnAfterDelete</code> to ensure that all save handlers are called. This
+     * is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onAfterDelete()</code>.
      */
     protected void internalOnAfterDelete() {
-
     }
 
     /**
@@ -542,7 +536,8 @@ public abstract class Entity {
      * Intended for classes providing additional after save handlers.
      * Will be invoked after the entity was persisted.
      * <p>
-     * This method MUST call <code>super.internalOnAfterSave</code> to ensure that all save handlers are called. This is
+     * This method MUST call <code>super.internalOnAfterSave</code> to ensure that all save handlers are called. This
+     * is
      * intended to be overridden by framework classes. Application classes should simply override
      * <code>onAfterSave()</code>.
      */
@@ -623,11 +618,11 @@ public abstract class Entity {
      * frameworks should rely on internalOnSave, which should not be overridden by application classes.
      */
     protected void onSave() {
-
     }
 
     /**
-     * Enables tracking of source field (which contain the original state of the database before the entity was changed.
+     * Enables tracking of source field (which contain the original state of the database before the entity was
+     * changed.
      * <p>
      * This will be set by @{@link Index#find(Class, String)}.
      */
@@ -704,8 +699,8 @@ public abstract class Entity {
     /**
      * Default types of id generators supported. {@link #computePossibleId()}.
      */
-    public static enum IdGeneratorType {
-        ELASTICSEARCH, SEQUENCE, BASE32HEX;
+    public enum IdGeneratorType {
+        ELASTICSEARCH, SEQUENCE, BASE32HEX
     }
 
     @Part

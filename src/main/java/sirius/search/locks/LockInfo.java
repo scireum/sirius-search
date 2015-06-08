@@ -15,9 +15,6 @@ import java.time.LocalDateTime;
 
 /**
  * Used by {@link sirius.search.locks.LockManager} to represent a lock in Elasticsearch.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
 @Indexed(index = "core", framework = "search.locks")
 public class LockInfo extends Entity {

@@ -16,9 +16,6 @@ import java.lang.annotation.Target;
 /**
  * Marks an entity class as persistent. Permits to specify additional metadata on how the values are stored in
  * ElasticSearch
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -53,5 +50,4 @@ public @interface Indexed {
      * @return the framework which must be enabled in order to load this entity class
      */
     String framework() default "";
-
 }

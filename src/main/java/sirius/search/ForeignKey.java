@@ -29,13 +29,12 @@ import java.util.List;
  * In contrast to "real" foreign keys, these only try to achieve eventual consistency. Sometimes it is even preferable
  * to accept inconsistent datasets (like child objects without parents) for performance reasons.
  * <p>
- * Foreign keys are automatically created by {@link sirius.search.Schema#linkSchema()} based on {@link RefType} annotations.
+ * Foreign keys are automatically created by {@link sirius.search.Schema#linkSchema()} based on {@link RefType}
+ * annotations.
  * <p>
- * Using {@link sirius.search.annotations.RefField} along a <tt>RefType</tt> annotation permits to have copies of fields,
+ * Using {@link sirius.search.annotations.RefField} along a <tt>RefType</tt> annotation permits to have copies of
+ * fields,
  * like the name of a parent object, which is automatically updated once it changes.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class ForeignKey {
     private final RefType refType;
@@ -44,7 +43,6 @@ public class ForeignKey {
     private Field field;
     private List<Reference> references = Lists.newArrayList();
     private Class<? extends Entity> localClass;
-
 
     /**
      * Contains all metadata to take care of a {@link sirius.search.annotations.RefField}
@@ -60,7 +58,7 @@ public class ForeignKey {
          * @param field       the field which contains the local copy
          * @param remoteField the remote field which defines the source of the value
          */
-        public Reference(Property field, String remoteField) {
+        Reference(Property field, String remoteField) {
             this.localProperty = field;
             this.remoteField = remoteField;
         }
@@ -169,7 +167,9 @@ public class ForeignKey {
                      .autoRoute(field.getName(), entity.getId())
                      .exists()) {
                 throw Exceptions.createHandled()
-                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ? refType.onDeleteErrorMsg() : "ForeignKey.restricted")
+                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
+                                            refType.onDeleteErrorMsg() :
+                                            "ForeignKey.restricted")
                                 .handle();
             }
         }
@@ -190,7 +190,9 @@ public class ForeignKey {
                      .autoRoute(field.getName(), entity.getId())
                      .exists()) {
                 throw Exceptions.createHandled()
-                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ? refType.onDeleteErrorMsg() : "ForeignKey.restricted")
+                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
+                                            refType.onDeleteErrorMsg() :
+                                            "ForeignKey.restricted")
                                 .handle();
             }
         } else if (refType.cascade() == Cascade.SET_NULL) {

@@ -28,9 +28,6 @@ import java.util.Map;
 
 /**
  * Displays the mapping stored in elasticsearch of the given types.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/07
  */
 @Register
 public class ShowMappingCommand implements Command {

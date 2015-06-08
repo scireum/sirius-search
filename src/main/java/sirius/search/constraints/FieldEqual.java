@@ -12,16 +12,13 @@ import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import sirius.kernel.commons.Strings;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
-import sirius.kernel.commons.Strings;
 import sirius.search.Index;
 
 /**
  * Represents a constraint which checks if the given field has the given value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class FieldEqual implements Constraint {
     private final String field;

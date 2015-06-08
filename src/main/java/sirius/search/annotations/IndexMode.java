@@ -34,7 +34,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String MODE_ANALYZED = "analyzed";
+    String MODE_ANALYZED = "analyzed";
 
     /**
      * Sets the {@link #indexMode()} to "not_analyzed".
@@ -43,7 +43,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String MODE_NOT_ANALYZED = "not_analyzed";
+    String MODE_NOT_ANALYZED = "not_analyzed";
 
     /**
      * Sets the {@link #indexMode()} to "no".
@@ -53,22 +53,21 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String MODE_NO = "no";
-
+    String MODE_NO = "no";
 
     /**
      * Sets the {@link #normEnabled()} to "true".
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String NORMS_ENABLED = "true";
+    String NORMS_ENABLED = "true";
 
     /**
      * Sets the {@link #normEnabled()} to "false".
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String NORMS_DISABLED = "false";
+    String NORMS_DISABLED = "false";
 
     /**
      * Sets the {@link #indexMode()} ()} to "docs".
@@ -77,7 +76,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String INDEX_OPTION_DOCS = "docs";
+    String INDEX_OPTION_DOCS = "docs";
 
     /**
      * Sets the {@link #indexMode()} ()} to "freqs".
@@ -86,7 +85,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String INDEX_OPTION_FREQS = "freqs";
+    String INDEX_OPTION_FREQS = "freqs";
 
     /**
      * Sets the {@link #indexMode()} ()} to "positions".
@@ -95,7 +94,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String INDEX_OPTION_POSITIONS = "positions";
+    String INDEX_OPTION_POSITIONS = "positions";
 
     /**
      * Sets the {@link #analyzer()} ()} ()} to "whitespace".
@@ -105,7 +104,7 @@ public @interface IndexMode {
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
      */
-    public static final String ANALYZER_WHITESPACE = "whitespace";
+    String ANALYZER_WHITESPACE = "whitespace";
 
     /**
      * Determines the index mode used by elastricsearch.

@@ -20,9 +20,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Provides <tt>es</tt> as console command to query, update or delete entities.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2015/02
  */
 @Register
 public class ESCommand implements Command {
@@ -70,7 +67,6 @@ public class ESCommand implements Command {
                 Index.update(e);
                 rows.incrementAndGet();
                 return true;
-
             });
             output.separator();
             output.apply("%s rows affected", rows.get());

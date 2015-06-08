@@ -23,9 +23,6 @@ import java.util.List;
 /**
  * Represents a property which contains a list of strings. Such fields must wear a {@link ListType} annotation with
  * <tt>String</tt> as their value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class StringListProperty extends Property {
 
@@ -37,8 +34,9 @@ public class StringListProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return List.class.equals(field.getType()) && field.isAnnotationPresent(ListType.class) && String.class.equals(
-                    field.getAnnotation(ListType.class).value());
+            return List.class.equals(field.getType())
+                   && field.isAnnotationPresent(ListType.class)
+                   && String.class.equals(field.getAnnotation(ListType.class).value());
         }
 
         @Override
@@ -93,5 +91,4 @@ public class StringListProperty extends Property {
     public boolean acceptsSetter() {
         return false;
     }
-
 }

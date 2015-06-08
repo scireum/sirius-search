@@ -12,9 +12,6 @@ import javax.annotation.Nonnull;
 
 /**
  * Encapsulates the name of a lock to permit the creation of named constants.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
 public class Lock {
     private final String name;

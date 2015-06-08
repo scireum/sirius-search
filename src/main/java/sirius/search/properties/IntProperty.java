@@ -8,7 +8,6 @@
 
 package sirius.search.properties;
 
-
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
@@ -17,9 +16,6 @@ import java.lang.reflect.Field;
 
 /**
  * Represents an integer property for fields of type <tt>int</tt> or <tt>Integer</tt>.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class IntProperty extends Property {
 
@@ -60,7 +56,7 @@ public class IntProperty extends Property {
             }
             if (value instanceof String && Strings.isFilled(value)) {
                 try {
-                    value = Integer.parseInt((String)value);
+                    value = Integer.parseInt((String) value);
                 } catch (NumberFormatException e) {
                     Exceptions.ignore(e);
                 }

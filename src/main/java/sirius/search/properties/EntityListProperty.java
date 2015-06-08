@@ -22,9 +22,6 @@ import java.util.List;
 /**
  * Represents a property which references a list of other entities. Such a field must wear a
  * {@link sirius.search.annotations.RefType} annotation.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityListProperty extends Property {
 
@@ -53,7 +50,7 @@ public class EntityListProperty extends Property {
     }
 
     @Override
-    @SuppressWarnings ("unchecked")
+    @SuppressWarnings("unchecked")
     public void init(Entity entity) throws Exception {
         field.set(entity, new EntityRefList<>((Class<Entity>) field.getAnnotation(RefType.class).type()));
     }
@@ -98,5 +95,4 @@ public class EntityListProperty extends Property {
     protected Object transformFromSource(Object value) {
         throw new UnsupportedOperationException();
     }
-
 }

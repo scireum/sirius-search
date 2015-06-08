@@ -13,9 +13,6 @@ package sirius.search;
  * <p>
  * Instances of this class can be passed to {@link Query#iterate(ResultHandler)} to process the result entity
  * by entity which permits scrolling to large result sets and therefore minimizing resource utilization.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public interface ResultHandler<T> {
     /**

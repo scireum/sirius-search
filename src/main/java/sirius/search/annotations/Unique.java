@@ -16,9 +16,6 @@ import java.lang.annotation.Target;
 /**
  * Marks the given field as unique. This indicates that each value must occur at most once - either globally or,
  * within the same value of the given field <tt>within</tt>.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

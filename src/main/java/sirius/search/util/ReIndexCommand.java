@@ -1,3 +1,11 @@
+/*
+ * Made with all the love in the world
+ * by scireum in Remshalden, Germany
+ *
+ * Copyright by scireum GmbH
+ * http://www.scireum.de - info@scireum.de
+ */
+
 package sirius.search.util;
 
 import sirius.kernel.di.std.Register;
@@ -7,9 +15,6 @@ import sirius.web.health.console.Command;
 /**
  * Performs a re-index of all indices into new ones starting with the given index prefix instead of the
  * currently active one.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/07
  */
 @Register
 public class ReIndexCommand implements Command {

@@ -15,9 +15,6 @@ import sirius.kernel.nls.NLS;
 
 /**
  * Represents a constraint which verifies that the given string occurs in any of the searchable fields of the entity
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class QueryString implements Constraint {
 
@@ -42,7 +39,7 @@ public class QueryString implements Constraint {
 
     @Override
     public QueryBuilder createQuery() {
-        return QueryBuilders.queryString(NLS.toMachineString(value));
+        return QueryBuilders.queryStringQuery(NLS.toMachineString(value));
     }
 
     @Override
@@ -59,5 +56,4 @@ public class QueryString implements Constraint {
     public String toString() {
         return toString(false);
     }
-
 }

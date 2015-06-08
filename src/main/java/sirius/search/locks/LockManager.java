@@ -31,11 +31,8 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * Note that the locks created here are not reentrant. Therefore if a lock is held by a thread on a node,
  * it must not call lock again for the same lock as this would immediately lead to a deadlock!
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
-@Register(framework = "search.locks", classes = {LockManager.class})
+@Register(framework = "search.locks", classes = LockManager.class)
 public class LockManager {
 
     private static final Log LOG = Log.get("locks");
@@ -84,7 +81,8 @@ public class LockManager {
      * Tries to acquire the given lock within the given timeout.
      * <p>
      * If the lock cannot be acquired within the given period, <tt>false</tt> is returned. Note that if <tt>true</tt>
-     * is returned, {@link #unlock(sirius.search.locks.CriticalSection)} MUST be called once the critical section is left.
+     * is returned, {@link #unlock(sirius.search.locks.CriticalSection)} MUST be called once the critical section is
+     * left.
      *
      * @param section the critical section describing the lock to acquire
      * @param timeout the max time span to wait for the lock (cannot be longer than {@link #MAX_LOCK_WAIT_MILLIS}
@@ -185,9 +183,8 @@ public class LockManager {
     public void unlock(CriticalSection section) {
         LockInfo li = index.find(LockInfo.class, section.getLock().getName());
         if (li != null) {
-            if (!Strings.areEqual(CallContext.getNodeName(),
-                                  li.getCurrentOwnerNode()) || !Strings.areEqual(section.getSection(),
-                                                                                 li.getCurrentOwnerSection())) {
+            if (!Strings.areEqual(CallContext.getNodeName(), li.getCurrentOwnerNode())
+                || !Strings.areEqual(section.getSection(), li.getCurrentOwnerSection())) {
                 throw Exceptions.handle()
                                 .to(LOG)
                                 .withSystemErrorMessage(
@@ -275,5 +272,4 @@ public class LockManager {
             unlock(section);
         }
     }
-
 }

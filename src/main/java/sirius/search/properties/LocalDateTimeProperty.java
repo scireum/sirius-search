@@ -12,7 +12,6 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
-import sirius.kernel.health.HandledException;
 import sirius.kernel.nls.NLS;
 import sirius.web.http.WebContext;
 import sirius.web.security.UserContext;
@@ -23,11 +22,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Represents a timestamp property which contains a date along with a time value. This is used to represents fields of type
+ * Represents a timestamp property which contains a date along with a time value. This is used to represents fields of
+ * type
  * {@link  java.time.LocalDateTime}
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class LocalDateTimeProperty extends Property {
 

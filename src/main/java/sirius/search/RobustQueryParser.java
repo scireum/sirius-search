@@ -24,9 +24,11 @@ import java.util.function.Function;
 /**
  * Used to parse user queries.
  * <p>
- * Tries to emulate most of the lucene query syntax like "field:token", "-token", "AND", "OR" and prefix queries ("test*"). In
+ * Tries to emulate most of the lucene query syntax like "field:token", "-token", "AND", "OR" and prefix queries
+ * ("test*"). In
  * contrast to the regular query parser, this will never fail but do its best to create a query as intended
- * by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all usable tokens.
+ * by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all usable
+ * tokens.
  *
  * @author Andreas Haufler (aha@scireum.de)
  * @see Query#query(String)
@@ -203,9 +205,8 @@ class RobustQueryParser {
                 couldBeFieldNameSoFar = false;
             } else {
                 if (couldBeFieldNameSoFar) {
-                    couldBeFieldNameSoFar = reader.current().is('-', '_') || reader.current()
-                                                                                   .isLetter() || reader.current()
-                                                                                                        .isDigit();
+                    couldBeFieldNameSoFar =
+                            reader.current().is('-', '_') || reader.current().isLetter() || reader.current().isDigit();
                 }
                 sb.append(reader.consume().getValue());
             }
@@ -274,5 +275,4 @@ class RobustQueryParser {
             return builder;
         }
     }
-
 }

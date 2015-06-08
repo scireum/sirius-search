@@ -18,9 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * This annotation needs to go along with a {@link RefType} annotation and can be used to signal that a field is
  * a copy of a field of the referenced entity. These values will be automatically updated if possible.
- *
- * @author Andreas Haufler
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

@@ -23,9 +23,6 @@ import java.lang.reflect.Field;
 /**
  * Represents a property which references another entity. Such a field must wear a
  * {@link sirius.search.annotations.RefType} annotation.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityProperty extends Property {
 

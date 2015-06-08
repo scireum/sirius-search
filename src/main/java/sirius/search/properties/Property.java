@@ -60,7 +60,6 @@ public class Property {
      * @throws Exception in case of an error when initializing the entity
      */
     public void init(Entity entity) throws Exception {
-
     }
 
     /**

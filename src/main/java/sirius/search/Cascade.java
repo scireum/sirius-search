@@ -10,10 +10,7 @@ package sirius.search;
 
 /**
  * Determines if and how operations are cascaded across foreign keys (field references).
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public enum Cascade {
-    REJECT, CASCADE, LAZY_CASCADE, SET_NULL, IGNORE;
+    REJECT, CASCADE, LAZY_CASCADE, SET_NULL, IGNORE
 }

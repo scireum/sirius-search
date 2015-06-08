@@ -18,9 +18,6 @@ import sirius.web.health.console.Command;
 
 /**
  * Creates or re-creates the mapping for a given entity.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/07
  */
 @Register
 public class UpdateMappingCommand implements Command {
@@ -51,12 +48,12 @@ public class UpdateMappingCommand implements Command {
         if (type == null) {
             output.line("Unknown type: " + typeName);
             Monoflop mf = Monoflop.create();
-            for(String name : Index.getSchema().getTypeNames()) {
+            for (String name : Index.getSchema().getTypeNames()) {
                 if (name.toLowerCase().contains(typeName.toLowerCase())) {
                     if (mf.firstCall()) {
                         output.line("Did you mean one of those: ");
                     }
-                    output.line(" * "+name);
+                    output.line(" * " + name);
                 }
             }
         }

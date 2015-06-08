@@ -19,9 +19,6 @@ import java.lang.reflect.Modifier;
 /**
  * Scans for subclasses of {@link Entity} and loads them into the object model so that the {@link Schema} can
  * identify all entity classes.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityLoadAction implements ClassLoadAction {
 

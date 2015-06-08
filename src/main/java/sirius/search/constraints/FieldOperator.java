@@ -8,7 +8,12 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.RangeQueryBuilder;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -17,12 +22,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 
-
 /**
  * Represents a relational filter which can be used to filter &lt; or &lt;=, along with &gt; or &gt;=
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/02
  */
 public class FieldOperator implements Constraint {
 
@@ -190,5 +191,4 @@ public class FieldOperator implements Constraint {
     public String toString() {
         return toString(false);
     }
-
 }

@@ -16,9 +16,6 @@ import sirius.search.Index;
 
 /**
  * Represents a constraint which checks if the given field has not the given value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class FieldNotEqual implements Constraint {
     private final String field;

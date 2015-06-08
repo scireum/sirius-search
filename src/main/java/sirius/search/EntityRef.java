@@ -18,9 +18,6 @@ import sirius.kernel.health.Exceptions;
  * <p>
  * This permits elegant lazy loading, as only the ID is eagerly loaded and stored into the database. The object
  * itself is only loaded on demand.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityRef<E extends Entity> {
     private E value;

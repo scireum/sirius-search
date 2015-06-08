@@ -8,7 +8,12 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.search.Entity;
@@ -27,9 +32,6 @@ import java.util.stream.Collectors;
  * Therefore the constraint translates x,y,z for field f to: <code>f = x OR f = y OR f = z</code>. Empty strings
  * are gracefully handled (ignored). If {@link #orEmpty()} is used, the constraint also succeeds if
  * the target field is empty. This is only valid when <tt>containsAny</tt> is used.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/09
  */
 public class CSVFilter implements Constraint {
 
@@ -42,7 +44,6 @@ public class CSVFilter implements Constraint {
     private boolean isFilter;
     private boolean orEmpty = false;
     private Mode mode;
-
 
     /*
      * Use one of the factory methods
@@ -167,7 +168,9 @@ public class CSVFilter implements Constraint {
 
     @Override
     public String toString(boolean skipConstraintValues) {
-        return field + " " + mode + " '" + (skipConstraintValues ? "?" : values) + "' " + (orEmpty ? " OR IS EMPTY" : "");
+        return field + " " + mode + " '" + (skipConstraintValues ? "?" : values) + "' " + (orEmpty ?
+                                                                                           " OR IS EMPTY" :
+                                                                                           "");
     }
 
     @Override

@@ -16,9 +16,6 @@ import java.lang.reflect.Field;
 
 /**
  * Represents a double property for fields of type <tt>double</tt> or <tt>Double</tt>.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/06
  */
 public class DoubleProperty extends Property {
 
@@ -72,5 +69,4 @@ public class DoubleProperty extends Property {
         }
         return value;
     }
-
 }

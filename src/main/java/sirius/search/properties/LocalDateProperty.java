@@ -12,7 +12,6 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
-import sirius.kernel.health.HandledException;
 import sirius.kernel.nls.NLS;
 import sirius.web.http.WebContext;
 import sirius.web.security.UserContext;
@@ -24,9 +23,6 @@ import java.time.format.DateTimeFormatter;
 /**
  * Represents a date property which contains no associated time value. This is used to represents fields of type
  * {@link java.time.LocalDate}
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class LocalDateProperty extends Property {
 
@@ -45,7 +41,6 @@ public class LocalDateProperty extends Property {
         public Property create(Field field) {
             return new LocalDateProperty(field);
         }
-
     }
 
     @Override

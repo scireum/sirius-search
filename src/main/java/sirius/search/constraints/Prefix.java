@@ -16,9 +16,6 @@ import sirius.kernel.commons.Strings;
 
 /**
  * Represents a constraint which checks if the given field starts with the given value
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/05
  */
 public class Prefix implements Constraint {
     private final String field;

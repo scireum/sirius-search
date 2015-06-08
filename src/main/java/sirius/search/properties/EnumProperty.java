@@ -15,9 +15,6 @@ import java.lang.reflect.Field;
 
 /**
  * Represents a property which contains an enum value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EnumProperty extends Property {
 
@@ -46,7 +43,7 @@ public class EnumProperty extends Property {
     }
 
     @Override
-    @SuppressWarnings ("unchecked")
+    @SuppressWarnings("unchecked")
     public Object transformFromSource(Object value) {
         try {
             return Value.of(value)

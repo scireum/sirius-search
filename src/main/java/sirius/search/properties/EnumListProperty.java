@@ -22,11 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents a property which contains a list of strings. Such fields must wear a {@link sirius.search.annotations.ListType} annotation with
+ * Represents a property which contains a list of strings. Such fields must wear a {@link
+ * sirius.search.annotations.ListType} annotation with
  * <tt>String</tt> as their value.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EnumListProperty extends Property {
 
@@ -39,7 +37,7 @@ public class EnumListProperty extends Property {
         @Override
         public boolean accepts(Field field) {
             return List.class.equals(field.getType()) && field.isAnnotationPresent(ListType.class) &&
-                    field.getAnnotation(ListType.class).value().isEnum();
+                   field.getAnnotation(ListType.class).value().isEnum();
         }
 
         @Override
@@ -88,7 +86,6 @@ public class EnumListProperty extends Property {
         return result;
     }
 
-
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
@@ -112,5 +109,4 @@ public class EnumListProperty extends Property {
     public boolean acceptsSetter() {
         return false;
     }
-
 }

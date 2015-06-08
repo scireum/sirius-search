@@ -8,15 +8,17 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 
 import java.util.Collection;
 
 /**
  * Represents a constraint which verifies that the given field contains none of the given values.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class NoneInField implements Constraint {
 
@@ -42,7 +44,6 @@ public class NoneInField implements Constraint {
     public static NoneInField on(Collection<?> values, String field) {
         return new NoneInField(values, field);
     }
-
 
     /**
      * Forces this constraint to be applied as filter not as query.

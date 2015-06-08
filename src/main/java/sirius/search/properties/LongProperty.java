@@ -16,9 +16,6 @@ import java.lang.reflect.Field;
 
 /**
  * Represents a long property for fields of type <tt>long</tt> or <tt>Long</tt>.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class LongProperty extends Property {
 
@@ -72,5 +69,4 @@ public class LongProperty extends Property {
         }
         return value;
     }
-
 }

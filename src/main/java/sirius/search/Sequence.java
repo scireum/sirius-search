@@ -12,9 +12,6 @@ import sirius.search.annotations.Indexed;
 
 /**
  * Used by the {@link IdGenerator} to create unique IDs.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Indexed(index = "core")
 public class Sequence extends Entity {

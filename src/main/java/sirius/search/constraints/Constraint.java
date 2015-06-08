@@ -13,9 +13,6 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 /**
  * Defines a constraint which can be added to a {@link sirius.search.Query} to determine the result set.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public interface Constraint {
     /**
@@ -30,7 +27,7 @@ public interface Constraint {
      * Creates an ElasticSearch filter which represents this constraint.
      *
      * @return an ElasticSearch filter representing this constraint or <tt>null</tt> if this constraint is realized
-     *         via a query and not a filter.
+     * via a query and not a filter.
      */
     FilterBuilder createFilter();
 

@@ -18,9 +18,6 @@ import javax.annotation.Nullable;
  * Provides a wrapper for {@link Index} which can be injected using a {@link sirius.kernel.di.std.Part} annotation.
  * <p>
  * Using this wrapper instead of the static methods permits to mock the index access.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/11
  */
 @Register(classes = IndexAccess.class)
 public class IndexAccess {
@@ -124,7 +121,8 @@ public class IndexAccess {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts fail with an optimistic lock error.
+     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts fail
+     *                                               with an optimistic lock error.
      */
     public void retry(UnitOfWork uow) {
         Index.retry(uow);
@@ -150,7 +148,8 @@ public class IndexAccess {
      * @param entity the entity to save
      * @param <E>    the type of the entity to update
      * @return the saved entity
-     * @throws sirius.search.OptimisticLockException if the entity was modified in the database and those changes where not reflected
+     * @throws sirius.search.OptimisticLockException if the entity was modified in the database and those changes where
+     *                                               not reflected
      *                                               by the entity to be saved
      */
     public <E extends Entity> E tryUpdate(E entity) throws OptimisticLockException {

@@ -35,9 +35,6 @@ import java.util.Map;
  * <p>
  * For each entity class an <tt>EntityDescriptor</tt> is automatically created and filled by the framework. Most of
  * this data is used by the framework to define the mapping (schema) in ElasticSearch, etc.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityDescriptor {
 

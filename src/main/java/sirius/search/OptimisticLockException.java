@@ -39,5 +39,4 @@ public class OptimisticLockException extends Exception {
     public Entity getEntity() {
         return entity;
     }
-
 }

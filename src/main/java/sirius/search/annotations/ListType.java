@@ -18,9 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * The most common example would by a list of strings. As generics a removed at compile time, this annotation is
  * required to provide the type of the list to select the matching {@link sirius.search.properties.PropertyFactory}
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

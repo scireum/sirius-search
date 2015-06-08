@@ -8,19 +8,16 @@
 
 package sirius.search.properties;
 
-import sirius.search.Entity;
-import sirius.search.Index;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
+import sirius.search.Entity;
+import sirius.search.Index;
 import sirius.web.http.WebContext;
 
 import java.lang.reflect.Field;
 
 /**
  * Represents a boolean property for fields of type <tt>Boolean</tt> or <tt>boolean</tt>
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class BooleanProperty extends Property {
 
@@ -80,5 +77,4 @@ public class BooleanProperty extends Property {
         }
         return value;
     }
-
 }

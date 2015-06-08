@@ -18,9 +18,6 @@ import java.lang.annotation.Target;
  * <p>
  * Such fields are automatically checked once an entity is saved. Primitive fields don't need this annotation as
  * it is implicated by their type.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

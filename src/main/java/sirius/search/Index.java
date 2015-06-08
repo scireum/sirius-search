@@ -48,7 +48,11 @@ import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.*;
+import sirius.kernel.health.Average;
+import sirius.kernel.health.Counter;
+import sirius.kernel.health.Exceptions;
+import sirius.kernel.health.HandledException;
+import sirius.kernel.health.Log;
 import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
@@ -61,7 +65,11 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -69,9 +77,6 @@ import java.util.concurrent.TimeUnit;
  * Central access class to the persistence layer.
  * <p>
  * Provides CRUD access to the underlying ElasticSearch cluster.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class Index {
 
@@ -186,7 +191,8 @@ public class Index {
     public static <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
-                                                             @Nonnull com.google.common.cache.Cache<String, Object> cache) {
+                                                             @Nonnull
+                                                             com.google.common.cache.Cache<String, Object> cache) {
         if (Strings.isEmpty(id)) {
             return Tuple.create(null, false);
         }
@@ -312,7 +318,7 @@ public class Index {
         private Runnable cmd;
         private CallContext context;
 
-        public WaitingBlock(Runnable cmd) {
+        WaitingBlock(Runnable cmd) {
             this.cmd = cmd;
             this.waitline = System.currentTimeMillis() + 1000;
             this.context = CallContext.getCurrent();
@@ -528,11 +534,12 @@ public class Index {
                 Settings settings = ImmutableSettings.settingsBuilder()
                                                      .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
                                                      .build();
-                client = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
-                                                                                                                .getString(
-                                                                                                                        "index.host"),
-                                                                                                          Sirius.getConfig()
-                                                                                                                .getInt("index.port")));
+                client =
+                        new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
+                                                                                                               .getString(
+                                                                                                                       "index.host"),
+                                                                                                         Sirius.getConfig()
+                                                                                                               .getInt("index.port")));
             }
 
             // Setup index
@@ -585,7 +592,8 @@ public class Index {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic lock error.
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
      */
     public static void retry(UnitOfWork uow) {
         int retries = 3;
@@ -1229,8 +1237,8 @@ public class Index {
      * @param <E>    the type of the entity to delete
      * @throws OptimisticLockException if the entity was changed since the last read
      */
-    protected static <E extends Entity> void delete(final E entity,
-                                                    final boolean force) throws OptimisticLockException {
+    protected static <E extends Entity> void delete(final E entity, final boolean force)
+            throws OptimisticLockException {
         try {
             if (entity.isNew()) {
                 return;
@@ -1245,9 +1253,8 @@ public class Index {
             }
             entity.beforeDelete();
             Watch w = Watch.start();
-            DeleteRequestBuilder drb = getClient().prepareDelete(getIndex(entity),
-                                                                 descriptor.getType(),
-                                                                 entity.getId());
+            DeleteRequestBuilder drb =
+                    getClient().prepareDelete(getIndex(entity), descriptor.getType(), entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }
@@ -1336,7 +1343,6 @@ public class Index {
             msg.append("\n");
             LOG.SEVERE(msg.toString());
         }
-
     }
 
     protected static <E extends Entity> void traceChange(E entity) {
@@ -1408,7 +1414,7 @@ public class Index {
         }
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"),
-                               CallContext.getCurrent().getNodeName() + "_in_memory_es");
+                               CallContext.getNodeName() + "_in_memory_es");
         tmpDir.mkdirs();
 
         Settings settings = ImmutableSettings.settingsBuilder()
@@ -1464,5 +1470,4 @@ public class Index {
             throw Exceptions.handle(e);
         }
     }
-
 }

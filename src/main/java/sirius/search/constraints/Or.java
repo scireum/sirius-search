@@ -8,14 +8,16 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 
 /**
  * Represents a set of constraints of which at least once must be fulfilled.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class Or implements Constraint {
 
@@ -53,7 +55,6 @@ public class Or implements Constraint {
             if (fb != null) {
                 filtersFound = true;
             }
-
         }
         if (!result.hasClauses()) {
             return null;
@@ -66,7 +67,6 @@ public class Or implements Constraint {
                     "You must not mix filters and queries in an OR constraint! %s",
                     this));
         }
-
 
         return result;
     }
@@ -97,10 +97,8 @@ public class Or implements Constraint {
                     this));
         }
 
-
         return result;
     }
-
 
     @Override
     public String toString(boolean skipConstraintValues) {
@@ -110,7 +108,6 @@ public class Or implements Constraint {
                 sb.append(") OR (");
             }
             sb.append(child.toString(skipConstraintValues));
-
         }
         sb.append(")");
         return sb.toString();
@@ -120,5 +117,4 @@ public class Or implements Constraint {
     public String toString() {
         return toString(false);
     }
-
 }

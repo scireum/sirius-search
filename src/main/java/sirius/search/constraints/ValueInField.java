@@ -15,9 +15,6 @@ import org.elasticsearch.index.query.QueryBuilders;
 
 /**
  * Represents a constraint which verifies that the given list field contains at least the given value.
- *
- * @author Andreas Haufler
- * @since 2013/12
  */
 public class ValueInField implements Constraint {
 

@@ -18,11 +18,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 
 /**
- * Contains a string property. If the field wears an {@link sirius.search.annotations.IndexMode} annotation, the contents of the field will be
+ * Contains a string property. If the field wears an {@link sirius.search.annotations.IndexMode} annotation, the
+ * contents of the field will be
  * analyzed and tokenized by ElasticSearch.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class StringProperty extends Property {
 
@@ -54,16 +52,17 @@ public class StringProperty extends Property {
      */
     private StringProperty(Field field) {
         super(field);
-        this.indexMode = field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class)
-                                                                           .indexMode() : IndexMode.MODE_NOT_ANALYZED;
-        this.norms = field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class)
-                                                                       .normEnabled() : "";
-        this.options = field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class)
-                                                                         .indexOptions() : "";
-        this.analyzer = field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class)
-                                                                         .analyzer() : "";
-        this.includeInAll = field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class)
-                                                                              .includeInAll() : true;
+        this.indexMode = field.isAnnotationPresent(IndexMode.class) ?
+                         field.getAnnotation(IndexMode.class).indexMode() :
+                         IndexMode.MODE_NOT_ANALYZED;
+        this.norms =
+                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).normEnabled() : "";
+        this.options =
+                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).indexOptions() : "";
+        this.analyzer =
+                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).analyzer() : "";
+        this.includeInAll =
+                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).includeInAll() : true;
     }
 
     @Override

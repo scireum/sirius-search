@@ -20,7 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Represents a property which contains a map of strings to strings. Such fields must wear a {@link sirius.search.annotations.ListType} annotation with
+ * Represents a property which contains a map of strings to strings. Such fields must wear a {@link
+ * sirius.search.annotations.ListType} annotation with
  * <tt>String</tt> as their value.
  *
  * @author Andreas Haufler (aha@scireum.de)
@@ -36,8 +37,9 @@ public class StringMapProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return Map.class.equals(field.getType()) && field.isAnnotationPresent(ListType.class) && String.class.equals(
-                    field.getAnnotation(ListType.class).value());
+            return Map.class.equals(field.getType())
+                   && field.isAnnotationPresent(ListType.class)
+                   && String.class.equals(field.getAnnotation(ListType.class).value());
         }
 
         @Override
@@ -90,5 +92,4 @@ public class StringMapProperty extends Property {
     public boolean acceptsSetter() {
         return false;
     }
-
 }

@@ -14,9 +14,6 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 /**
  * Represents a constraint which checks that the given field is not empty
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class Filled implements Constraint {
 

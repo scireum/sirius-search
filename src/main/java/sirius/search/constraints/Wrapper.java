@@ -13,9 +13,6 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 /**
  * Represents a constraint which wraps a given {@link org.elasticsearch.index.query.QueryBuilder}
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2014/07
  */
 public class Wrapper implements Constraint {
 

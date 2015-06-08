@@ -23,9 +23,6 @@ import java.util.stream.Collectors;
  * <p>
  * This permits elegant lazy loading, as only the IDs are eagerly loaded and stored into the database. The objects
  * itself are only loaded on demand.
- *
- * @author Andreas Haufler (aha@scireum.de)
- * @since 2013/12
  */
 public class EntityRefList<E extends Entity> {
 
@@ -127,7 +124,8 @@ public class EntityRefList<E extends Entity> {
      * <p>
      * The framework is permitted to load the value from a given local cache.
      *
-     * @param routing    the routing info used to lookup the entities (might be <tt>null</tt> if no routing is required).
+     * @param routing    the routing info used to lookup the entities (might be <tt>null</tt> if no routing is
+     *                   required).
      * @param localCache the cache to used when looking up values
      * @return the value represented by this reference
      */
@@ -264,11 +262,10 @@ public class EntityRefList<E extends Entity> {
 
     @Override
     public String toString() {
-        if (getIds().size() > 0) {
+        if (!getIds().isEmpty()) {
             return clazz.getSimpleName() + ": " + ids;
         } else {
             return clazz.getSimpleName() + ": <empty>";
         }
     }
-
 }
