@@ -27,11 +27,11 @@ public class ESCommand implements Command {
     @Override
     public void execute(Output output, String... params) throws Exception {
         Values values = Values.of(params);
-        if (values.at(0).equalsIgnoreCase("query")) {
+        if ("query".equalsIgnoreCase(values.at(0).asString())) {
             query(output, values);
-        } else if (values.at(0).equalsIgnoreCase("update")) {
+        } else if ("update".equalsIgnoreCase(values.at(0).asString())) {
             update(output, values);
-        } else if (values.at(0).equalsIgnoreCase("delete")) {
+        } else if ("delete".equalsIgnoreCase(values.at(0).asString())) {
             delete(output, values);
         } else {
             output.apply("Unknown command: %s", values.at(0));

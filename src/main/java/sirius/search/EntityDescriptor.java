@@ -44,7 +44,7 @@ public class EntityDescriptor {
     private final Class<?> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
-    public List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
+    protected List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
 
     /**
      * Creates a new EntityDescriptor for the given entity class.
@@ -62,7 +62,7 @@ public class EntityDescriptor {
         if (Strings.isEmpty(routing)) {
             routing = null;
         }
-        if ("".equals(typeName)) {
+        if (Strings.isEmpty(typeName)) {
             typeName = clazz.getSimpleName();
         }
     }
@@ -155,6 +155,7 @@ public class EntityDescriptor {
             field.getDeclaringClass().getMethod("set" + Reflection.toFirstUpper(field.getName()), field.getType());
             return true;
         } catch (NoSuchMethodException e) {
+            Exceptions.ignore(e);
             return false;
         }
     }

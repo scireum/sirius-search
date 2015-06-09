@@ -14,6 +14,7 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.health.Exceptions;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +24,8 @@ import java.util.stream.Collectors;
  * <p>
  * This permits elegant lazy loading, as only the IDs are eagerly loaded and stored into the database. The objects
  * itself are only loaded on demand.
+ *
+ * @param <E> the type of the referenced entities
  */
 public class EntityRefList<E extends Entity> {
 
@@ -78,11 +81,8 @@ public class EntityRefList<E extends Entity> {
                     } else {
                         Exceptions.handle()
                                   .to(Index.LOG)
-                                  .withSystemErrorMessage(
-                                          "Fetching an entity of type %s (%s) without routing! "
-                                          + "Using SELECT which might be slower!",
-                                          clazz.getName(),
-                                          id)
+                                  .withSystemErrorMessage("Fetching an entity of type %s (%s) without routing! "
+                                                          + "Using SELECT which might be slower!", clazz.getName(), id)
                                   .handle();
                         result.add(Index.select(clazz).eq(Index.ID_FIELD, id).queryFirst());
                     }
@@ -90,11 +90,10 @@ public class EntityRefList<E extends Entity> {
                     if (Strings.isFilled(routing)) {
                         Exceptions.handle()
                                   .to(Index.LOG)
-                                  .withSystemErrorMessage(
-                                          "Fetching an entity of type %s (%s) with routing "
-                                          + "(which is not required for this type)!",
-                                          clazz.getName(),
-                                          id)
+                                  .withSystemErrorMessage("Fetching an entity of type %s (%s) with routing "
+                                                          + "(which is not required for this type)!",
+                                                          clazz.getName(),
+                                                          id)
                                   .handle();
                     }
                     result.add(Index.find(clazz, id));
@@ -209,13 +208,25 @@ public class EntityRefList<E extends Entity> {
         }
     }
 
-    public boolean contains(E value) {
+    /**
+     * Determines if the list of referenced entities contains the given entity.
+     *
+     * @param value the value to check for
+     * @return <tt>true</tt> if the value is non null and contained in the list of referenced entities
+     */
+    public boolean contains(@Nullable E value) {
         if (value == null) {
             return false;
         }
         return ids.contains(value.getId());
     }
 
+    /**
+     * Determines if the list of referenced entities contains the given entity (referenced via the given id).
+     *
+     * @param id the id of the entity to check for
+     * @return <tt>true</tt> if the id is non null and the id of an entity contained in the list of referenced entities
+     */
     public boolean containsId(String id) {
         if (Strings.isEmpty(id)) {
             return false;

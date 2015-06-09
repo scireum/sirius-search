@@ -182,9 +182,7 @@ public class ForeignKey {
      */
     @SuppressWarnings("unchecked")
     public void onDelete(final Entity entity) {
-        if (refType.cascade() == Cascade.IGNORE) {
-            return;
-        } else if (refType.cascade() == Cascade.REJECT) {
+        if (refType.cascade() == Cascade.REJECT) {
             if (Index.select(getLocalClass())
                      .eq(getName(), entity.getId())
                      .autoRoute(field.getName(), entity.getId())
@@ -202,7 +200,7 @@ public class ForeignKey {
                          .eq(getName(), entity.getId())
                          .autoRoute(field.getName(), entity.getId())
                          .iterate(row -> {
-                             updateReferencedFields(entity, (Entity) row);
+                             updateReferencedFields(entity, row);
                              return true;
                          });
                 } catch (Throwable e) {
@@ -217,7 +215,7 @@ public class ForeignKey {
                          .autoRoute(field.getName(), entity.getId())
                          .iterate(row -> {
                              try {
-                                 Index.delete((Entity) row, true);
+                                 Index.delete(row, true);
                              } catch (Throwable e) {
                                  Exceptions.handle(Index.LOG, e);
                              }
@@ -261,7 +259,7 @@ public class ForeignKey {
                          .eq(getName(), entity.getId())
                          .autoRoute(field.getName(), entity.getId())
                          .iterate(row -> {
-                             updateReferencedFields(entity, (Entity) row);
+                             updateReferencedFields(entity, row);
                              return true;
                          });
                 } catch (Throwable e) {

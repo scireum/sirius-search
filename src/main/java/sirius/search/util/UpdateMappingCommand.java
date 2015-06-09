@@ -33,7 +33,7 @@ public class UpdateMappingCommand implements Command {
                 try {
                     Index.addMapping(Index.getIndexPrefix() + ed.getIndex(),
                                      type,
-                                     Value.indexOf(1, params).asString().toLowerCase().equals("y"));
+                                     "y".equalsIgnoreCase(Value.indexOf(1, params).asString()));
                     output.line("Mapping was updated...");
                 } catch (Exception e) {
                     output.line(e.getMessage());

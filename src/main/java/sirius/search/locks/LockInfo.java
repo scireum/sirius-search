@@ -19,14 +19,23 @@ import java.time.LocalDateTime;
 @Indexed(index = "core", framework = "search.locks")
 public class LockInfo extends Entity {
 
-    private String currentOwnerNode;
+    /**
+     * Contains the current owner of the lock (its node name).
+     */
     public static final String CURRENT_OWNER_NODE = "currentOwnerNode";
+    private String currentOwnerNode;
 
-    private String currentOwnerSection;
+    /**
+     * Contains the code section which holds the lock.
+     */
     public static final String CURRENT_OWNER_SECTION = "currentOwnerSection";
+    private String currentOwnerSection;
 
-    private LocalDateTime lockedSince;
+    /**
+     * Contains the timestamp when the lock was created.
+     */
     public static final String LOCKED_SINCE = "lockedSince";
+    private LocalDateTime lockedSince;
 
     public String getCurrentOwnerNode() {
         return currentOwnerNode;

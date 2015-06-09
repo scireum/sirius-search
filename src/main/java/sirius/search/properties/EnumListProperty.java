@@ -59,7 +59,7 @@ public class EnumListProperty extends Property {
         List<Object> result = new ArrayList<>();
         try {
             if (value instanceof List) {
-                for (Object element : (List) value) {
+                for (Object element : (List<?>) value) {
                     Object enumValue = Value.of(element).coerce(field.getAnnotation(ListType.class).value(), null);
                     if (enumValue != null) {
                         result.add(enumValue);
@@ -76,8 +76,8 @@ public class EnumListProperty extends Property {
     @Override
     protected Object transformToSource(Object o) {
         List<String> result = Lists.newArrayList();
-        if (o != null && o instanceof List) {
-            for (Object element : (List) o) {
+        if (o instanceof List<?>) {
+            for (Object element : (List<?>) o) {
                 if (element != null) {
                     result.add(((Enum<?>) element).name());
                 }

@@ -93,11 +93,7 @@ public class Lock {
 
         Lock lock = (Lock) o;
 
-        if (!name.equals(lock.name)) {
-            return false;
-        }
-
-        return true;
+        return name.equals(lock.name);
     }
 
     @Override

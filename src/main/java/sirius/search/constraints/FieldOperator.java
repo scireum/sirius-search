@@ -63,10 +63,10 @@ public class FieldOperator implements Constraint {
      * Converts Java 8 Time API objects into ISO strings accepted by ES (Joda-Time)
      */
     protected static Object convertJava8Times(Object value) {
-        if (value != null && value instanceof Instant) {
+        if (value instanceof Instant) {
             value = LocalDateTime.ofInstant((Instant) value, ZoneId.systemDefault());
         }
-        if (value != null && value instanceof TemporalAccessor) {
+        if (value instanceof TemporalAccessor) {
             if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
                 return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
             } else {

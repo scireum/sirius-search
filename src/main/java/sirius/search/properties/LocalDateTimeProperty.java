@@ -59,6 +59,7 @@ public class LocalDateTimeProperty extends Property {
         try {
             return NLS.parseUserString(LocalDateTime.class, value.getString());
         } catch (IllegalArgumentException e) {
+            Exceptions.ignore(e);
             UserContext.setFieldError(name, value.get());
             throw Exceptions.createHandled()
                             .withNLSKey("Property.invalidInput")
@@ -83,7 +84,7 @@ public class LocalDateTimeProperty extends Property {
 
     @Override
     protected Object transformToSource(Object o) {
-        if (o == null || !(o instanceof LocalDateTime)) {
+        if (!(o instanceof LocalDateTime)) {
             return null;
         }
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(((LocalDateTime) o).atZone(ZoneId.systemDefault()));

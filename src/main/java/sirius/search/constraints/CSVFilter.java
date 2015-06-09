@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * Represents a constraint which checks if the given field contains one or all of the values given as a comma
  * separated string.
  * <p>
- * Therefore the constraint translates x,y,z for field f to: <code>f = x OR f = y OR f = z</code>. Empty strings
+ * Therefore the constraint translates x,y,z for field f to: {@code f = x OR f = y OR f = z}. Empty strings
  * are gracefully handled (ignored). If {@link #orEmpty()} is used, the constraint also succeeds if
  * the target field is empty. This is only valid when <tt>containsAny</tt> is used.
  */

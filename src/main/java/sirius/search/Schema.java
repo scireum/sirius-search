@@ -242,84 +242,88 @@ public class Schema {
             prefix = prefix + "-";
         }
         final String newPrefix = prefix;
-        Async.defaultExecutor().fork(new Runnable() {
-            @Override
-            public void run() {
-                Index.LOG.INFO("Creating Mappings: " + newPrefix);
-                for (String result : createMappings(newPrefix)) {
-                    Index.LOG.INFO(result);
+        Async.defaultExecutor().fork(new ReIndexTask(newPrefix)).execute();
+    }
+
+    private class ReIndexTask implements Runnable {
+        private final String newPrefix;
+        private int counter;
+        private BulkRequestBuilder bulk;
+
+        public ReIndexTask(String newPrefix) {
+            this.newPrefix = newPrefix;
+        }
+
+        @Override
+        public void run() {
+            Index.LOG.INFO("Creating Mappings: " + newPrefix);
+            for (String result : createMappings(newPrefix)) {
+                Index.LOG.INFO(result);
+            }
+            Index.LOG.INFO("Re-Indexing from: " + Index.getIndexPrefix() + " to " + newPrefix);
+            executeAndReCreateBulk();
+            try {
+                for (EntityDescriptor ed : descriptorTable.values()) {
+                    Index.LOG.INFO("Re-Indexing: " + newPrefix + ed.getIndex() + "." + ed.getType());
+                    reIndexEntitiesOfDescriptor(ed);
                 }
-                Index.LOG.INFO("Re-Indexing from: " + Index.getIndexPrefix() + " to " + newPrefix);
-                BulkRequestBuilder bulk = Index.getClient().prepareBulk();
-                int counter = 0;
-                try {
-                    for (EntityDescriptor ed : descriptorTable.values()) {
-                        Index.LOG.INFO("Re-Indexing: " + newPrefix + ed.getIndex() + "." + ed.getType());
-                        try {
-                            SearchRequestBuilder srb = Index.getClient()
-                                                            .prepareSearch(Index.getIndexPrefix() + ed.getIndex())
-                                                            .setTypes(ed.getType());
-                            srb.setSearchType(SearchType.SCAN);
-                            // Limit to 10 per shard
-                            srb.setSize(10);
-                            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(60));
-                            SearchResponse searchResponse = srb.execute().actionGet();
-                            while (true) {
-                                Watch w = Watch.start();
-                                searchResponse = Index.getClient()
-                                                      .prepareSearchScroll(searchResponse.getScrollId())
-                                                      .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(
-                                                              60))
-                                                      .execute()
-                                                      .actionGet();
-                                for (SearchHit hit : searchResponse.getHits()) {
-                                    bulk.add(Index.getClient()
-                                                  .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
-                                                  .setId(hit.getId())
-                                                  .setSource(hit.source())
-                                                  .request());
-                                    counter++;
-                                    if (counter > 1000) {
-                                        Index.LOG.INFO("Executing bulk: " + ed.getType());
-                                        BulkResponse res = bulk.execute().actionGet();
-                                        if (res.hasFailures()) {
-                                            for (BulkItemResponse itemRes : res.getItems()) {
-                                                if (itemRes.isFailed()) {
-                                                    Index.LOG.SEVERE("Re-Indexing failed: "
-                                                                     + itemRes.getFailureMessage());
-                                                }
-                                            }
-                                        }
-                                        bulk = Index.getClient().prepareBulk();
-                                        counter = 0;
-                                    }
-                                }
-                                //Break condition: No hits are returned
-                                if (searchResponse.getHits().hits().length == 0) {
-                                    break;
-                                }
-                            }
-                        } catch (Throwable t) {
-                            throw Exceptions.handle(Index.LOG, t);
+            } finally {
+                executeAndReCreateBulk();
+                Index.LOG.INFO("Re-Index is COMPLETED! You may now start breathing again...");
+            }
+        }
+
+        private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
+            try {
+                SearchRequestBuilder srb =
+                        Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
+                srb.setSearchType(SearchType.SCAN);
+                // Limit to 10 per shard
+                srb.setSize(10);
+                srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60));
+                SearchResponse searchResponse = srb.execute().actionGet();
+                while (true) {
+                    Watch w = Watch.start();
+                    searchResponse = Index.getClient()
+                                          .prepareSearchScroll(searchResponse.getScrollId())
+                                          .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60))
+                                          .execute()
+                                          .actionGet();
+                    for (SearchHit hit : searchResponse.getHits()) {
+                        bulk.add(Index.getClient()
+                                      .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
+                                      .setId(hit.getId())
+                                      .setSource(hit.source())
+                                      .request());
+                        counter++;
+                        if (counter > 1000) {
+                            executeAndReCreateBulk();
                         }
                     }
-                } finally {
-                    if (counter > 0) {
-                        Index.LOG.INFO("Executing final bulk...");
-                        BulkResponse res = bulk.execute().actionGet();
-                        if (res.hasFailures()) {
-                            for (BulkItemResponse itemRes : res.getItems()) {
-                                if (itemRes.isFailed()) {
-                                    Index.LOG.SEVERE("Re-Indexing failed: " + itemRes.getFailureMessage());
-                                }
-                            }
-                        }
-                        bulk = Index.getClient().prepareBulk();
-                        counter = 0;
+                    //Break condition: No hits are returned
+                    if (searchResponse.getHits().hits().length == 0) {
+                        return;
                     }
-                    Index.LOG.INFO("Re-Index is COMPLETED! You may now start breathing again...");
+                }
+            } catch (Throwable t) {
+                throw Exceptions.handle(Index.LOG, t);
+            }
+        }
+
+        private void executeAndReCreateBulk() {
+            if (counter > 0) {
+                Index.LOG.INFO("Executing bulk...");
+                BulkResponse res = bulk.execute().actionGet();
+                if (res.hasFailures()) {
+                    for (BulkItemResponse itemRes : res.getItems()) {
+                        if (itemRes.isFailed()) {
+                            Index.LOG.SEVERE("Re-Indexing failed: " + itemRes.getFailureMessage());
+                        }
+                    }
                 }
             }
-        }).execute();
+            bulk = Index.getClient().prepareBulk();
+            counter = 0;
+        }
     }
 }

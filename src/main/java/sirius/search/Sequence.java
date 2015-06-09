@@ -16,8 +16,11 @@ import sirius.search.annotations.Indexed;
 @Indexed(index = "core")
 public class Sequence extends Entity {
 
-    private int next;
+    /**
+     * Contains the next unique value in this sequence.
+     */
     public static final String NEXT = "next";
+    private int next;
 
     public int getNext() {
         return next;

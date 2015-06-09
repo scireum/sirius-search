@@ -69,6 +69,8 @@ import java.util.function.Function;
 
 /**
  * Represents a query against the database which are created via {@link Index#select(Class)}.
+ *
+ * @param <E> the type of entities being queried
  */
 public class Query<E extends Entity> {
 
@@ -81,7 +83,7 @@ public class Query<E extends Entity> {
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, java.util.function.Function)} to specify a custom field.
      */
-    private static String DEFAULT_FIELD = "_all";
+    private static final String DEFAULT_FIELD = "_all";
 
     @ConfigValue("index.termFacetLimit")
     private static int termFacetLimit;
@@ -279,7 +281,7 @@ public class Query<E extends Entity> {
      * a query.
      *
      * @param query the query to search for. Does actually support the complete Lucene query syntax like
-     *              <code>field:value OR field2:value1</code>
+     *              {@code field:value OR field2:value1}
      * @return the query itself for fluent method calls
      */
     public Query<E> directQuery(String query) {
@@ -330,7 +332,7 @@ public class Query<E extends Entity> {
      * @param value the value of the field
      * @return the query itself for fluent method calls
      */
-    protected Query autoRoute(String field, String value) {
+    protected Query<?> autoRoute(String field, String value) {
         EntityDescriptor descriptor = Index.getDescriptor(clazz);
         if (!descriptor.hasRouting()) {
             return this;
@@ -641,22 +643,19 @@ public class Query<E extends Entity> {
             if (!ed.hasRouting()) {
                 Exceptions.handle()
                           .to(Index.LOG)
-                          .withSystemErrorMessage(
-                                  "Performing a search on %s with a routing "
-                                  + "- but entity has no routing attribute (in @Indexed)! "
-                                  + "This will most probably FAIL!",
-                                  clazz.getName())
+                          .withSystemErrorMessage("Performing a search on %s with a routing "
+                                                  + "- but entity has no routing attribute (in @Indexed)! "
+                                                  + "This will most probably FAIL!", clazz.getName())
                           .handle();
             }
             srb.setRouting(routing);
         } else if (ed.hasRouting() && !deliberatelyUnrouted) {
             Exceptions.handle()
                       .to(Index.LOG)
-                      .withSystemErrorMessage(
-                              "Performing a search on %s without providing a routing. "
-                              + "Consider providing a routing for better performance or call deliberatelyUnrouted() "
-                              + "to signal that routing was intentionally skipped.",
-                              clazz.getName())
+                      .withSystemErrorMessage("Performing a search on %s without providing a routing. "
+                                              + "Consider providing a routing for better performance "
+                                              + "or call deliberatelyUnrouted() to signal that routing was "
+                                              + "intentionally skipped.", clazz.getName())
                       .handle();
         }
     }
@@ -703,10 +702,9 @@ public class Query<E extends Entity> {
             }
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
-                Index.LOG.WARN(
-                        "Default limit was hit when using Query.queryList or Query.queryResultList! "
-                        + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
-                        this);
+                Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
+                               + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
+                               this);
             }
             return resultList;
         } catch (Throwable e) {
@@ -732,18 +730,19 @@ public class Query<E extends Entity> {
                 if (!ed.hasRouting()) {
                     Exceptions.handle()
                               .to(Index.LOG)
-                              .withSystemErrorMessage(
-                                      "Performing a search on %s with a routing - but entity has no routing attribute (in @Indexed)! This will most probably FAIL!",
-                                      clazz.getName())
+                              .withSystemErrorMessage("Performing a search on %s with a routing "
+                                                      + "- but entity has no routing attribute (in @Indexed)! "
+                                                      + "This will most probably FAIL!", clazz.getName())
                               .handle();
                 }
                 crb.setRouting(routing);
             } else if (ed.hasRouting() && !deliberatelyUnrouted) {
                 Exceptions.handle()
                           .to(Index.LOG)
-                          .withSystemErrorMessage(
-                                  "Performing a search on %s without providing a routing. Consider providing a routing for better performance or call deliberatelyUnrouted() to signal that routing was intentionally skipped.",
-                                  clazz.getName())
+                          .withSystemErrorMessage("Performing a search on %s without providing a routing. "
+                                                  + "Consider providing a routing for better performance "
+                                                  + "or call deliberatelyUnrouted() to signal that routing "
+                                                  + "was intentionally skipped.", clazz.getName())
                           .handle();
             }
             QueryBuilder qb = buildQuery();
@@ -1017,11 +1016,7 @@ public class Query<E extends Entity> {
 
     private void clearScroll(SearchResponse searchResponse) {
         try {
-            Index.getClient()
-                 .prepareClearScroll()
-                 .addScrollId(searchResponse.getScrollId())
-                 .execute()
-                 .actionGet();
+            Index.getClient().prepareClearScroll().addScrollId(searchResponse.getScrollId()).execute().actionGet();
         } catch (Throwable e) {
             Exceptions.handle(Index.LOG, e);
         }
@@ -1037,7 +1032,8 @@ public class Query<E extends Entity> {
             if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrolTTL) {
                 Exceptions.handle()
                           .withSystemErrorMessage(
-                                  "A scroll query against elasticserach took too long to process its data! The result is probably inconsistent! Query: %s",
+                                  "A scroll query against elasticserach took too long to process its data! "
+                                  + "The result is probably inconsistent! Query: %s",
                                   this)
                           .to(Index.LOG)
                           .handle();
@@ -1172,23 +1168,19 @@ public class Query<E extends Entity> {
             if (!ed.hasRouting()) {
                 throw Exceptions.handle()
                                 .to(Index.LOG)
-                                .withSystemErrorMessage(
-                                        "Performing a delete on %s with a routing "
-                                        + "- but entity has no routing attribute (in @Indexed)! "
-                                        + "This will most probably FAIL!",
-                                        clazz.getName())
+                                .withSystemErrorMessage("Performing a delete on %s with a routing "
+                                                        + "- but entity has no routing attribute (in @Indexed)! "
+                                                        + "This will most probably FAIL!", clazz.getName())
                                 .handle();
             }
             builder.setRouting(routing);
         } else if (ed.hasRouting() && !deliberatelyUnrouted) {
             throw Exceptions.handle()
                             .to(Index.LOG)
-                            .withSystemErrorMessage(
-                                    "Performing a delete on %s without providing a routing. "
-                                    + "Consider providing a routing for better performance "
-                                    + "or call deliberatelyUnrouted() to signal that routing was "
-                                    + "intentionally skipped.",
-                                    clazz.getName())
+                            .withSystemErrorMessage("Performing a delete on %s without providing a routing. "
+                                                    + "Consider providing a routing for better performance "
+                                                    + "or call deliberatelyUnrouted() to signal that routing was "
+                                                    + "intentionally skipped.", clazz.getName())
                             .handle();
         }
         QueryBuilder qb = buildQuery();

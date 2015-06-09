@@ -63,11 +63,7 @@ public class CriticalSection {
         if (!lock.equals(that.lock)) {
             return false;
         }
-        if (!section.equals(that.section)) {
-            return false;
-        }
-
-        return true;
+        return section.equals(that.section);
     }
 
     @Override

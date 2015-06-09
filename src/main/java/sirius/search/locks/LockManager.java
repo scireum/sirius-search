@@ -143,6 +143,7 @@ public class LockManager {
             index.tryUpdate(li);
             return true;
         } catch (OptimisticLockException e) {
+            Exceptions.ignore(e);
             return false;
         }
     }
@@ -203,6 +204,7 @@ public class LockManager {
                     li.setCurrentOwnerNode(null);
                     index.tryUpdate(li);
                 } catch (OptimisticLockException e) {
+                    Exceptions.ignore(e);
                     throw Exceptions.handle()
                                     .to(LOG)
                                     .withSystemErrorMessage(

@@ -45,11 +45,6 @@ public class BigDecimalProperty extends Property {
     }
 
     @Override
-    protected String getMappingType() {
-        return "string";
-    }
-
-    @Override
     protected Object transformFromSource(Object value) {
         if (value != null) {
             return new BigDecimal(value.toString());

@@ -22,6 +22,8 @@ import java.util.List;
  * <p>
  * Instances of this class are created by {@link sirius.search.Query#queryResultList()} as a result of a database
  * query.
+ *
+ * @param <T> the type of entities in the result
  */
 public class ResultList<T> implements Iterable<T> {
 

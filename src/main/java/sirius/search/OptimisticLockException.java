@@ -15,6 +15,7 @@ import org.elasticsearch.index.engine.VersionConflictEngineException;
  */
 public class OptimisticLockException extends Exception {
 
+    private static final long serialVersionUID = 3422074853606377097L;
     private Entity entity;
 
     /**

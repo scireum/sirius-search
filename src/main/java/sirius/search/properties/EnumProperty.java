@@ -10,6 +10,7 @@ package sirius.search.properties;
 
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.Exceptions;
 
 import java.lang.reflect.Field;
 
@@ -50,6 +51,7 @@ public class EnumProperty extends Property {
                         .coerce((Class<Object>) field.getType(),
                                 isNullAllowed() ? null : field.getType().getEnumConstants()[0]);
         } catch (IllegalArgumentException e) {
+            Exceptions.ignore(e);
             return isNullAllowed() ? null : field.getType().getEnumConstants()[0];
         }
     }

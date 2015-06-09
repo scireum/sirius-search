@@ -56,7 +56,7 @@ class RobustQueryParser {
      *
      * @param query the query to enhance with the parsed result
      */
-    void compileAndApply(Query query) {
+    void compileAndApply(Query<?> query) {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
         QueryBuilder main = parseQuery(reader);
         if (!reader.current().isEndOfInput()) {
@@ -210,55 +210,59 @@ class RobustQueryParser {
             }
         }
         if (sb.length() > 0) {
-            String value = sb.toString();
-            if (value.length() > 1 && value.endsWith("*")) {
-                if (negate) {
-                    BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                    qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1).toLowerCase()));
-                    return Collections.singletonList(qry);
-                } else {
-                    return Collections.singletonList(QueryBuilders.prefixQuery(field,
-                                                                               value.substring(0, value.length() - 1)
-                                                                                    .toLowerCase()));
-                }
-            }
-
-            List<QueryBuilder> result = Lists.newArrayList();
-            BoolQueryBuilder qry = QueryBuilders.boolQuery();
-
-            if (field.equals(defaultField)) {
-                for (List<String> tokens : tokenizer.apply(value)) {
-                    QueryBuilder qb = transformTokenList(field, tokens);
-                    if (negate) {
-                        qry.mustNot(qb);
-                    } else {
-                        result.add(qb);
-                    }
-                }
-            } else {
-                // if we're looking for an id, the field is called _id in elastic search.
-                if ("id".equals(field)) {
-                    field = "_id";
-                }
-
-                if (negate) {
-                    qry.mustNot(QueryBuilders.termQuery(field, value));
-                } else {
-                    result.add(QueryBuilders.termQuery(field, value));
-                }
-            }
-            if (negate) {
-                if (qry.hasClauses()) {
-                    return Collections.singletonList(qry);
-                } else {
-                    return Collections.emptyList();
-                }
-            } else {
-                return result;
-            }
+            return compileToken(field, sb, negate);
         }
 
         return Collections.emptyList();
+    }
+
+    private List<QueryBuilder> compileToken(String field, StringBuilder sb, boolean negate) {
+        String value = sb.toString();
+        if (value.length() > 1 && value.endsWith("*")) {
+            if (negate) {
+                BoolQueryBuilder qry = QueryBuilders.boolQuery();
+                qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1).toLowerCase()));
+                return Collections.singletonList(qry);
+            } else {
+                return Collections.singletonList(QueryBuilders.prefixQuery(field,
+                                                                           value.substring(0, value.length() - 1)
+                                                                                .toLowerCase()));
+            }
+        }
+
+        List<QueryBuilder> result = Lists.newArrayList();
+        BoolQueryBuilder qry = QueryBuilders.boolQuery();
+
+        if (field.equals(defaultField)) {
+            for (List<String> tokens : tokenizer.apply(value)) {
+                QueryBuilder qb = transformTokenList(field, tokens);
+                if (negate) {
+                    qry.mustNot(qb);
+                } else {
+                    result.add(qb);
+                }
+            }
+        } else {
+            // if we're looking for an id, the field is called _id in elastic search.
+            if ("id".equals(field)) {
+                field = "_id";
+            }
+
+            if (negate) {
+                qry.mustNot(QueryBuilders.termQuery(field, value));
+            } else {
+                result.add(QueryBuilders.termQuery(field, value));
+            }
+        }
+        if (negate) {
+            if (qry.hasClauses()) {
+                return Collections.singletonList(qry);
+            } else {
+                return Collections.emptyList();
+            }
+        } else {
+            return result;
+        }
     }
 
     private QueryBuilder transformTokenList(String field, List<String> tokens) {

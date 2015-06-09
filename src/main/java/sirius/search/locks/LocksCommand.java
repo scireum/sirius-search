@@ -26,7 +26,7 @@ public class LocksCommand implements Command {
     @Override
     public void execute(Output output, String... params) throws Exception {
         if (params.length > 0) {
-            if (params[0].equals("all") && Sirius.isDev()) {
+            if ("all".equals(params[0]) && Sirius.isDev()) {
                 output.apply("Unlocking all locks");
                 for (LockInfo li : lm.getLocks()) {
                     lm.killLock(li.getId());

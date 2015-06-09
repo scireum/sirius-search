@@ -103,7 +103,7 @@ public class Index {
     /**
      * Logger used by this framework
      */
-    public static Log LOG = Log.get("index");
+    public static final Log LOG = Log.get("index");
 
     /**
      * Contains the ElasticSearch client
@@ -348,7 +348,7 @@ public class Index {
     /**
      * Queue of actions which need to be delayed one second
      */
-    private static List<WaitingBlock> oneSecondDelayLine = Lists.newArrayList();
+    private static final List<WaitingBlock> oneSecondDelayLine = Lists.newArrayList();
 
     /**
      * Adds an action to the delay line, which ensures that it is at least delayed for one second
@@ -367,6 +367,9 @@ public class Index {
         cmd.run();
     }
 
+    /**
+     * Provides usage metrics for elasticsearch and the query system.
+     */
     @Register
     public static class IndexReport implements MetricProvider {
 
@@ -506,6 +509,9 @@ public class Index {
         }
     }
 
+    /**
+     * Starts and stops the elasticsearch client.
+     */
     @Register(classes = Lifecycle.class)
     public static class IndexLifecycle implements Lifecycle {
 
@@ -900,22 +906,7 @@ public class Index {
                 }
             }
 
-            Watch w = Watch.start();
-            IndexResponse indexResponse = irb.execute().actionGet();
-            if (LOG.isFINE()) {
-                LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
-                         getIndex(entity),
-                         descriptor.getType(),
-                         indexResponse.getId(),
-                         indexResponse.getVersion());
-            }
-            entity.id = indexResponse.getId();
-            entity.version = indexResponse.getVersion();
-            entity.afterSave();
-            queryDuration.addValue(w.elapsedMillis());
-            w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
-            traceChange(entity);
-            return entity;
+            return executeUpdate(entity, descriptor, irb);
         } catch (VersionConflictEngineException e) {
             if (LOG.isFINE()) {
                 LOG.FINE("Version conflict on updating: %s", entity);
@@ -931,6 +922,25 @@ public class Index {
                                                     entity.getId())
                             .handle();
         }
+    }
+
+    private static <E extends Entity> E executeUpdate(E entity, EntityDescriptor descriptor, IndexRequestBuilder irb) {
+        Watch w = Watch.start();
+        IndexResponse indexResponse = irb.execute().actionGet();
+        if (LOG.isFINE()) {
+            LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
+                     getIndex(entity),
+                     descriptor.getType(),
+                     indexResponse.getId(),
+                     indexResponse.getVersion());
+        }
+        entity.id = indexResponse.getId();
+        entity.version = indexResponse.getVersion();
+        entity.afterSave();
+        queryDuration.addValue(w.elapsedMillis());
+        w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
+        traceChange(entity);
+        return entity;
     }
 
     /**
@@ -1016,26 +1026,7 @@ public class Index {
             }
             Watch w = Watch.start();
             try {
-                if (descriptor.hasRouting() && routing == null) {
-                    Exceptions.handle()
-                              .to(LOG)
-                              .withSystemErrorMessage(
-                                      "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
-                                      + "This will most probably FAIL!",
-                                      clazz.getName(),
-                                      id)
-                              .handle();
-                } else if (!descriptor.hasRouting() && routing != null) {
-                    Exceptions.handle()
-                              .to(LOG)
-                              .withSystemErrorMessage(
-                                      "Trying to FIND an entity of type %s (with id %s) with a routing "
-                                      + "- but entity has no routing attribute (in @Indexed)! "
-                                      + "This will most probably FAIL!",
-                                      clazz.getName(),
-                                      id)
-                              .handle();
-                }
+                verifyRoutingForFind(routing, clazz, id, descriptor);
                 GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
                                              .setPreference("_primary")
                                              .setRouting(routing)
@@ -1067,6 +1058,29 @@ public class Index {
                             .error(t)
                             .withSystemErrorMessage("Failed to find '%s' (%s): %s (%s)", id, clazz.getName())
                             .handle();
+        }
+    }
+
+    private static <E extends Entity> void verifyRoutingForFind(@Nullable String routing,
+                                                                @Nonnull Class<E> clazz,
+                                                                String id,
+                                                                EntityDescriptor descriptor) {
+        if (descriptor.hasRouting() && routing == null) {
+            Exceptions.handle()
+                      .to(LOG)
+                      .withSystemErrorMessage(
+                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
+                              + "This will most probably FAIL!",
+                              clazz.getName(),
+                              id)
+                      .handle();
+        } else if (!descriptor.hasRouting() && routing != null) {
+            Exceptions.handle()
+                      .to(LOG)
+                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing "
+                                              + "- but entity has no routing attribute (in @Indexed)! "
+                                              + "This will most probably FAIL!", clazz.getName(), id)
+                      .handle();
         }
     }
 
@@ -1412,6 +1426,9 @@ public class Index {
         Index.indexPrefix = indexPrefix;
     }
 
+    /**
+     * Generates a pure unclustered in memory instance of elasticsearch (most probably for testing purposes).
+     */
     public static void generateEmptyInMemoryInstance() {
         if (inMemoryNode != null) {
             ready = false;
@@ -1444,6 +1461,14 @@ public class Index {
     @Part
     private static Content content;
 
+    /**
+     * Loads a test dataset from the classpath. The given file should contains an array of JSON objects.
+     * <p>
+     * Each object must contain a property named <tt>_type</tt> which determines the target entity as well as
+     * <tt>_id</tt> which determiens its ID.
+     *
+     * @param dataset the resource to load into the in memory elasticsearch.
+     */
     @SuppressWarnings("unchecked")
     public static void loadDataset(String dataset) {
         try {

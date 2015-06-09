@@ -40,11 +40,11 @@ public class FieldEqual implements Constraint {
         if (value != null && value.getClass().isEnum()) {
             this.value = ((Enum<?>) value).name();
         }
-        if (value != null && value instanceof Entity) {
+        if (value instanceof Entity) {
             this.value = ((Entity) value).getId();
         }
-        if (value != null && value instanceof EntityRef) {
-            this.value = ((EntityRef) value).getId();
+        if (value instanceof EntityRef) {
+            this.value = ((EntityRef<?>) value).getId();
         }
     }
 
