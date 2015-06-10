@@ -517,6 +517,14 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Sets a custom pageSize used in the page(int start) and queryPage() methods.
+     * @param pageSize
+     */
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+    }
+
+    /**
      * Setups start and limiting so that the result begins at the given start and contains at most one page
      * (defined by <tt>pageSize</tt>) items.
      *
