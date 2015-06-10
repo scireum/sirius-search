@@ -522,7 +522,7 @@ public class Query<E extends Entity> {
      *  @param pageSize
      *  @return the query itself for fluent method calls
      */
-    public Query<E> setPageSize(int pageSize) {
+    public Query<E> withPageSize(int pageSize) {
         this.pageSize = pageSize;
         return this;
     }
