@@ -518,10 +518,13 @@ public class Query<E extends Entity> {
 
     /**
      * Sets a custom pageSize used in the page(int start) and queryPage() methods.
-     * @param pageSize
+     *
+     *  @param pageSize
+     *  @return the query itself for fluent method calls
      */
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
+        return this;
     }
 
     /**
