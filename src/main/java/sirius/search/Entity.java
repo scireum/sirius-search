@@ -331,6 +331,9 @@ public abstract class Entity {
                     }
                 }
                 sourceEntity = sourceReference.getValue(routingValue);
+            } else {
+                // Nothing has changed -> no need to load and update...
+                return;
             }
             if (sourceEntity == null) {
                 propertyToFill.getField().set(this, null);
