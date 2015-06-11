@@ -9,6 +9,7 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
@@ -64,7 +65,7 @@ public class EntityProperty extends Property {
     @Override
     protected Object transformToSource(Object o) {
         EntityRef<?> entityRef = (EntityRef<?>) o;
-        if (!entityRef.isFilled()) {
+        if (Strings.isEmpty(entityRef)) {
             return null;
         }
         return entityRef.getId();
