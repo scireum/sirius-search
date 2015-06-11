@@ -18,7 +18,9 @@ import sirius.search.Entity;
 import sirius.search.Index;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -37,7 +39,8 @@ public class OneInField implements Constraint {
      */
     private OneInField(Collection<?> values, String field) {
         if (values != null) {
-            this.values = values.stream().filter(Objects::nonNull).collect(Collectors.toList());
+            //noinspection RedundantCast - Otherwise javac might blow up occasionally :-/
+            this.values = values.stream().filter(Objects::nonNull).collect((Collector<Object, ?, List<Object>>)Collectors.toList());
         } else {
             this.values = null;
         }
