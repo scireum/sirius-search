@@ -40,7 +40,9 @@ public class OneInField implements Constraint {
     private OneInField(Collection<?> values, String field) {
         if (values != null) {
             //noinspection RedundantCast - Otherwise javac might blow up occasionally :-/
-            this.values = values.stream().filter(Objects::nonNull).collect((Collector<Object, ?, List<Object>>)Collectors.toList());
+            this.values = values.stream()
+                                .filter(Objects::nonNull)
+                                .collect((Collector<Object, ?, List<Object>>) Collectors.toList());
         } else {
             this.values = null;
         }
