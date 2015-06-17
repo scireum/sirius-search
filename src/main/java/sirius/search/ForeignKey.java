@@ -14,8 +14,9 @@ import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.script.ScriptService;
-import sirius.kernel.async.Async;
+import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.search.annotations.RefType;
 import sirius.search.properties.Property;
@@ -175,56 +176,68 @@ public class ForeignKey {
         }
     }
 
+    @Part
+    private static Tasks tasks;
+
     /**
      * Handles a delete of the given entity.
      *
      * @param entity the entity (which must be of type {@link #getReferencedClass()}) which is going to be deleted
      */
-    @SuppressWarnings("unchecked")
     public void onDelete(final Entity entity) {
         if (refType.cascade() == Cascade.REJECT) {
-            if (Index.select(getLocalClass())
-                     .eq(getName(), entity.getId())
-                     .autoRoute(field.getName(), entity.getId())
-                     .exists()) {
-                throw Exceptions.createHandled()
-                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
-                                            refType.onDeleteErrorMsg() :
-                                            "ForeignKey.restricted")
-                                .handle();
-            }
+            rejectDeleteIfNecessary(entity);
         } else if (refType.cascade() == Cascade.SET_NULL) {
-            Async.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> {
-                try {
-                    Index.select((Class<Entity>) getLocalClass())
-                         .eq(getName(), entity.getId())
-                         .autoRoute(field.getName(), entity.getId())
-                         .iterate(row -> {
-                             updateReferencedFields(entity, row);
-                             return true;
-                         });
-                } catch (Throwable e) {
-                    Exceptions.handle(Index.LOG, e);
-                }
-            }).execute();
+            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> setNull(entity));
         } else if (refType.cascade() == Cascade.CASCADE) {
-            Async.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> {
-                try {
-                    Index.select((Class<Entity>) getLocalClass())
-                         .eq(getName(), entity.getId())
-                         .autoRoute(field.getName(), entity.getId())
-                         .iterate(row -> {
-                             try {
-                                 Index.delete(row, true);
-                             } catch (Throwable e) {
-                                 Exceptions.handle(Index.LOG, e);
-                             }
-                             return true;
-                         });
-                } catch (Throwable e) {
-                    Exceptions.handle(Index.LOG, e);
-                }
-            }).execute();
+            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> cascadeDelete(entity));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void cascadeDelete(Entity entity) {
+        try {
+            Index.select((Class<Entity>) getLocalClass())
+                 .eq(getName(), entity.getId())
+                 .autoRoute(field.getName(), entity.getId())
+                 .iterate(row -> {
+                     try {
+                         Index.delete(row, true);
+                     } catch (Throwable e) {
+                         Exceptions.handle(Index.LOG, e);
+                     }
+                     return true;
+                 });
+        } catch (Throwable e) {
+            Exceptions.handle(Index.LOG, e);
+        }
+    }
+
+    private void rejectDeleteIfNecessary(Entity entity) {
+        if (Index.select(getLocalClass())
+                 .eq(getName(), entity.getId())
+                 .autoRoute(field.getName(), entity.getId())
+                 .exists()) {
+            throw Exceptions.createHandled()
+                            .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
+                                        refType.onDeleteErrorMsg() :
+                                        "ForeignKey.restricted")
+                            .handle();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setNull(Entity entity) {
+        try {
+            Index.select((Class<Entity>) getLocalClass())
+                 .eq(getName(), entity.getId())
+                 .autoRoute(field.getName(), entity.getId())
+                 .iterate(row -> {
+                     updateReferencedFields(entity, row);
+                     return true;
+                 });
+        } catch (Throwable e) {
+            Exceptions.handle(Index.LOG, e);
         }
     }
 
@@ -253,19 +266,22 @@ public class ForeignKey {
             }
         }
         if (referenceChanged) {
-            Async.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> {
-                try {
-                    Index.select((Class<Entity>) getLocalClass())
-                         .eq(getName(), entity.getId())
-                         .autoRoute(field.getName(), entity.getId())
-                         .iterate(row -> {
-                             updateReferencedFields(entity, row);
-                             return true;
-                         });
-                } catch (Throwable e) {
-                    Exceptions.handle(Index.LOG, e);
-                }
-            }).execute();
+            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> updateReferencedFields(entity));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateReferencedFields(Entity entity) {
+        try {
+            Index.select((Class<Entity>) getLocalClass())
+                 .eq(getName(), entity.getId())
+                 .autoRoute(field.getName(), entity.getId())
+                 .iterate(row -> {
+                     updateReferencedFields(entity, row);
+                     return true;
+                 });
+        } catch (Throwable e) {
+            Exceptions.handle(Index.LOG, e);
         }
     }
 

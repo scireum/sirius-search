@@ -8,8 +8,8 @@
 
 package sirius.search.locks;
 
-import sirius.kernel.async.Async;
 import sirius.kernel.async.CallContext;
+import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Wait;
 import sirius.kernel.di.std.Part;
@@ -55,6 +55,9 @@ public class LockManager {
 
     @Part
     private IndexAccess index;
+
+    @Part
+    private Tasks tasks;
 
     /**
      * Tries to acquire the given lock within the given timeout.
@@ -105,7 +108,7 @@ public class LockManager {
             if (tryAcquire(section)) {
                 return true;
             }
-            if (!Async.isRunning()) {
+            if (!tasks.isRunning()) {
                 return false;
             }
             // Wait 500ms, 1s and then always 1.5s to check...

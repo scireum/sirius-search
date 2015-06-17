@@ -9,6 +9,7 @@
 package sirius.search.locks
 
 import sirius.kernel.BaseSpecification
+import sirius.kernel.async.Tasks
 import sirius.kernel.di.Injector
 import sirius.kernel.health.HandledException
 import sirius.search.IndexAccess
@@ -41,9 +42,10 @@ class LockManagerSpec extends BaseSpecification {
     def "tryLock fails on already acquired lock"() {
         given:
         def lm = new LockManager();
+        lm.tasks = Injector.context().getPart(Tasks.class);
+        lm.index = Mock(IndexAccess);
         def li = new LockInfo();
         li.setLockedSince(LocalDateTime.now());
-        lm.index = Mock(IndexAccess);
         when:
         def result = lm.tryLock(SECTION_TEST, 1, TimeUnit.MILLISECONDS);
         then:
@@ -56,6 +58,7 @@ class LockManagerSpec extends BaseSpecification {
     def "tryLock fails on contended lock"() {
         given:
         def lm = new LockManager();
+        lm.tasks = Injector.context().getPart(Tasks.class);
         lm.index = Mock(IndexAccess);
         when:
         def result = lm.tryLock(SECTION_TEST, 1, TimeUnit.MILLISECONDS);

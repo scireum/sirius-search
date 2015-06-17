@@ -35,10 +35,10 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.Async;
 import sirius.kernel.async.Barrier;
 import sirius.kernel.async.CallContext;
 import sirius.kernel.async.Future;
+import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Strings;
@@ -57,7 +57,7 @@ import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
 import sirius.kernel.timer.EveryTenSeconds;
-import sirius.web.templates.Content;
+import sirius.web.templates.Resources;
 import sirius.web.templates.Resource;
 
 import javax.annotation.Nonnull;
@@ -174,6 +174,9 @@ public class Index {
      */
     public static final String FETCH_DELIBERATELY_UNROUTED = "_DELIBERATELY_UNROUTED";
 
+    @Part
+    private static Tasks tasks;
+
     private Index() {
     }
 
@@ -190,6 +193,7 @@ public class Index {
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
+    @SuppressWarnings("unchecked")
     @Nonnull
     public static <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                              @Nonnull Class<E> type,
@@ -201,7 +205,7 @@ public class Index {
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        @SuppressWarnings("unchecked") E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
+        E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -257,6 +261,7 @@ public class Index {
      * value was loaded from cache (<tt>true</tt>) or not.
      */
     @Nonnull
+    @SuppressWarnings("unchecked")
     public static <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id) {
@@ -265,7 +270,7 @@ public class Index {
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        @SuppressWarnings("unchecked") E value = (E) globalCache.get(descriptor.getType() + "-" + id);
+        E value = (E) globalCache.get(descriptor.getType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -341,7 +346,7 @@ public class Index {
          */
         public void execute() {
             CallContext.setCurrent(context);
-            Async.executor("index-delay").fork(cmd).execute();
+            tasks.executor("index-delay").fork(cmd);
         }
     }
 
@@ -495,15 +500,22 @@ public class Index {
     @Register
     public static class OptimisticLockTracer implements EveryTenSeconds {
 
+        @Part
+        private Tasks tasks;
+
         @Override
         public void runTimer() throws Exception {
             if (traceOptimisticLockErrors) {
-                long limit = System.currentTimeMillis() - 10_000;
-                Iterator<IndexTrace> iter = traces.values().iterator();
-                while (iter.hasNext()) {
-                    if (iter.next().timestamp < limit) {
-                        iter.remove();
-                    }
+                tasks.defaultExecutor().fork(this::cleanOldRecordings);
+            }
+        }
+
+        private void cleanOldRecordings() {
+            long limit = System.currentTimeMillis() - 10_000;
+            Iterator<IndexTrace> iter = traces.values().iterator();
+            while (iter.hasNext()) {
+                if (iter.next().timestamp < limit) {
+                    iter.remove();
                 }
             }
         }
@@ -1459,7 +1471,7 @@ public class Index {
     }
 
     @Part
-    private static Content content;
+    private static Resources resources;
 
     /**
      * Loads a test dataset from the classpath. The given file should contains an array of JSON objects.
@@ -1478,7 +1490,7 @@ public class Index {
                                 .handle();
             }
             LOG.INFO("Loading dataset: %s", dataset);
-            Resource res = content.resolve(dataset)
+            Resource res = resources.resolve(dataset)
                                   .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
             String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
             JSONArray json = JSON.parseArray(contents);

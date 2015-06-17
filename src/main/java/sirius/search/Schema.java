@@ -20,10 +20,11 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.Async;
+import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
@@ -52,6 +53,9 @@ public class Schema {
      */
     @Parts(PropertyFactory.class)
     protected static PartCollection<PropertyFactory> factories;
+
+    @Part
+    private Tasks tasks;
 
     /**
      * Contains a map with an entity descriptor for each entity class
@@ -242,7 +246,7 @@ public class Schema {
             prefix = prefix + "-";
         }
         final String newPrefix = prefix;
-        Async.defaultExecutor().fork(new ReIndexTask(newPrefix)).execute();
+        tasks.defaultExecutor().fork(new ReIndexTask(newPrefix));
     }
 
     private class ReIndexTask implements Runnable {
@@ -250,7 +254,7 @@ public class Schema {
         private int counter;
         private BulkRequestBuilder bulk;
 
-        public ReIndexTask(String newPrefix) {
+        private ReIndexTask(String newPrefix) {
             this.newPrefix = newPrefix;
         }
 
