@@ -37,6 +37,7 @@ import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
 import sirius.kernel.async.CallContext;
+import sirius.kernel.async.ExecutionPoint;
 import sirius.kernel.async.Future;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
@@ -626,7 +627,7 @@ public class Index {
             } catch (OptimisticLockException e) {
                 LOG.FINE(e);
                 if (Sirius.isDev()) {
-                    LOG.WARN("Retrying due to optimistic lock: %s", e);
+                    LOG.INFO("Retrying due to optimistic lock: %s", e);
                 }
                 if (retries <= 0) {
                     throw Exceptions.handle()
@@ -910,9 +911,9 @@ public class Index {
             if (descriptor.hasRouting()) {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
-                    LOG.WARN("Updating an entity of type %s (%s) without routing information!",
+                    LOG.WARN("Updating an entity of type %s (%s) without routing information! Location: %s",
                              entity.getClass().getName(),
-                             entity.getId());
+                             entity.getId(), ExecutionPoint.snapshot());
                 } else {
                     irb.setRouting(String.valueOf(routingKey));
                 }
@@ -1293,9 +1294,9 @@ public class Index {
             if (descriptor.hasRouting()) {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
-                    LOG.WARN("Deleting an entity of type %s (%s) without routing information!",
+                    LOG.WARN("Deleting an entity of type %s (%s) without routing information! Location: %s",
                              entity.getClass().getName(),
-                             entity.getId());
+                             entity.getId(), ExecutionPoint.snapshot());
                 } else {
                     drb.setRouting(String.valueOf(routingKey));
                 }

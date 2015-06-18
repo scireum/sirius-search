@@ -28,6 +28,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import sirius.kernel.async.ExecutionPoint;
 import sirius.kernel.async.TaskContext;
 import sirius.kernel.cache.ValueComputer;
 import sirius.kernel.commons.Limit;
@@ -714,8 +715,8 @@ public class Query<E extends Entity> {
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
                 Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
-                               + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s",
-                               this);
+                               + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s, Location: %s",
+                               this, ExecutionPoint.snapshot());
             }
             return resultList;
         } catch (Throwable e) {
@@ -1073,7 +1074,7 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
         if (!orderBys.isEmpty()) {
-            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s", this);
+            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s, Location: %s", this, ExecutionPoint.snapshot());
         }
         srb.setSearchType(SearchType.SCAN);
         srb.setFrom(0);
