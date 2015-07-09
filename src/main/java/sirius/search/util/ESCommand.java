@@ -36,7 +36,7 @@ public class ESCommand implements Command {
         } else {
             output.apply("Unknown command: %s", values.at(0));
             output.line("Use: query <type> <filter>");
-            output.line(" or update <type> <filter> <field> <value> or del");
+            output.line(" or update <type> <filter> <field> <value>");
             output.line(" or delete <type> <filter>");
         }
     }
@@ -47,7 +47,7 @@ public class ESCommand implements Command {
             output.line("Results (limited at 500):");
             output.separator();
             int rows = 0;
-            for (Entity e : Index.select(type).query(values.at(2).asString()).limit(500).queryList()) {
+            for (Entity e : Index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).limit(500).queryList()) {
                 output.line(e.toDebugString());
                 rows++;
             }
@@ -62,7 +62,7 @@ public class ESCommand implements Command {
         if (type != null) {
             EntityDescriptor ed = Index.getDescriptor(type);
             AtomicInteger rows = new AtomicInteger();
-            Index.select(type).query(values.at(2).asString()).limit(500).iterate(e -> {
+            Index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).limit(500).iterate(e -> {
                 ed.getProperty(values.at(3).asString()).readFromSource(e, values.at(4).get());
                 Index.update(e);
                 rows.incrementAndGet();
@@ -78,7 +78,7 @@ public class ESCommand implements Command {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
             AtomicInteger rows = new AtomicInteger();
-            Index.select(type).query(values.at(2).asString()).iterate(e -> {
+            Index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterate(e -> {
                 Index.delete(e);
                 rows.incrementAndGet();
                 return true;
