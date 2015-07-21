@@ -13,6 +13,7 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanNearQueryBuilder;
+import org.elasticsearch.index.query.TermQueryBuilder;
 import parsii.tokenizer.LookaheadReader;
 import sirius.search.constraints.Wrapper;
 
@@ -25,10 +26,9 @@ import java.util.function.Function;
  * Used to parse user queries.
  * <p>
  * Tries to emulate most of the lucene query syntax like "field:token", "-token", "AND", "OR" and prefix queries
- * ("test*"). In
- * contrast to the regular query parser, this will never fail but do its best to create a query as intended
- * by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all usable
- * tokens.
+ * ("test*"). In contrast to the regular query parser, this will never fail but do its best to create a query as
+ * intended by the user. Therefore something like '1/4"' or 'test(' won't throw an error but try a search with all
+ * usable tokens.
  *
  * @see Query#query(String)
  */
@@ -37,6 +37,7 @@ class RobustQueryParser {
     private String defaultField;
     private String input;
     private Function<String, Iterable<List<String>>> tokenizer;
+    private boolean autoexpand;
 
     /**
      * Creates a parser using the given query, defaultField and analyzer.
@@ -44,11 +45,17 @@ class RobustQueryParser {
      * @param defaultField the default field to search in, if no field is given.
      * @param input        the query to parse
      * @param tokenizer    the function to used for tokenization of the input
+     * @param autoexpand   should single token queries be auto expanded. That will put a "*" after the resulting token
+     *                     but limits the number of expansions to the top 256 terms.
      */
-    RobustQueryParser(String defaultField, String input, Function<String, Iterable<List<String>>> tokenizer) {
+    RobustQueryParser(String defaultField,
+                      String input,
+                      Function<String, Iterable<List<String>>> tokenizer,
+                      boolean autoexpand) {
         this.defaultField = defaultField;
         this.input = input;
         this.tokenizer = tokenizer;
+        this.autoexpand = autoexpand;
     }
 
     /**
@@ -84,6 +91,9 @@ class RobustQueryParser {
             List<QueryBuilder> bqb = parseOR(reader);
             if (bqb != null) {
                 if (bqb.size() == 1) {
+                    if (autoexpand && bqb.get(0) instanceof TermQueryBuilder) {
+                        return QueryBuilders.prefixQuery(defaultField, input.toLowerCase()).rewrite("top_terms_256");
+                    }
                     return bqb.get(0);
                 }
                 BoolQueryBuilder result = QueryBuilders.boolQuery();
@@ -172,28 +182,12 @@ class RobustQueryParser {
      */
     private List<QueryBuilder> parseToken(LookaheadReader reader) {
         if (reader.current().is('(')) {
-            reader.consume();
-            QueryBuilder qb = parseQuery(reader);
-            if (reader.current().is(')')) {
-                reader.consume();
-            }
-            if (qb != null) {
-                return Collections.singletonList(qb);
-            } else {
-                return Collections.emptyList();
-            }
+            return parseTokenInBrackets(reader);
         }
         String field = defaultField;
         boolean couldBeFieldNameSoFar = true;
         StringBuilder sb = new StringBuilder();
-        boolean negate = false;
-        if (reader.current().is('-')) {
-            negate = true;
-            reader.consume();
-        } else if (reader.current().is('+')) {
-            // + is default behaviour and therefore just accepted and ignored to be compatible...
-            reader.consume();
-        }
+        boolean negate = checkIfNegated(reader);
         while (!reader.current().isEndOfInput() && !reader.current().isWhitepace() && !reader.current().is(')')) {
             if (reader.current().is(':') && sb.length() > 0 && couldBeFieldNameSoFar) {
                 field = sb.toString();
@@ -216,18 +210,35 @@ class RobustQueryParser {
         return Collections.emptyList();
     }
 
+    private boolean checkIfNegated(LookaheadReader reader) {
+        boolean negate = false;
+        if (reader.current().is('-')) {
+            negate = true;
+            reader.consume();
+        } else if (reader.current().is('+')) {
+            // + is default behaviour and therefore just accepted and ignored to be compatible...
+            reader.consume();
+        }
+        return negate;
+    }
+
+    private List<QueryBuilder> parseTokenInBrackets(LookaheadReader reader) {
+        reader.consume();
+        QueryBuilder qb = parseQuery(reader);
+        if (reader.current().is(')')) {
+            reader.consume();
+        }
+        if (qb != null) {
+            return Collections.singletonList(qb);
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
     private List<QueryBuilder> compileToken(String field, StringBuilder sb, boolean negate) {
         String value = sb.toString();
         if (value.length() > 1 && value.endsWith("*")) {
-            if (negate) {
-                BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1).toLowerCase()));
-                return Collections.singletonList(qry);
-            } else {
-                return Collections.singletonList(QueryBuilders.prefixQuery(field,
-                                                                           value.substring(0, value.length() - 1)
-                                                                                .toLowerCase()));
-            }
+            return compileTokenWithAsterisk(field, negate, value);
         }
 
         List<QueryBuilder> result = Lists.newArrayList();
@@ -262,6 +273,18 @@ class RobustQueryParser {
             }
         } else {
             return result;
+        }
+    }
+
+    private List<QueryBuilder> compileTokenWithAsterisk(String field, boolean negate, String value) {
+        if (negate) {
+            BoolQueryBuilder qry = QueryBuilders.boolQuery();
+            qry.mustNot(QueryBuilders.prefixQuery(field, value.substring(0, value.length() - 1).toLowerCase()));
+            return Collections.singletonList(qry);
+        } else {
+            return Collections.singletonList(QueryBuilders.prefixQuery(field,
+                                                                       value.substring(0, value.length() - 1)
+                                                                            .toLowerCase()).rewrite("top_terms_256"));
         }
     }
 

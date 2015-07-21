@@ -234,14 +234,45 @@ public class Query<E extends Entity> {
      * @param query        the query to search for
      * @param defaultField the default field to search in
      * @param tokenizer    the function to use for tokenization
+     * @param autoexpand   determines if for single term queries an expansion (like term*) should be added
      * @return the query itself for fluent method calls
      */
-    public Query<E> query(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
+    public Query<E> query(String query,
+                          String defaultField,
+                          Function<String, Iterable<List<String>>> tokenizer,
+                          boolean autoexpand) {
         if (Strings.isFilled(query)) {
             this.query = query;
-            RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer);
+            RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
             rqp.compileAndApply(this);
         }
+
+        return this;
+    }
+
+    /**
+     * Adds a textual query using the given field. If the given query is too short, no results will be
+     * generated.
+     * <p>
+     * If a non-empty query string which contains at least two characters (without "*") is given, this will behave just
+     * like {@link #query(String, String, Function, boolean)}. Otherwise the completed query will be failed by calling
+     * {@link
+     * #fail()} to ensure that no results are generated.
+     *
+     * @param query        the query to search for
+     * @param defaultField the default field to search in
+     * @param tokenizer    the function to use for tokenization
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
+        String effectiveQuery = (query == null) ? "" : query.replace("*", "").trim();
+        if (effectiveQuery.length() < 3) {
+            fail();
+            return this;
+        }
+        this.query = query;
+        RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, false);
+        rqp.compileAndApply(this);
 
         return this;
     }
@@ -250,29 +281,52 @@ public class Query<E extends Entity> {
      * Adds a textual query across all searchable fields.
      * <p>
      * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function)}.
+     * java.util.function.Function, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
      */
     public Query<E> query(String query) {
-        return query(query, DEFAULT_FIELD, s -> {
-            List<List<String>> result = Lists.newArrayList();
-            StandardAnalyzer std = new StandardAnalyzer();
-            try {
-                TokenStream stream = std.tokenStream("std", s);
-                stream.reset();
-                while (stream.incrementToken()) {
-                    CharTermAttribute attr = stream.getAttribute(CharTermAttribute.class);
-                    String token = new String(attr.buffer(), 0, attr.length());
-                    result.add(Collections.singletonList(token));
-                }
-            } catch (IOException e) {
-                Exceptions.handle(Index.LOG, e);
-            }
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, false);
+    }
 
-            return result;
-        });
+    /**
+     * Adds a textual query across all searchable fields.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function, boolean)}.
+     *
+     * @param query the query to search for
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(String query) {
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, true);
+    }
+
+    /**
+     * Uses the StandardAnalyzer to perform tokenization.
+     *
+     * @param input the value to tokenize
+     * @return a list of token based on the given input
+     */
+    private Iterable<List<String>> defaultTokenizer(String input) {
+        List<List<String>> result = Lists.newArrayList();
+        StandardAnalyzer std = new StandardAnalyzer();
+        try {
+            TokenStream stream = std.tokenStream("std", input);
+            stream.reset();
+            while (stream.incrementToken()) {
+                CharTermAttribute attr = stream.getAttribute(CharTermAttribute.class);
+                String token = new String(attr.buffer(), 0, attr.length());
+                result.add(Collections.singletonList(token));
+            }
+        } catch (IOException e) {
+            Exceptions.handle(Index.LOG, e);
+        }
+
+        return result;
     }
 
     /**
@@ -716,7 +770,8 @@ public class Query<E extends Entity> {
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
                 Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
                                + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s, Location: %s",
-                               this, ExecutionPoint.snapshot());
+                               this,
+                               ExecutionPoint.snapshot());
             }
             return resultList;
         } catch (Throwable e) {
@@ -1074,7 +1129,9 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
         if (!orderBys.isEmpty()) {
-            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s, Location: %s", this, ExecutionPoint.snapshot());
+            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s, Location: %s",
+                           this,
+                           ExecutionPoint.snapshot());
         }
         srb.setSearchType(SearchType.SCAN);
         srb.setFrom(0);
