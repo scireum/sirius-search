@@ -35,11 +35,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.Barrier;
-import sirius.kernel.async.CallContext;
-import sirius.kernel.async.ExecutionPoint;
-import sirius.kernel.async.Future;
-import sirius.kernel.async.Tasks;
+import sirius.kernel.async.*;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Strings;
@@ -49,31 +45,22 @@ import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Average;
-import sirius.kernel.health.Counter;
-import sirius.kernel.health.Exceptions;
-import sirius.kernel.health.HandledException;
-import sirius.kernel.health.Log;
+import sirius.kernel.health.*;
 import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
 import sirius.kernel.timer.EveryTenSeconds;
-import sirius.web.templates.Resources;
 import sirius.web.templates.Resource;
+import sirius.web.templates.Resources;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Central access class to the persistence layer.
