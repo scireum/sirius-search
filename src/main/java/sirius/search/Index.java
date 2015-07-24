@@ -58,8 +58,8 @@ import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
 import sirius.kernel.timer.EveryTenSeconds;
-import sirius.web.templates.Resources;
 import sirius.web.templates.Resource;
+import sirius.web.templates.Resources;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -651,6 +651,30 @@ public class Index {
                                 .to(LOG)
                                 .handle();
             }
+        }
+    }
+
+    /**
+     * Checks if the given index exists.
+     *
+     * @param name the name of the index. The index prefix of the current system will be added automatically
+     */
+    public static boolean existsIndex(String name) {
+        String index = getIndexName(name);
+        try {
+            IndicesExistsResponse res = Index.getClient()
+                                             .admin()
+                                             .indices()
+                                             .prepareExists(index)
+                                             .execute()
+                                             .get(10, TimeUnit.SECONDS);
+            return res.isExists();
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to check existence of index: %s - %s (%s)", index)
+                            .handle();
         }
     }
 
