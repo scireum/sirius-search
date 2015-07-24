@@ -73,6 +73,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Central access class to the persistence layer.
@@ -651,6 +652,30 @@ public class Index {
                                 .to(LOG)
                                 .handle();
             }
+        }
+    }
+
+    /**
+     * Checks if the given index exists.
+     *
+     * @param name the name of the index. The index prefix of the current system will be added automatically
+     */
+    public static boolean existsIndex(String name) {
+        String index = getIndexName(name);
+        try {
+            IndicesExistsResponse res = Index.getClient()
+                                             .admin()
+                                             .indices()
+                                             .prepareExists(index)
+                                             .execute()
+                                             .get(10, TimeUnit.SECONDS);
+            return res.isExists();
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to check existence of index: %s - %s (%s)", index)
+                            .handle();
         }
     }
 
