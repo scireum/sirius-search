@@ -9,6 +9,7 @@
 package sirius.search;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -31,6 +32,7 @@ import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
 import sirius.kernel.async.TaskContext;
 import sirius.kernel.cache.ValueComputer;
+import sirius.kernel.commons.Lambdas;
 import sirius.kernel.commons.Limit;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.RateLimit;
@@ -64,6 +66,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -82,7 +85,7 @@ public class Query<E extends Entity> {
 
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
-     * {@link #query(String, String, java.util.function.Function)} to specify a custom field.
+     * {@link #query(String, String, Function, boolean)} to specify a custom field.
      */
     private static final String DEFAULT_FIELD = "_all";
 
@@ -769,9 +772,8 @@ public class Query<E extends Entity> {
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
                 Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
-                               + "Please provide an explicit limit or use Query.iterate to remove this warning. Query: %s, Location: %s",
-                               this,
-                               ExecutionPoint.snapshot());
+                               + "Please provide an explicit limit or use Query.iterate to remove this warning. "
+                               + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
             }
             return resultList;
         } catch (Throwable e) {
@@ -1129,7 +1131,7 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
         if (!orderBys.isEmpty()) {
-            Index.LOG.WARN("An iterated query cannot be sorted! Query: %s, Location: %s",
+            Index.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
                            this,
                            ExecutionPoint.snapshot());
         }
@@ -1158,6 +1160,95 @@ public class Query<E extends Entity> {
     public void iterateAll(Consumer<? super E> consumer) {
         iterate(c -> {
             consumer.accept(c);
+            return true;
+        });
+    }
+
+    /**
+     * Executes the result and calls the given <tt>customer</tt> for each item in the result.
+     * <p>
+     * This is intended to be used to process large result sets as only a block of items is fetched at a time.
+     * <p>
+     * In contrast to {@link #iterate(ResultHandler)} and {@link #iterateAll(Consumer)} this does not use
+     * scroll queries but a sequence of plain queries with appropriate limit and from settings. The benefit
+     * of this method is, that the result can be sorted. The downside is that intermediate inserts or deletes might
+     * corrupt the result of this query as entities might occur twice or be missing at all. Although a deduplicator
+     * is installed and should filter out such cases, the results still shouldn't be used for sensible calculations.
+     *
+     * @param consumer the handler used to process each result item
+     */
+    public void blockwise(Function<? super E, Boolean> consumer) {
+        try {
+            if (forceFail) {
+                return;
+            }
+            Limit lim = new Limit(0, limit);
+            TaskContext ctx = TaskContext.get();
+            RateLimit rateLimit = RateLimit.timeInterval(1, TimeUnit.SECONDS);
+
+            // An intermediate insert between two queries might result in an entity being reported twice
+            // (by two queries, we is this set to deduplicate entities if necesseary).
+            Set<String> entityDeDuplicator = Sets.newTreeSet();
+
+            // Overwrite limit to support paging
+            // This limit is quite large to process as much items as possible at once as the query is
+            // expensive on its own.
+            limit = 512;
+            while (true) {
+                SearchRequestBuilder srb = buildSearch();
+                if (Index.LOG.isFINE()) {
+                    Index.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
+                                   Index.getIndex(clazz),
+                                   Index.getDescriptor(clazz).getType(),
+                                   buildQuery());
+                }
+                ResultList<E> resultList = transform(srb);
+                for (E entity : resultList) {
+                    try {
+                        if (!entityDeDuplicator.contains(entity.getId())) {
+                            if (lim.nextRow()) {
+                                if (!consumer.apply(entity)) {
+                                    return;
+                                }
+                                if (!lim.shouldContinue()) {
+                                    return;
+                                }
+                            }
+                            if (rateLimit.check()) {
+                                // Check is the user tries to cancel this task
+                                if (!ctx.isActive()) {
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Exceptions.handle().to(Index.LOG).error(e).handle();
+                    }
+                }
+                // Re-create entity the duplicator
+                entityDeDuplicator.clear();
+                resultList.getResults().stream().map(Entity::getId).collect(Lambdas.into(entityDeDuplicator));
+                start += resultList.size();
+                if (resultList.size() < limit) {
+                    break;
+                }
+            }
+        } catch (Throwable e) {
+            throw Exceptions.handle(Index.LOG, e);
+        }
+    }
+
+    /**
+     * Executes the result and calls the given <tt>customer</tt> for each item in the result.
+     * <p>
+     * This is a boilerplate handler for {@link #blockwise(Function)} with a function which constantly returns
+     * <tt>true</tt> .
+     *
+     * @param consumer the handler used to process each result item
+     */
+    public void blockwiseAll(Consumer<? super E> consumer) {
+        blockwise(e -> {
+            consumer.accept(e);
             return true;
         });
     }
