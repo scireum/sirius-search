@@ -15,7 +15,9 @@ import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 
 /**
- * Represents a constraint which checks if the given field starts with the given value
+ * Represents a constraint which checks if the given field starts with the given value.
+ * <p>
+ * To prevent funny OutOfMemoryErrors the number of tokens being expanded is 256.
  */
 public class Prefix implements Constraint {
     private final String field;
@@ -54,7 +56,7 @@ public class Prefix implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         if (Strings.isFilled(value) && !isFilter) {
-            return QueryBuilders.prefixQuery(field, value);
+            return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256");
         }
         return null;
     }
