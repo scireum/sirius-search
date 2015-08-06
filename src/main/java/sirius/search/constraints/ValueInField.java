@@ -26,7 +26,7 @@ public class ValueInField implements Constraint {
      * Use the #on(Object, String) factory method
      */
     private ValueInField(Object value, String field) {
-        this.value = FieldOperator.convertJava8Times(value);
+        this.value = FieldEqual.transformFilterValue(value);
         this.field = field;
     }
 

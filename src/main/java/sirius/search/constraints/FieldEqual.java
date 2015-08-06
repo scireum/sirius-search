@@ -17,6 +17,13 @@ import sirius.search.Entity;
 import sirius.search.EntityRef;
 import sirius.search.Index;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+
 /**
  * Represents a constraint which checks if the given field has the given value.
  */
@@ -36,16 +43,39 @@ public class FieldEqual implements Constraint {
         } else {
             this.field = field;
         }
-        this.value = FieldOperator.convertJava8Times(value);
+        this.value = transformFilterValue(value);
+    }
+
+    /**
+     * Converts the given value into an effective value used to filter in ES.
+     * <p>
+     * For example an entity will be converted into its ID or an Enum into its name.
+     *
+     * @param value the value to convert.
+     * @return the converted value. If there is no conversion appropriate, the original value will be returned
+     */
+    public static Object transformFilterValue(Object value) {
         if (value != null && value.getClass().isEnum()) {
-            this.value = ((Enum<?>) value).name();
+            return ((Enum<?>) value).name();
         }
         if (value instanceof Entity) {
-            this.value = ((Entity) value).getId();
+            return ((Entity) value).getId();
         }
         if (value instanceof EntityRef) {
-            this.value = ((EntityRef<?>) value).getId();
+            return ((EntityRef<?>) value).getId();
         }
+        if (value instanceof Instant) {
+            value = LocalDateTime.ofInstant((Instant) value, ZoneId.systemDefault());
+        }
+        if (value instanceof TemporalAccessor) {
+            if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
+                return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
+            } else {
+                return DateTimeFormatter.ISO_LOCAL_DATE.format((TemporalAccessor) value);
+            }
+        }
+
+        return value;
     }
 
     /**
