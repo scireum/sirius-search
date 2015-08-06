@@ -54,27 +54,9 @@ public class FieldOperator implements Constraint {
     public static FieldOperator less(String field, Object value) {
         FieldOperator result = new FieldOperator(field);
         result.bound = Bound.LT;
-        result.value = convertJava8Times(value);
+        result.value = FieldEqual.transformFilterValue(value);
 
         return result;
-    }
-
-    /*
-     * Converts Java 8 Time API objects into ISO strings accepted by ES (Joda-Time)
-     */
-    protected static Object convertJava8Times(Object value) {
-        if (value instanceof Instant) {
-            value = LocalDateTime.ofInstant((Instant) value, ZoneId.systemDefault());
-        }
-        if (value instanceof TemporalAccessor) {
-            if (((TemporalAccessor) value).isSupported(ChronoField.HOUR_OF_DAY)) {
-                return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format((TemporalAccessor) value);
-            } else {
-                return DateTimeFormatter.ISO_LOCAL_DATE.format((TemporalAccessor) value);
-            }
-        }
-
-        return value;
     }
 
     /**
@@ -87,7 +69,7 @@ public class FieldOperator implements Constraint {
     public static FieldOperator greater(String field, Object value) {
         FieldOperator result = new FieldOperator(field);
         result.bound = Bound.GT;
-        result.value = convertJava8Times(value);
+        result.value = FieldEqual.transformFilterValue(value);
         return result;
     }
 

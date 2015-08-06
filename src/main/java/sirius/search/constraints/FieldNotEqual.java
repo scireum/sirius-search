@@ -32,16 +32,7 @@ public class FieldNotEqual implements Constraint {
         } else {
             this.field = field;
         }
-        this.value = FieldOperator.convertJava8Times(value);
-        if (value != null && value.getClass().isEnum()) {
-            this.value = ((Enum<?>) value).name();
-        }
-        if (value instanceof Entity) {
-            this.value = ((Entity) value).getId();
-        }
-        if (value instanceof EntityRef) {
-            this.value = ((EntityRef<?>) value).getId();
-        }
+        this.value = FieldEqual.transformFilterValue(value);
     }
 
     /**
