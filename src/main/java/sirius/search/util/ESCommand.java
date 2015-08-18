@@ -8,10 +8,11 @@
 
 package sirius.search.util;
 
-import sirius.kernel.commons.Exec;
+import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import sirius.kernel.commons.Values;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.Index;
@@ -97,31 +98,28 @@ public class ESCommand implements Command {
     }
 
     private void unbalance(Output output, Values values) {
-        try {
-            output.line("Disabling automatic allocation.");
-            Exec.exec(
-                    "curl -XPUT localhost:9200/_cluster/settings -d '{\"transient\":{\"cluster.routing.allocation.enable\": \"none\"}}");
-            output.line("Disabled automatic allocation.");
-        } catch (Exec.ExecException e) {
-            output.line("Failed to disable automatic allocation.");
-            Exceptions.ignore(e);
-        } finally {
-            output.blankLine();
-        }
+        output.line("Disabling automatic allocation.");
+
+        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
+        Settings settings =
+                ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "none").build();
+        request.transientSettings(settings);
+        Index.getClient().admin().cluster().updateSettings(request);
+
+        output.line("Disabled automatic allocation.");
+        output.blankLine();
     }
 
     private void balance(Output output, Values values) {
-        try {
-            output.line("Enabling automatic allocation.");
-            Exec.exec(
-                    "curl -XPUT localhost:9200/_cluster/settings -d '{\"transient\":{\"cluster.routing.allocation.enable\": \"all\"}}");
-            output.line("Enabled automatic allocation.");
-        } catch (Exec.ExecException e) {
-            output.line("Failed to enable automatic allocation.");
-            Exceptions.ignore(e);
-        } finally {
-            output.blankLine();
-        }
+        output.line("Enabling automatic allocation.");
+
+        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
+        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "all").build();
+        request.transientSettings(settings);
+        Index.getClient().admin().cluster().updateSettings(request);
+
+        output.line("Enabled automatic allocation.");
+        output.blankLine();
     }
 
     @Override
