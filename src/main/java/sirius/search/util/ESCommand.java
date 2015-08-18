@@ -102,7 +102,7 @@ public class ESCommand implements Command {
             output.line("Disabled automatic allocation.");
         } catch (Exec.ExecException e) {
             output.line("Failed to disable automatic allocation.");
-            Exceptions.handle(e);
+            Exceptions.ignore(e);
         } finally {
             output.blankLine();
         }
@@ -116,7 +116,7 @@ public class ESCommand implements Command {
             output.line("Enabled automatic allocation.");
         } catch (Exec.ExecException e) {
             output.line("Failed to enable automatic allocation.");
-            Exceptions.handle(e);
+            Exceptions.ignore(e);
         } finally {
             output.blankLine();
         }
