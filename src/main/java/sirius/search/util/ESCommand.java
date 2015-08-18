@@ -8,8 +8,10 @@
 
 package sirius.search.util;
 
+import sirius.kernel.commons.Exec;
 import sirius.kernel.commons.Values;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.Index;
@@ -33,6 +35,10 @@ public class ESCommand implements Command {
             update(output, values);
         } else if ("delete".equalsIgnoreCase(values.at(0).asString())) {
             delete(output, values);
+        } else if ("unbalance".equalsIgnoreCase(values.at(0).asString())) {
+            unbalance(output, values);
+        } else if ("balance".equalsIgnoreCase(values.at(0).asString())) {
+            balance(output, values);
         } else {
             output.apply("Unknown command: %s", values.at(0));
             output.line("Use: query <type> <filter>");
@@ -84,6 +90,34 @@ public class ESCommand implements Command {
                 return true;
             });
             output.apply("%s rows affected", rows.get());
+            output.blankLine();
+        }
+    }
+
+    private void unbalance(Output output, Values values) {
+        try {
+            output.line("Disabling automatic allocation.");
+            Exec.exec(
+                    "curl -XPUT localhost:9200/_cluster/settings -d '{\"transient\":{\"cluster.routing.allocation.enable\": \"none\"}}");
+            output.line("Disabled automatic allocation.");
+        } catch (Exec.ExecException e) {
+            output.line("Failed to disable automatic allocation.");
+            Exceptions.handle(e);
+        } finally {
+            output.blankLine();
+        }
+    }
+
+    private void balance(Output output, Values values) {
+        try {
+            output.line("Enabling automatic allocation.");
+            Exec.exec(
+                    "curl -XPUT localhost:9200/_cluster/settings -d '{\"transient\":{\"cluster.routing.allocation.enable\": \"all\"}}");
+            output.line("Enabled automatic allocation.");
+        } catch (Exec.ExecException e) {
+            output.line("Failed to enable automatic allocation.");
+            Exceptions.handle(e);
+        } finally {
             output.blankLine();
         }
     }
