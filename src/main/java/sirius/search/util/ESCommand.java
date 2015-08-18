@@ -44,6 +44,8 @@ public class ESCommand implements Command {
             output.line("Use: query <type> <filter>");
             output.line(" or update <type> <filter> <field> <value>");
             output.line(" or delete <type> <filter>");
+            output.line(" or unbalance");
+            output.line(" or balance");
         }
     }
 
