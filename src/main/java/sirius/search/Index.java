@@ -662,12 +662,8 @@ public class Index {
     public static boolean existsIndex(String name) {
         String index = getIndexName(name);
         try {
-            IndicesExistsResponse res = Index.getClient()
-                                             .admin()
-                                             .indices()
-                                             .prepareExists(index)
-                                             .execute()
-                                             .get(10, TimeUnit.SECONDS);
+            IndicesExistsResponse res =
+                    Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
             return res.isExists();
         } catch (Throwable e) {
             throw Exceptions.handle()
@@ -936,8 +932,7 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Updating an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(),
-                             entity.getId(), ExecutionPoint.snapshot());
+                             entity.getClass().getName(), entity.getId(), ExecutionPoint.snapshot());
                 } else {
                     irb.setRouting(String.valueOf(routingKey));
                 }
@@ -1262,8 +1257,11 @@ public class Index {
         } catch (OptimisticLockException e) {
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(e).withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
-                                                    entity.toString(), entity.getId(), e.getStackTrace())
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId(),
+                                                    e.getStackTrace())
                             .handle();
         }
     }
@@ -1317,8 +1315,7 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Deleting an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(),
-                             entity.getId(), ExecutionPoint.snapshot());
+                             entity.getClass().getName(), entity.getId(), ExecutionPoint.snapshot());
                 } else {
                     drb.setRouting(String.valueOf(routingKey));
                 }
@@ -1345,8 +1342,11 @@ public class Index {
         } catch (Throwable e) {
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(e).withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
-                                                    entity.toString(), entity.getId(), e.getStackTrace())
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
+                                                    entity.toString(),
+                                                    entity.getId(),
+                                                    e.getStackTrace())
                             .handle();
         }
     }
@@ -1512,7 +1512,7 @@ public class Index {
             }
             LOG.INFO("Loading dataset: %s", dataset);
             Resource res = resources.resolve(dataset)
-                                  .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
+                                    .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
             String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
             JSONArray json = JSON.parseArray(contents);
             for (JSONObject obj : (List<JSONObject>) (Object) json) {
