@@ -1262,10 +1262,8 @@ public class Index {
         } catch (OptimisticLockException e) {
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(e)
-                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                                                    entity.toString(),
-                                                    entity.getId())
+                            .error(e).withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
+                                                    entity.toString(), entity.getId(), e.getStackTrace())
                             .handle();
         }
     }
@@ -1347,10 +1345,8 @@ public class Index {
         } catch (Throwable e) {
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(e)
-                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                                                    entity.toString(),
-                                                    entity.getId())
+                            .error(e).withSystemErrorMessage("Failed to delete '%s' (%s): %s %s (%s)",
+                                                    entity.toString(), entity.getId(), e.getStackTrace())
                             .handle();
         }
     }
