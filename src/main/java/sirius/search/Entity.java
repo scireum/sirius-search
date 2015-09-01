@@ -452,7 +452,7 @@ public abstract class Entity {
      */
     public String toDebugString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(id + " (Version: " + version + ") {");
+        sb.append(getClass().getSimpleName() + " " + id + " (Version: " + version + ") {");
         boolean first = true;
         for (Property p : Index.getDescriptor(getClass()).getProperties()) {
             if (first) {

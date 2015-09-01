@@ -861,7 +861,7 @@ public class Index {
                             .to(LOG)
                             .error(e)
                             .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
-                                                    entity.toString(),
+                                                    entity.toDebugString(),
                                                     entity.getId())
                             .handle();
         }
@@ -953,7 +953,7 @@ public class Index {
                             .to(LOG)
                             .error(e)
                             .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
-                                                    entity.toString(),
+                                                    entity.toDebugString(),
                                                     entity.getId())
                             .handle();
         }
@@ -1262,7 +1262,7 @@ public class Index {
                             .to(LOG)
                             .error(e)
                             .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                                                    entity.toString(),
+                                                    entity.toDebugString(),
                                                     entity.getId())
                             .handle();
         }
@@ -1348,7 +1348,7 @@ public class Index {
                             .to(LOG)
                             .error(e)
                             .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
-                                                    entity.toString(),
+                                                    entity.toDebugString(),
                                                     entity.getId())
                             .handle();
         }
