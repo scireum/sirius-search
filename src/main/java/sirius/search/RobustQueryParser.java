@@ -191,6 +191,7 @@ class RobustQueryParser {
         while (!reader.current().isEndOfInput() && !reader.current().isWhitepace() && !reader.current().is(')')) {
             if (reader.current().is(':') && sb.length() > 0 && couldBeFieldNameSoFar) {
                 field = sb.toString();
+                autoexpand = false;
                 sb = new StringBuilder();
                 // Ignore :
                 reader.consume();
@@ -218,6 +219,9 @@ class RobustQueryParser {
         } else if (reader.current().is('+')) {
             // + is default behaviour and therefore just accepted and ignored to be compatible...
             reader.consume();
+        }
+        if (negate) {
+            autoexpand = false;
         }
         return negate;
     }
