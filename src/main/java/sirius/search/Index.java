@@ -658,6 +658,7 @@ public class Index {
      * Checks if the given index exists.
      *
      * @param name the name of the index. The index prefix of the current system will be added automatically
+     * @return <tt>true</tt> if the given index exists, <tt>false</tt> otherwise
      */
     public static boolean existsIndex(String name) {
         String index = getIndexName(name);
@@ -932,7 +933,9 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Updating an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(), entity.getId(), ExecutionPoint.snapshot());
+                             entity.getClass().getName(),
+                             entity.getId(),
+                             ExecutionPoint.snapshot());
                 } else {
                     irb.setRouting(String.valueOf(routingKey));
                 }
@@ -1314,7 +1317,9 @@ public class Index {
                 Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Deleting an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(), entity.getId(), ExecutionPoint.snapshot());
+                             entity.getClass().getName(),
+                             entity.getId(),
+                             ExecutionPoint.snapshot());
                 } else {
                     drb.setRouting(String.valueOf(routingKey));
                 }
