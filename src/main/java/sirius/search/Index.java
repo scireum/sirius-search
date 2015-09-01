@@ -658,16 +658,13 @@ public class Index {
      * Checks if the given index exists.
      *
      * @param name the name of the index. The index prefix of the current system will be added automatically
+     * @return <tt>true</tt> if the given index exists, <tt>false</tt> otherwise
      */
     public static boolean existsIndex(String name) {
         String index = getIndexName(name);
         try {
-            IndicesExistsResponse res = Index.getClient()
-                                             .admin()
-                                             .indices()
-                                             .prepareExists(index)
-                                             .execute()
-                                             .get(10, TimeUnit.SECONDS);
+            IndicesExistsResponse res =
+                    Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
             return res.isExists();
         } catch (Throwable e) {
             throw Exceptions.handle()
@@ -937,7 +934,8 @@ public class Index {
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Updating an entity of type %s (%s) without routing information! Location: %s",
                              entity.getClass().getName(),
-                             entity.getId(), ExecutionPoint.snapshot());
+                             entity.getId(),
+                             ExecutionPoint.snapshot());
                 } else {
                     irb.setRouting(String.valueOf(routingKey));
                 }
@@ -1320,7 +1318,8 @@ public class Index {
                 if (Strings.isEmpty(routingKey)) {
                     LOG.WARN("Deleting an entity of type %s (%s) without routing information! Location: %s",
                              entity.getClass().getName(),
-                             entity.getId(), ExecutionPoint.snapshot());
+                             entity.getId(),
+                             ExecutionPoint.snapshot());
                 } else {
                     drb.setRouting(String.valueOf(routingKey));
                 }
@@ -1516,7 +1515,7 @@ public class Index {
             }
             LOG.INFO("Loading dataset: %s", dataset);
             Resource res = resources.resolve(dataset)
-                                  .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
+                                    .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
             String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
             JSONArray json = JSON.parseArray(contents);
             for (JSONObject obj : (List<JSONObject>) (Object) json) {
