@@ -29,7 +29,10 @@ import sirius.web.security.UserContext;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -452,7 +455,7 @@ public abstract class Entity {
      */
     public String toDebugString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(getClass().getSimpleName() + " " + id + " (Version: " + version + ") {");
+        sb.append(id + " (Version: " + version + ") {");
         boolean first = true;
         for (Property p : Index.getDescriptor(getClass()).getProperties()) {
             if (first) {
@@ -567,7 +570,7 @@ public abstract class Entity {
         Set<String> allowedProperties = Sets.newTreeSet(Arrays.asList(propertiesToRead));
         for (Property p : Index.getDescriptor(getClass()).getProperties()) {
             if (allowedProperties.contains(p.getName())) {
-                Object oldValue = p.writeToSource(this);
+                Object oldValue = obtainModificationProtectedValue(p);
                 p.readFromRequest(this, ctx);
                 Object newValue = p.writeToSource(this);
                 if (!Objects.equal(newValue, oldValue)) {
@@ -577,6 +580,17 @@ public abstract class Entity {
         }
 
         return changeList;
+    }
+
+    private Object obtainModificationProtectedValue(Property p) {
+        Object oldValue = p.writeToSource(this);
+        if (oldValue instanceof List<?>) {
+            oldValue = new ArrayList<>((List<?>) oldValue);
+        }
+        if (oldValue instanceof Map<?, ?>) {
+            oldValue = new HashMap<>((Map<?, ?>) oldValue);
+        }
+        return oldValue;
     }
 
     /**
