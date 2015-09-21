@@ -38,7 +38,8 @@ public class ObjectListProperty extends Property {
         public boolean accepts(Field field) {
             return List.class.equals(field.getType())
                    && field.isAnnotationPresent(ListType.class)
-                   && !String.class.equals(field.getAnnotation(ListType.class).value());
+                   && !String.class.equals(field.getAnnotation(ListType.class).value())
+                   && !field.getAnnotation(ListType.class).value().isEnum();
         }
 
         @Override
@@ -108,7 +109,7 @@ public class ObjectListProperty extends Property {
                 if (obj != null) {
                     Map<String, String> valueMap = new HashMap<>();
                     Class<?> targetClass = field.getAnnotation(ListType.class).value();
-                    for (Field innerField :targetClass.getDeclaredFields()) {
+                    for (Field innerField : targetClass.getDeclaredFields()) {
                         try {
                             innerField.setAccessible(true);
                             Object val = innerField.get(obj);
