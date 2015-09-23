@@ -108,7 +108,7 @@ public class Query<E extends Entity> {
     private String routing;
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
-    private int scrolTTL = SCROLL_TTL_SECONDS;
+    private int scrollTTL = SCROLL_TTL_SECONDS;
 
     /**
      * Used to create a nwe query for entities of the given class
@@ -1017,7 +1017,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> withCustomScrollTTL(int scrollTimeoutInSeconds) {
-        this.scrolTTL = scrollTimeoutInSeconds;
+        this.scrollTTL = scrollTimeoutInSeconds;
         return this;
     }
 
@@ -1093,12 +1093,9 @@ public class Query<E extends Entity> {
 
     private long performScrollMonitoring(long lastScroll) {
         long now = System.currentTimeMillis();
-        if (lastScroll == 0) {
-            // First response -> initialize time tracking
-            lastScroll = now;
-        } else {
+        if (lastScroll > 0) {
             // Warn if processing of one scroll took longer thant our keep alive....
-            if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrolTTL) {
+            if (TimeUnit.SECONDS.convert(now - lastScroll, TimeUnit.MILLISECONDS) > scrollTTL) {
                 Exceptions.handle()
                           .withSystemErrorMessage(
                                   "A scroll query against elasticserach took too long to process its data! "
@@ -1108,13 +1105,13 @@ public class Query<E extends Entity> {
                           .handle();
             }
         }
-        return lastScroll;
+        return now;
     }
 
     private SearchResponse scrollFurther(EntityDescriptor entityDescriptor, SearchResponse searchResponse) {
         searchResponse = Index.getClient()
                               .prepareSearchScroll(searchResponse.getScrollId())
-                              .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL))
+                              .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL))
                               .execute()
                               .actionGet();
         if (Index.LOG.isFINE()) {
@@ -1140,7 +1137,7 @@ public class Query<E extends Entity> {
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
         // Otherwise we limit to 10 documents per shard...
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
-        srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrolTTL));
+        srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL));
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
         }
