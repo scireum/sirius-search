@@ -63,10 +63,11 @@ class RobustQueryParser {
     /**
      * Compiles an applies the query to the given one.
      *
-     * @param query the query to enhance with the parsed result
-     * @param force determines if a query was forced, see {@link Query#forceQuery(String, String, Function)}
+     * @param query               the query to enhance with the parsed result
+     * @param failForEmptyQueries determines if a query was forced, see {@link Query#forceQuery(String, String,
+     *                            Function)}
      */
-    void compileAndApply(Query<?> query, boolean force) {
+    void compileAndApply(Query<?> query, boolean failForEmptyQueries) {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
         QueryBuilder main = parseQuery(reader);
         if (!reader.current().isEndOfInput()) {
@@ -83,7 +84,7 @@ class RobustQueryParser {
                 Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
             }
             query.where(Wrapper.on(main));
-        } else if (force) {
+        } else if (failForEmptyQueries) {
             query.fail();
         }
     }
