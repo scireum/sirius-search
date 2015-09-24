@@ -247,7 +247,7 @@ public class Query<E extends Entity> {
         if (Strings.isFilled(query)) {
             this.query = query;
             RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
-            rqp.compileAndApply(this);
+            rqp.compileAndApply(this, false);
         }
 
         return this;
@@ -268,14 +268,9 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
-        String effectiveQuery = (query == null) ? "" : query.replace("*", "").trim();
-        if (effectiveQuery.length() < 3) {
-            fail();
-            return this;
-        }
         this.query = query;
         RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, false);
-        rqp.compileAndApply(this);
+        rqp.compileAndApply(this, true);
 
         return this;
     }
