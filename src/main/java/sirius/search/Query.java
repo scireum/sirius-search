@@ -259,8 +259,7 @@ public class Query<E extends Entity> {
      * <p>
      * If a non-empty query string which contains at least two characters (without "*") is given, this will behave just
      * like {@link #query(String, String, Function, boolean)}. Otherwise the completed query will be failed by calling
-     * {@link
-     * #fail()} to ensure that no results are generated.
+     * {@link #fail()} to ensure that no results are generated.
      *
      * @param query        the query to search for
      * @param defaultField the default field to search in

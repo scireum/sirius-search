@@ -64,6 +64,7 @@ class RobustQueryParser {
      * Compiles an applies the query to the given one.
      *
      * @param query the query to enhance with the parsed result
+     * @param force determines if a query was forced, see {@link Query#forceQuery(String, String, Function)}
      */
     void compileAndApply(Query<?> query, boolean force) {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
