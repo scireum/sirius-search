@@ -584,13 +584,18 @@ public abstract class Entity {
 
     private Object obtainModificationProtectedValue(Property p) {
         Object oldValue = p.writeToSource(this);
-        if (oldValue instanceof List<?>) {
-            oldValue = new ArrayList<>((List<?>) oldValue);
+        Object protectedValue = createModificationProtectedValue(oldValue);
+        return protectedValue;
+    }
+
+    private Object createModificationProtectedValue(Object value) {
+        if (value instanceof List<?>) {
+            value = new ArrayList<>((List<?>) value);
         }
-        if (oldValue instanceof Map<?, ?>) {
-            oldValue = new HashMap<>((Map<?, ?>) oldValue);
+        if (value instanceof Map<?, ?>) {
+            value = new HashMap<>((Map<?, ?>) value);
         }
-        return oldValue;
+        return value;
     }
 
     /**
@@ -653,7 +658,7 @@ public abstract class Entity {
      */
     public void setSource(String name, Object val) {
         if (source != null) {
-            source.put(name, val);
+            source.put(name, createModificationProtectedValue(val));
         }
     }
 
