@@ -143,7 +143,7 @@ class RobustQueryParser {
         }
         while (!reader.current().isEndOfInput()) {
             skipWhitespace(reader);
-            if (reader.current().is('o', 'O') && reader.next().is('r', 'R')) {
+            if (isAtOR(reader)) {
                 reader.consume(2);
                 subQuery = parseAND(reader);
                 if (!subQuery.isEmpty()) {
@@ -177,12 +177,16 @@ class RobustQueryParser {
         }
         while (!reader.current().isEndOfInput() && !reader.current().is(')')) {
             skipWhitespace(reader);
-            if (reader.current().is('o', 'O') && reader.next().is('r', 'R')) {
+            if (isAtOR(reader)) {
                 break;
             }
-            if (reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next().is('d', 'D')) {
+            if (isAtAND(reader)) {
                 // AND is the default operation -> ignore
                 reader.consume(3);
+            }
+            if (isAtBinaryAND(reader)) {
+                // && is the default operation -> ignore
+                reader.consume(2);
             }
             subQuery = parseToken(reader);
             if (!subQuery.isEmpty()) {
@@ -192,6 +196,19 @@ class RobustQueryParser {
             }
         }
         return result;
+    }
+
+    private boolean isAtBinaryAND(LookaheadReader reader) {
+        return reader.current().is('&') && reader.next().is('|');
+    }
+
+    private boolean isAtAND(LookaheadReader reader) {
+        return reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next().is('d', 'D');
+    }
+
+    private boolean isAtOR(LookaheadReader reader) {
+        return (reader.current().is('o', 'O') && reader.next().is('r', 'R')) || (reader.current().is('|')
+                                                                                 && reader.next().is('|'));
     }
 
     /*
