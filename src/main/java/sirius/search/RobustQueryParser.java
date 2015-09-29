@@ -15,6 +15,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanNearQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import parsii.tokenizer.LookaheadReader;
+import sirius.kernel.commons.Strings;
 import sirius.search.constraints.Wrapper;
 
 import java.io.StringReader;
@@ -34,6 +35,7 @@ import java.util.function.Function;
  */
 class RobustQueryParser {
 
+    private static final int EXPANSION_TOKEN_MIN_LENGTH = 2;
     private String defaultField;
     private String input;
     private Function<String, Iterable<List<String>>> tokenizer;
@@ -61,17 +63,29 @@ class RobustQueryParser {
     /**
      * Compiles an applies the query to the given one.
      *
-     * @param query the query to enhance with the parsed result
+     * @param query               the query to enhance with the parsed result
+     * @param failForEmptyQueries determines if a query was forced, see {@link Query#forceQuery(String, String,
+     *                            Function)}
      */
-    void compileAndApply(Query<?> query) {
+    void compileAndApply(Query<?> query, boolean failForEmptyQueries) {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
         QueryBuilder main = parseQuery(reader);
         if (!reader.current().isEndOfInput()) {
             Index.LOG.FINE("Unexpected character in query: " + reader.current());
         }
+        // If we cannot compile a query from a non empty input, we probably dropped all short tokens
+        // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
+        if (main == null && !Strings.isEmpty(input) && input.contains(" ")) {
+            reader = new LookaheadReader(new StringReader(input.replaceAll("\\s", "")));
+            main = parseQuery(reader);
+        }
         if (main != null) {
-            Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
+            if (Index.LOG.isFINE()) {
+                Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
+            }
             query.where(Wrapper.on(main));
+        } else if (failForEmptyQueries) {
+            query.fail();
         }
     }
 
@@ -89,10 +103,13 @@ class RobustQueryParser {
             skipWhitespace(reader);
 
             List<QueryBuilder> bqb = parseOR(reader);
-            if (bqb != null) {
+            if (!bqb.isEmpty()) {
                 if (bqb.size() == 1) {
-                    if (autoexpand && bqb.get(0) instanceof TermQueryBuilder) {
-                        return QueryBuilders.prefixQuery(defaultField, input.toLowerCase()).rewrite("top_terms_256");
+                    String searchText = input.toLowerCase().trim();
+                    if (autoexpand
+                        && bqb.get(0) instanceof TermQueryBuilder
+                        && searchText.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
+                        return QueryBuilders.prefixQuery(defaultField, searchText).rewrite("top_terms_256");
                     }
                     return bqb.get(0);
                 }
@@ -126,7 +143,7 @@ class RobustQueryParser {
         }
         while (!reader.current().isEndOfInput()) {
             skipWhitespace(reader);
-            if (reader.current().is('o', 'O') && reader.next().is('r', 'R')) {
+            if (isAtOR(reader)) {
                 reader.consume(2);
                 subQuery = parseAND(reader);
                 if (!subQuery.isEmpty()) {
@@ -160,12 +177,16 @@ class RobustQueryParser {
         }
         while (!reader.current().isEndOfInput() && !reader.current().is(')')) {
             skipWhitespace(reader);
-            if (reader.current().is('o', 'O') && reader.next().is('r', 'R')) {
+            if (isAtOR(reader)) {
                 break;
             }
-            if (reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next().is('d', 'D')) {
+            if (isAtAND(reader)) {
                 // AND is the default operation -> ignore
                 reader.consume(3);
+            }
+            if (isAtBinaryAND(reader)) {
+                // && is the default operation -> ignore
+                reader.consume(2);
             }
             subQuery = parseToken(reader);
             if (!subQuery.isEmpty()) {
@@ -175,6 +196,19 @@ class RobustQueryParser {
             }
         }
         return result;
+    }
+
+    private boolean isAtBinaryAND(LookaheadReader reader) {
+        return reader.current().is('&') && reader.next().is('|');
+    }
+
+    private boolean isAtAND(LookaheadReader reader) {
+        return reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next().is('d', 'D');
+    }
+
+    private boolean isAtOR(LookaheadReader reader) {
+        return (reader.current().is('o', 'O') && reader.next().is('r', 'R')) || (reader.current().is('|')
+                                                                                 && reader.next().is('|'));
     }
 
     /*
@@ -241,8 +275,15 @@ class RobustQueryParser {
 
     private List<QueryBuilder> compileToken(String field, StringBuilder sb, boolean negate) {
         String value = sb.toString();
-        if (value.length() > 1 && value.endsWith("*")) {
-            return compileTokenWithAsterisk(field, negate, value);
+        if (value.endsWith("*")) {
+            // + 1 to compensate for the "*" in the string
+            if (value.length() >= EXPANSION_TOKEN_MIN_LENGTH + 1) {
+                return compileTokenWithAsterisk(field, negate, value);
+            } else if (value.length() == 1) {
+                return Collections.emptyList();
+            } else {
+                value = value.substring(0, value.length() - 1);
+            }
         }
 
         List<QueryBuilder> result = Lists.newArrayList();
@@ -250,11 +291,13 @@ class RobustQueryParser {
 
         if (field.equals(defaultField)) {
             for (List<String> tokens : tokenizer.apply(value)) {
-                QueryBuilder qb = transformTokenList(field, tokens);
-                if (negate) {
-                    qry.mustNot(qb);
-                } else {
-                    result.add(qb);
+                if (tokens != null && !tokens.isEmpty()) {
+                    QueryBuilder qb = transformTokenList(field, tokens);
+                    if (negate) {
+                        qry.mustNot(qb);
+                    } else {
+                        result.add(qb);
+                    }
                 }
             }
         } else {
