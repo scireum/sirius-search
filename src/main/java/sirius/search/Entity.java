@@ -466,7 +466,7 @@ public abstract class Entity {
             sb.append(p.getName());
             sb.append(": ");
             sb.append("'");
-            sb.append(p.writeToSource(this));
+            sb.append(Strings.limit(p.writeToSource(this), 50));
             sb.append("'");
         }
         sb.append("}");
