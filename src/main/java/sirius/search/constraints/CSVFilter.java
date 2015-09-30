@@ -66,7 +66,7 @@ public class CSVFilter implements Constraint {
                                           .map(String::trim)
                                           .filter(Strings::isFilled);
             if (lowercaseValues) {
-                stream.map(String::toLowerCase);
+                stream = stream.map(String::toLowerCase);
             }
             this.values = stream.collect(Collectors.toList());
         } else {
