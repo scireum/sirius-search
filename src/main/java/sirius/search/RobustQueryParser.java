@@ -203,7 +203,7 @@ class RobustQueryParser {
     }
 
     private boolean isAtAND(LookaheadReader reader) {
-        return reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next().is('d', 'D');
+        return reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next(2).is('d', 'D');
     }
 
     private boolean isAtOR(LookaheadReader reader) {
