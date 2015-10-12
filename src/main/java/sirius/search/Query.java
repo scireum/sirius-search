@@ -106,6 +106,7 @@ public class Query<E extends Entity> {
     private String index;
     private boolean forceFail = false;
     private String routing;
+    protected boolean logQuery;
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
     private int scrollTTL = SCROLL_TTL_SECONDS;
@@ -245,7 +246,7 @@ public class Query<E extends Entity> {
                           Function<String, Iterable<List<String>>> tokenizer,
                           boolean autoexpand) {
         if (Strings.isFilled(query)) {
-            this.query = query;
+            this.query = detectLogging(query);
             RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
             rqp.compileAndApply(this, false);
         }
@@ -267,11 +268,22 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
-        this.query = query;
+        this.query = detectLogging(query);
         RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, false);
         rqp.compileAndApply(this, true);
 
         return this;
+    }
+
+    private String detectLogging(String query) {
+        if (Strings.isFilled(query)) {
+            if (query.startsWith("?")) {
+                logQuery = true;
+                return query.substring(1);
+            }
+        }
+
+        return query;
     }
 
     /**
@@ -652,6 +664,10 @@ public class Query<E extends Entity> {
         applyFacets(srb);
         applyQueriesAndFilters(srb);
         applyLimit(srb);
+
+        if (logQuery) {
+            Index.LOG.INFO(srb);
+        }
 
         return srb;
     }
