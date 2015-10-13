@@ -166,10 +166,12 @@ public class CSVFilter implements Constraint {
                     for (String val : values) {
                         bqb.should(QueryBuilders.termQuery(field, val));
                     }
+                    break;
                 case CONTAINS_ALL:
                     for (String val : values) {
                         bqb.must(QueryBuilders.termQuery(field, val));
                     }
+                    break;
             }
             return bqb;
         }
@@ -188,10 +190,12 @@ public class CSVFilter implements Constraint {
                     for (String val : values) {
                         bfb.should(FilterBuilders.termFilter(field, val));
                     }
+                    break;
                 case CONTAINS_ALL:
                     for (String val : values) {
                         bfb.must(FilterBuilders.termFilter(field, val));
                     }
+                    break;
             }
             if (orEmpty) {
                 bfb.should(FilterBuilders.missingFilter(field));
