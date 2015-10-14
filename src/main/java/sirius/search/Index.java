@@ -39,6 +39,7 @@ import sirius.kernel.async.Barrier;
 import sirius.kernel.async.CallContext;
 import sirius.kernel.async.ExecutionPoint;
 import sirius.kernel.async.Future;
+import sirius.kernel.async.Operation;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
@@ -66,6 +67,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -540,15 +542,47 @@ public class Index {
                 return;
             }
 
-            boolean updateSchema = Sirius.getConfig().getBoolean("index.updateSchema");
+            Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
 
+            // Setup index
+            indexPrefix = Sirius.getConfig().getString("index.prefix");
+            if (!indexPrefix.endsWith("-")) {
+                indexPrefix = indexPrefix + "-";
+            }
+
+            schema = new Schema();
+            schema.load();
+
+            Operation.cover("index",
+                            () -> "IndexLifecycle.updateMappings",
+                            Duration.ofSeconds(30),
+                            this::updateMappings);
+
+            ready = true;
+            readyFuture.success();
+
+            delayLineTimer = new Timer("index-delay");
+            delayLineTimer.schedule(new DelayLineHandler(), 1000, 1000);
+        }
+
+        private void updateMappings() {
+            boolean updateSchema = Sirius.getConfig().getBoolean("index.updateSchema")
+                                   || "in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"));
+
+            if (updateSchema) {
+                for (String msg : schema.createMappings()) {
+                    LOG.INFO(msg);
+                }
+            }
+        }
+
+        private void startClient() {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 client = NodeBuilder.nodeBuilder().data(true).local(true).build().client();
             } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
-                updateSchema = true;
             } else {
                 LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...",
                          Sirius.getConfig().getString("index.cluster"),
@@ -563,27 +597,6 @@ public class Index {
                                                                                          .getInt("index.port")));
                 client = transportClient;
             }
-
-            // Setup index
-            indexPrefix = Sirius.getConfig().getString("index.prefix");
-            if (!indexPrefix.endsWith("-")) {
-                indexPrefix = indexPrefix + "-";
-            }
-
-            schema = new Schema();
-            schema.load();
-
-            // Send mappings to ES
-            if (updateSchema) {
-                for (String msg : schema.createMappings()) {
-                    LOG.INFO(msg);
-                }
-            }
-            ready = true;
-            readyFuture.success();
-
-            delayLineTimer = new Timer("index-delay");
-            delayLineTimer.schedule(new DelayLineHandler(), 1000, 1000);
         }
 
         @Override
