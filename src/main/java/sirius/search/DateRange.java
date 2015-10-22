@@ -85,7 +85,7 @@ public class DateRange {
      */
     public static DateRange yesterday() {
         return new DateRange("yesterday",
-                             NLS.get("DateRange.today"),
+                             NLS.get("DateRange.yesterday"),
                              LocalDate.now().minusDays(1).atStartOfDay(),
                              LocalDate.now().minusDays(1).atTime(23, 59));
     }
