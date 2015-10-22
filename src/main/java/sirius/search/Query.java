@@ -27,6 +27,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -43,7 +44,6 @@ import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
-import sirius.kernel.nls.NLS;
 import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
@@ -85,7 +85,7 @@ public class Query<E extends Entity> {
 
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
-     * {@link #query(String, String, Function, boolean)} to specify a custom field.
+     * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
     private static final String DEFAULT_FIELD = "_all";
 
@@ -239,64 +239,35 @@ public class Query<E extends Entity> {
      * @param defaultField the default field to search in
      * @param tokenizer    the function to use for tokenization
      * @param autoexpand   determines if for single term queries an expansion (like term*) should be added
+     * @param forced       if <tt>true</tt> the query will fail (not return any results) if no valid input query was
+     *                     given (i.e. empty text)
      * @return the query itself for fluent method calls
      */
     public Query<E> query(String query,
                           String defaultField,
                           Function<String, Iterable<List<String>>> tokenizer,
-                          boolean autoexpand) {
+                          boolean autoexpand,
+                          boolean forced) {
         if (Strings.isFilled(query)) {
             this.query = detectLogging(query);
             RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
-            rqp.compileAndApply(this, false);
+            rqp.compileAndApply(this, forced);
         }
 
         return this;
-    }
-
-    /**
-     * Adds a textual query using the given field. If the given query is too short, no results will be
-     * generated.
-     * <p>
-     * If a non-empty query string which contains at least two characters (without "*") is given, this will behave just
-     * like {@link #query(String, String, Function, boolean)}. Otherwise the completed query will be failed by calling
-     * {@link #fail()} to ensure that no results are generated.
-     *
-     * @param query        the query to search for
-     * @param defaultField the default field to search in
-     * @param tokenizer    the function to use for tokenization
-     * @return the query itself for fluent method calls
-     */
-    public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
-        this.query = detectLogging(query);
-        RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, false);
-        rqp.compileAndApply(this, true);
-
-        return this;
-    }
-
-    private String detectLogging(String query) {
-        if (Strings.isFilled(query)) {
-            if (query.startsWith("?")) {
-                logQuery = true;
-                return query.substring(1);
-            }
-        }
-
-        return query;
     }
 
     /**
      * Adds a textual query across all searchable fields.
      * <p>
      * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean)}.
+     * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
      */
     public Query<E> query(String query) {
-        return query(query, DEFAULT_FIELD, this::defaultTokenizer, false);
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, false, false);
     }
 
     /**
@@ -305,13 +276,13 @@ public class Query<E extends Entity> {
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
      * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean)}.
+     * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
      */
     public Query<E> expandedQuery(String query) {
-        return query(query, DEFAULT_FIELD, this::defaultTokenizer, true);
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, false);
     }
 
     /**
@@ -336,6 +307,55 @@ public class Query<E extends Entity> {
         }
 
         return result;
+    }
+
+    /**
+     * Adds a textual query using the given field. If the given query is too short, no results will be
+     * generated.
+     * <p>
+     * If a non-empty query string which contains at least two characters (without "*") is given, this will behave just
+     * like {@link #query(String, String, Function, boolean, boolean)}. Otherwise the completed query will be failed by
+     * calling {@link #fail()} to ensure that no results are generated.
+     *
+     * @param query        the query to search for
+     * @param defaultField the default field to search in
+     * @param tokenizer    the function to use for tokenization
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, false, true);
+    }
+
+    /**
+     * Adds a textual query using the given field. If the given query is too short, no results will be
+     * generated.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * If a non-empty query string which contains at least two characters (without "*") is given, this will behave just
+     * like {@link #query(String, String, Function, boolean, boolean)}. Otherwise the completed query will be failed by
+     * calling {@link #fail()} to ensure that no results are generated.
+     *
+     * @param query        the query to search for
+     * @param defaultField the default field to search in
+     * @param tokenizer    the function to use for tokenization
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> forceExpandedQuery(String query,
+                                       String defaultField,
+                                       Function<String, Iterable<List<String>>> tokenizer) {
+        return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, true);
+    }
+
+    private String detectLogging(String query) {
+        if (Strings.isFilled(query)) {
+            if (query.startsWith("?")) {
+                logQuery = true;
+                return query.substring(1);
+            }
+        }
+
+        return query;
     }
 
     /**
@@ -482,10 +502,7 @@ public class Query<E extends Entity> {
         if (p instanceof EnumProperty && translator == null) {
             translator = (v) -> String.valueOf(((EnumProperty) p).transformFromSource(v));
         }
-        termFacets.add(new Facet(NLS.get(p.getField().getDeclaringClass().getSimpleName() + "." + field),
-                                 field,
-                                 value,
-                                 translator));
+        termFacets.add(new Facet(p.getFieldTitle(), field, value, translator));
         if (Strings.isFilled(value)) {
             where(FieldEqual.on(field, value).asFilter());
         }
@@ -527,6 +544,42 @@ public class Query<E extends Entity> {
      */
     public Query<E> addTermFacet(String field, WebContext request) {
         addTermFacet(field, request.get(field).getString());
+        return this;
+    }
+
+    /**
+     * Adds a facet filter on a date field with the given ranges as facets (buckets).
+     *
+     * @param field  the field to filter on
+     * @param value  the currently selected filter bucket
+     * @param ranges the ranges to group entities by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addDateRangeFacet(String field, String value, DateRange... ranges) {
+        final Property p = Index.getDescriptor(clazz).getProperty(field);
+
+        DateFacet dateFacet = new DateFacet(p.getFieldTitle(), field, value, ranges);
+        termFacets.add(dateFacet);
+        if (Strings.isFilled(value)) {
+            DateRange range = dateFacet.getRangeByName(value);
+            if (range != null) {
+                range.applyToQuery(field, this);
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * Adds a facet filter on a date field with the given ranges as facets (buckets).
+     *
+     * @param field   the field to filter on
+     * @param request a request to fetch the current filter value from
+     * @param ranges  the ranges to group entities by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addDateRangeFacet(String field, WebContext request, DateRange... ranges) {
+        addDateRangeFacet(field, request.get(field).getString(), ranges);
         return this;
     }
 
@@ -683,7 +736,17 @@ public class Query<E extends Entity> {
 
     private void applyFacets(SearchRequestBuilder srb) {
         for (Facet field : termFacets) {
-            srb.addAggregation(AggregationBuilders.terms(field.getName()).field(field.getName()).size(termFacetLimit));
+            if (field instanceof DateFacet) {
+                DateRangeBuilder rangeBuilder = AggregationBuilders.dateRange(field.getName()).field(field.getName());
+                for (DateRange range : ((DateFacet) field).getRanges()) {
+                    range.applyTo(rangeBuilder);
+                }
+                srb.addAggregation(rangeBuilder);
+            } else {
+                srb.addAggregation(AggregationBuilders.terms(field.getName())
+                                                      .field(field.getName())
+                                                      .size(termFacetLimit));
+            }
         }
     }
 

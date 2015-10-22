@@ -131,7 +131,7 @@ public class Schema {
     }
 
     protected List<String> createMappings(String indexPrefix) {
-        List<String> changes = new ArrayList<String>();
+        List<String> changes = new ArrayList<>();
         for (EntityDescriptor ed : descriptorTable.values()) {
             String index = indexPrefix + ed.getIndex();
             try {
@@ -163,7 +163,7 @@ public class Schema {
                                    e.getValue().getType(),
                                    e.getValue().createMapping().prettyPrint().string());
                 }
-                Index.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey(), false);
+                Index.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey());
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
