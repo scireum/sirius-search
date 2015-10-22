@@ -24,16 +24,14 @@ public class UpdateMappingCommand implements Command {
     @Override
     public void execute(Output output, String... params) throws Exception {
         if (Value.indexOf(0, params).isEmptyString()) {
-            output.line("Usage: updateMapping <type> <force (y/N)>");
-            output.line("If force is set to Yes, data loss might be possible!");
+            output.line("Usage: updateMapping <type>");
         } else {
             Class<? extends Entity> type = findTypeOrReportError(output, params[0]);
             if (type != null) {
                 EntityDescriptor ed = Index.getDescriptor(type);
                 try {
                     Index.addMapping(Index.getIndexPrefix() + ed.getIndex(),
-                                     type,
-                                     "y".equalsIgnoreCase(Value.indexOf(1, params).asString()));
+                                     type);
                     output.line("Mapping was updated...");
                 } catch (Exception e) {
                     output.line(e.getMessage());

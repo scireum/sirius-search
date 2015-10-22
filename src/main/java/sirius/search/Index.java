@@ -20,7 +20,6 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
@@ -73,7 +72,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -761,54 +759,18 @@ public class Index {
      *              Note: The index prefix of the current system will NOT be added automatically
      * @param type  the entity class which mapping should be written to the given index.
      * @param <E>   the generic of <tt>type</tt>
-     * @param force will drop the mapping forcefully if the mapping already exists but cannot be changed as requested
      */
-    public static <E extends Entity> void addMapping(String index, Class<E> type, boolean force) {
+    public static <E extends Entity> void addMapping(String index, Class<E> type) {
         try {
             EntityDescriptor desc = schema.getDescriptor(type);
-            PutMappingResponse putRes = null;
-            try {
-                putRes = Index.getClient()
-                              .admin()
-                              .indices()
-                              .preparePutMapping(index)
-                              .setType(desc.getType())
-                              .setSource(desc.createMapping())
-                              .execute()
-                              .get(10, TimeUnit.SECONDS);
-            } catch (ExecutionException e) {
-                // If we force the mapping, swallow this exception...
-                if (!force) {
-                    throw e;
-                }
-            }
-            if (putRes == null || !putRes.isAcknowledged()) {
-                if (force) {
-                    Index.getClient()
-                         .admin()
-                         .indices()
-                         .prepareDeleteMapping(index)
-                         .setType(desc.getType())
-                         .execute()
-                         .get(10, TimeUnit.SECONDS);
-                    putRes = Index.getClient()
-                                  .admin()
-                                  .indices()
-                                  .preparePutMapping(index)
-                                  .setType(desc.getType())
-                                  .setSource(desc.createMapping())
-                                  .execute()
-                                  .get(10, TimeUnit.SECONDS);
-                }
-                if (!putRes.isAcknowledged()) {
-                    throw Exceptions.handle()
-                                    .to(LOG)
-                                    .withSystemErrorMessage("Cannot create mapping %s in index: %s",
-                                                            type.getSimpleName(),
-                                                            index)
-                                    .handle();
-                }
-            }
+            Index.getClient()
+                 .admin()
+                 .indices()
+                 .preparePutMapping(index)
+                 .setType(desc.getType())
+                 .setSource(desc.createMapping())
+                 .execute()
+                 .get(10, TimeUnit.SECONDS);
         } catch (Throwable ex) {
             while (ex.getCause() != null && ex.getCause() != ex) {
                 ex = ex.getCause();
