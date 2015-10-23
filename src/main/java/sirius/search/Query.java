@@ -548,6 +548,28 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a term facet for a boolean field to be filled by the query.
+     *
+     * @param field the field to scan
+     * @param value the value to filter by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addBooleanTermFacet(String field, String value) {
+        return addTermFacet(field, value, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
+    }
+
+    /**
+     * Adds a term facet for a boolean field to be filled by the query.
+     *
+     * @param field   the field to scan
+     * @param request the request to read the current filter value from
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addBooleanTermFacet(String field, WebContext request) {
+        return addTermFacet(field, request, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
+    }
+
+    /**
      * Adds a facet filter on a date field with the given ranges as facets (buckets).
      *
      * @param field  the field to filter on
