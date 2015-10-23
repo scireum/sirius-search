@@ -44,6 +44,7 @@ import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
+import sirius.kernel.nls.NLS;
 import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
@@ -250,7 +251,7 @@ public class Query<E extends Entity> {
                           boolean forced) {
         if (Strings.isFilled(query)) {
             this.query = detectLogging(query);
-            RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
+            RobustQueryParser rqp = new RobustQueryParser(defaultField, this.query, tokenizer, autoexpand);
             rqp.compileAndApply(this, forced);
         }
 
