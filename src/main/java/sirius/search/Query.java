@@ -44,6 +44,7 @@ import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
+import sirius.kernel.nls.NLS;
 import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
@@ -250,7 +251,7 @@ public class Query<E extends Entity> {
                           boolean forced) {
         if (Strings.isFilled(query)) {
             this.query = detectLogging(query);
-            RobustQueryParser rqp = new RobustQueryParser(defaultField, query, tokenizer, autoexpand);
+            RobustQueryParser rqp = new RobustQueryParser(defaultField, this.query, tokenizer, autoexpand);
             rqp.compileAndApply(this, forced);
         }
 
@@ -545,6 +546,28 @@ public class Query<E extends Entity> {
     public Query<E> addTermFacet(String field, WebContext request) {
         addTermFacet(field, request.get(field).getString());
         return this;
+    }
+
+    /**
+     * Adds a term facet for a boolean field to be filled by the query.
+     *
+     * @param field the field to scan
+     * @param value the value to filter by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addBooleanTermFacet(String field, String value) {
+        return addTermFacet(field, value, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
+    }
+
+    /**
+     * Adds a term facet for a boolean field to be filled by the query.
+     *
+     * @param field   the field to scan
+     * @param request the request to read the current filter value from
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addBooleanTermFacet(String field, WebContext request) {
+        return addTermFacet(field, request, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
     }
 
     /**
