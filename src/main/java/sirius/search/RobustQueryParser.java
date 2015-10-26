@@ -69,7 +69,7 @@ class RobustQueryParser {
      */
     void compileAndApply(Query<?> query, boolean failForEmptyQueries) {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
-        QueryBuilder main = parseQuery(reader);
+        QueryBuilder main = parseQuery(reader, autoexpand);
         if (!reader.current().isEndOfInput()) {
             Index.LOG.FINE("Unexpected character in query: " + reader.current());
         }
@@ -77,7 +77,7 @@ class RobustQueryParser {
         // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
         if (main == null && !Strings.isEmpty(input) && input.contains(" ")) {
             reader = new LookaheadReader(new StringReader(input.replaceAll("\\s", "")));
-            main = parseQuery(reader);
+            main = parseQuery(reader, autoexpand);
         }
         if (main != null) {
             if (Index.LOG.isFINE()) {
@@ -98,7 +98,7 @@ class RobustQueryParser {
     /*
      * Entry point of the recursive descendant parser. Parses all input until a ) or its end is reached
      */
-    private QueryBuilder parseQuery(LookaheadReader reader) {
+    private QueryBuilder parseQuery(LookaheadReader reader, boolean executeAutoexpansion) {
         while (!reader.current().isEndOfInput() && !reader.current().is(')')) {
             skipWhitespace(reader);
 
@@ -106,7 +106,7 @@ class RobustQueryParser {
             if (!bqb.isEmpty()) {
                 if (bqb.size() == 1) {
                     String searchText = input.toLowerCase().trim();
-                    if (autoexpand
+                    if (executeAutoexpansion
                         && bqb.get(0) instanceof TermQueryBuilder
                         && searchText.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
                         return QueryBuilders.prefixQuery(defaultField, searchText).rewrite("top_terms_256");
@@ -262,7 +262,7 @@ class RobustQueryParser {
 
     private List<QueryBuilder> parseTokenInBrackets(LookaheadReader reader) {
         reader.consume();
-        QueryBuilder qb = parseQuery(reader);
+        QueryBuilder qb = parseQuery(reader, false);
         if (reader.current().is(')')) {
             reader.consume();
         }
