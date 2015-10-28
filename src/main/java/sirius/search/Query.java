@@ -324,7 +324,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> forceQuery(String query, String defaultField, Function<String, Iterable<List<String>>> tokenizer) {
-        return query(query, DEFAULT_FIELD, tokenizer, false, true);
+        return query(query, defaultField, tokenizer, false, true);
     }
 
     /**
@@ -345,7 +345,7 @@ public class Query<E extends Entity> {
     public Query<E> forceExpandedQuery(String query,
                                        String defaultField,
                                        Function<String, Iterable<List<String>>> tokenizer) {
-        return query(query, DEFAULT_FIELD, tokenizer, true, true);
+        return query(query, defaultField, tokenizer, true, true);
     }
 
     private String detectLogging(String query) {
