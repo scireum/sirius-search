@@ -56,19 +56,21 @@ public class EntityRefList<E extends Entity> {
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      *
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getValues() {
         return getValuesWithRouting(null);
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      *
      * @param routing the routing info used to lookup the entities (might be <tt>null</tt> if no routing is required).
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getValuesWithRouting(String routing) {
         if (!isValueLoaded() || valueFromCache) {
@@ -105,30 +107,32 @@ public class EntityRefList<E extends Entity> {
         if (values == null) {
             return Collections.emptyList();
         }
-        return values;
+        return Collections.unmodifiableList(values);
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      * <p>
      * The framework is permitted to load the value from a given local cache.
      *
      * @param localCache the cache to used when looking up values
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getCachedValue(Cache<String, Object> localCache) {
         return getCachedValueWithRouting(null, localCache);
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      * <p>
      * The framework is permitted to load the value from a given local cache.
      *
      * @param routing    the routing info used to lookup the entities (might be <tt>null</tt> if no routing is
      *                   required).
      * @param localCache the cache to used when looking up values
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getCachedValueWithRouting(String routing, Cache<String, Object> localCache) {
         if (isValueLoaded()) {
@@ -148,27 +152,29 @@ public class EntityRefList<E extends Entity> {
             }
         }
         values = result;
-        return values;
+        return Collections.unmodifiableList(values);
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      * <p>
      * The framework is permitted to load the value from the global cache.
      *
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getCachedValue() {
         return getCachedValueWithRouting(null);
     }
 
     /**
-     * Returns the entity value represented by this reference.
+     * Returns the entities represented by this reference as <b>unmodifyable list</b>.
      * <p>
      * The framework is permitted to load the value from the global cache.
      *
      * @param routing the routing info used to lookup the entities (might be <tt>null</tt> if no routing is required).
-     * @return the value represented by this reference
+     * @return the values represented by this reference. Note that this list is not modifyable. Use {@link
+     * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getCachedValueWithRouting(String routing) {
         if (isValueLoaded()) {
@@ -188,7 +194,7 @@ public class EntityRefList<E extends Entity> {
             }
         }
         values = result;
-        return values;
+        return Collections.unmodifiableList(values);
     }
 
     /**

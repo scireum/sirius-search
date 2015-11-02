@@ -59,7 +59,7 @@ public class ObjectListProperty extends Property {
     @Override
     protected Object transformFromSource(Object value) {
         List<Object> result = new ArrayList<>();
-        if ((value instanceof List)) {
+        if (value instanceof List) {
             for (Object object : (List<?>) value) {
                 if (object instanceof Map) {
                     try {
