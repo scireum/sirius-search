@@ -8,7 +8,12 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.search.Entity;
@@ -32,7 +37,7 @@ import java.util.stream.Stream;
  */
 public class CSVFilter implements Constraint {
 
-    private final static String defaultSplitter = "[,\\|]";
+    private static final String defaultSplitter = "[,\\|]";
 
     /**
      * Specifies the matching mode for a filter.
@@ -59,10 +64,10 @@ public class CSVFilter implements Constraint {
         }
         if (Strings.isFilled(value)) {
             Stream<String> stream = Arrays.asList(value.split(splitter))
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(String::trim)
-                    .filter(Strings::isFilled);
+                                          .stream()
+                                          .filter(Objects::nonNull)
+                                          .map(String::trim)
+                                          .filter(Strings::isFilled);
             if (lowercaseValues) {
                 stream = stream.map(String::toLowerCase);
             }
@@ -266,8 +271,8 @@ public class CSVFilter implements Constraint {
     @Override
     public String toString(boolean skipConstraintValues) {
         return field + " " + mode + " '" + (skipConstraintValues ? "?" : values) + "' " + (orEmpty ?
-                " OR IS EMPTY" :
-                "");
+                                                                                           " OR IS EMPTY" :
+                                                                                           "");
     }
 
     @Override
