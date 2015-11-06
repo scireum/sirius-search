@@ -30,7 +30,7 @@ import java.util.stream.Stream;
  * Represents a constraint which checks if the given field contains one or all of the values given as a comma
  * separated string. By default the given String will be split on "," and "|" but you can also use {@link
  * #customSplitter(String)} to split by a custom Regular Expression.
- * <p/>
+ * <p>
  * Therefore the constraint translates x,y,z for field f to: {@code f = x OR f = y OR f = z}. Empty strings
  * are gracefully handled (ignored). If {@link #orEmpty()} is used, the constraint also succeeds if
  * the target field is empty. This is only valid when <tt>containsAny</tt> is used.
@@ -73,7 +73,7 @@ public class CSVFilter implements Constraint {
     /**
      * Creates a new constraint for the given field which asserts that one of the given values in the string is
      * present.
-     * <p/>
+     * <p>
      * The string can have a form like A,B,C or A|B|C.
      *
      * @param field                the field to check
@@ -87,7 +87,7 @@ public class CSVFilter implements Constraint {
     /**
      * Creates a new constraint for the given field which asserts that all of the given values in the string is
      * present.
-     * <p/>
+     * <p>
      * The string can have a form like A,B,C or A|B|C.
      *
      * @param field                the field to check
