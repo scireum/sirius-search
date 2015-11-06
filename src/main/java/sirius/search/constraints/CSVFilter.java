@@ -28,8 +28,8 @@ import java.util.stream.Stream;
 
 /**
  * Represents a constraint which checks if the given field contains one or all of the values given as a comma
- * separated string. On default the given String will be split on "," and "|" but you can also use factory methods
- * to split by a custom Regular Expression.
+ * separated string. By default the given String will be split on "," and "|" but you can also use {@link
+ * #customSplitter(String)} to split by a custom Regular Expression.
  * <p/>
  * Therefore the constraint translates x,y,z for field f to: {@code f = x OR f = y OR f = z}. Empty strings
  * are gracefully handled (ignored). If {@link #orEmpty()} is used, the constraint also succeeds if
@@ -51,31 +51,23 @@ public class CSVFilter implements Constraint {
     private boolean isFilter;
     private boolean orEmpty = false;
     private Mode mode;
+    private String commaSeparatedValues;
+    private String splitter;
+    private boolean lowercaseValues;
 
     /*
      * Use one of the factory methods
      */
-    private CSVFilter(String field, String value, Mode mode, String splitter, boolean lowercaseValues) {
+    private CSVFilter(String field, String value, Mode mode) {
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
             this.field = Index.ID_FIELD;
         } else {
             this.field = field;
         }
-        if (Strings.isFilled(value)) {
-            Stream<String> stream = Arrays.asList(value.split(splitter))
-                                          .stream()
-                                          .filter(Objects::nonNull)
-                                          .map(String::trim)
-                                          .filter(Strings::isFilled);
-            if (lowercaseValues) {
-                stream = stream.map(String::toLowerCase);
-            }
-            this.values = stream.collect(Collectors.toList());
-        } else {
-            this.values = Collections.emptyList();
-        }
+        this.splitter = defaultSplitter;
         this.mode = mode;
+        this.commaSeparatedValues = value;
     }
 
     /**
@@ -89,21 +81,7 @@ public class CSVFilter implements Constraint {
      * @return a new constraint representing the given filter setting
      */
     public static CSVFilter containsAny(String field, Value commaSeparatedValues) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY, defaultSplitter, false);
-    }
-
-    /**
-     * Creates a new constraint for the given field which asserts that one of the given values converted to lowercase
-     * in the string is present.
-     * <p/>
-     * The string can have a form like A,B,C or A|B|C.
-     *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @return a new constraint representing the given filter setting
-     */
-    public static CSVFilter containsAnyLowercase(String field, Value commaSeparatedValues) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY, defaultSplitter, true);
+        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY);
     }
 
     /**
@@ -117,81 +95,28 @@ public class CSVFilter implements Constraint {
      * @return a new constraint representing the given filter setting
      */
     public static CSVFilter containsAll(String field, Value commaSeparatedValues) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ALL, defaultSplitter, false);
+        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY);
     }
 
     /**
-     * Creates a new constraint for the given field which asserts that all of the given values converted to lowercase
-     * in the string is present.
-     * <p/>
-     * The string can have a form like A,B,C or A|B|C.
+     * Signals that this constraint should convert the values to lowercase before being applied
      *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @return a new constraint representing the given filter setting
+     * @return the constraint itself for fluent method calls
      */
-    public static CSVFilter containsAllLowercase(String field, Value commaSeparatedValues) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ALL, defaultSplitter, true);
+    public CSVFilter lowercaseValues() {
+        lowercaseValues = true;
+        return this;
     }
 
     /**
-     * Creates a new constraint for the given field which asserts that one of the given values in the string is
-     * present.
-     * <p/>
-     * The string will be split using the given Regular Expression
+     * Signals that this constraint should split the give values String using the given Regular Expression
      *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @param customSplitter       the Regular Expression which is used to split the given values
-     * @return a new constraint representing the given filter setting
+     * @param customSplitter a Regular Expression used to split
+     * @return the constraint itself for fluent method calls
      */
-    public static CSVFilter containsAny(String field, Value commaSeparatedValues, String customSplitter) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY, customSplitter, false);
-    }
-
-    /**
-     * Creates a new constraint for the given field which asserts that one of the given values converted to lowercase
-     * in the string is present.
-     * <p/>
-     * The string will be split using the given Regular Expression
-     *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @param customSplitter       the Regular Expression which is used to split the given values
-     * @return a new constraint representing the given filter setting
-     */
-    public static CSVFilter containsAnyLowercase(String field, Value commaSeparatedValues, String customSplitter) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY, customSplitter, true);
-    }
-
-    /**
-     * Creates a new constraint for the given field which asserts that all of the given values in the string is
-     * present.
-     * <p/>
-     * The string will be split using the given Regular Expression
-     *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @param customSplitter       the Regular Expression which is used to split the given values
-     * @return a new constraint representing the given filter setting
-     */
-    public static CSVFilter containsAll(String field, Value commaSeparatedValues, String customSplitter) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ALL, customSplitter, false);
-    }
-
-    /**
-     * Creates a new constraint for the given field which asserts that all of the given values converted to lowercase
-     * in the string is present.
-     * <p/>
-     * The string will be split using the given Regular Expression
-     *
-     * @param field                the field to check
-     * @param commaSeparatedValues the comma separated values to check for
-     * @param customSplitter       the Regular Expression which is used to split the given values
-     * @return a new constraint representing the given filter setting
-     */
-    public static CSVFilter containsAllLowercase(String field, Value commaSeparatedValues, String customSplitter) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ALL, customSplitter, true);
+    public CSVFilter customSplitter(String customSplitter) {
+        splitter = customSplitter;
+        return this;
     }
 
     /**
@@ -219,6 +144,7 @@ public class CSVFilter implements Constraint {
 
     @Override
     public QueryBuilder createQuery() {
+        collectValues();
         if (values.isEmpty()) {
             return null;
         }
@@ -243,6 +169,7 @@ public class CSVFilter implements Constraint {
 
     @Override
     public FilterBuilder createFilter() {
+        collectValues();
         if (values.isEmpty()) {
             return null;
         }
@@ -266,6 +193,22 @@ public class CSVFilter implements Constraint {
             return bfb;
         }
         return null;
+    }
+
+    private void collectValues() {
+        if (Strings.isFilled(commaSeparatedValues)) {
+            Stream<String> stream = Arrays.asList(commaSeparatedValues.split(splitter))
+                                          .stream()
+                                          .filter(Objects::nonNull)
+                                          .map(String::trim)
+                                          .filter(Strings::isFilled);
+            if (lowercaseValues) {
+                stream = stream.map(String::toLowerCase);
+            }
+            this.values = stream.collect(Collectors.toList());
+        } else {
+            this.values = Collections.emptyList();
+        }
     }
 
     @Override
