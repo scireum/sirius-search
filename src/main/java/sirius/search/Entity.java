@@ -412,7 +412,7 @@ public abstract class Entity {
      * #internalOnAfterDelete()}.
      */
     protected final void afterDelete() {
-        executeDeleteChecksOnForeignKeys();
+        executeDeleteOnForeignKeys();
         internalOnAfterDelete();
         onAfterDelete();
     }
@@ -584,8 +584,7 @@ public abstract class Entity {
 
     private Object obtainModificationProtectedValue(Property p) {
         Object oldValue = p.writeToSource(this);
-        Object protectedValue = createModificationProtectedValue(oldValue);
-        return protectedValue;
+        return createModificationProtectedValue(oldValue);
     }
 
     private Object createModificationProtectedValue(Object value) {

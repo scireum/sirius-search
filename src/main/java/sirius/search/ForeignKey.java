@@ -233,7 +233,12 @@ public class ForeignKey {
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .iterate(row -> {
-                     updateReferencedFields(entity, row);
+                     try {
+                         field.set(row, null);
+                         updateReferencedFields(entity, row);
+                     } catch (Throwable e) {
+                         Exceptions.handle(Index.LOG, e);
+                     }
                      return true;
                  });
         } catch (Throwable e) {
