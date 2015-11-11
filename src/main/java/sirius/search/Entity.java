@@ -421,8 +421,10 @@ public abstract class Entity {
      * Executes the {@link sirius.search.ForeignKey#onDelete(Entity)} handlers on all foreign keys...
      */
     protected void executeDeleteOnForeignKeys() {
-        for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
-            fk.onDelete(this);
+        if (!isNew()) {
+            for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
+                fk.onDelete(this);
+            }
         }
     }
 
@@ -530,8 +532,10 @@ public abstract class Entity {
         if (skipForeignKeys) {
             return;
         }
-        for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
-            fk.onSave(this);
+        if (!isNew()) {
+            for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
+                fk.onSave(this);
+            }
         }
     }
 
