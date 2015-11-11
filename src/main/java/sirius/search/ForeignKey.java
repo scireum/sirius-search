@@ -200,13 +200,12 @@ public class ForeignKey {
             Index.select((Class<Entity>) getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
-                 .iterate(row -> {
+                 .iterateAll(row -> {
                      try {
                          Index.delete(row, true);
                      } catch (Throwable e) {
                          Exceptions.handle(Index.LOG, e);
                      }
-                     return true;
                  });
         } catch (Throwable e) {
             Exceptions.handle(Index.LOG, e);
