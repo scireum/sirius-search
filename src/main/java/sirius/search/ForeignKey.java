@@ -104,6 +104,17 @@ public class ForeignKey {
             }
             return remoteProperty;
         }
+
+        @Override
+        public String toString() {
+            return getLocalClass()
+                   + "."
+                   + getLocalProperty().getName()
+                   + " --> "
+                   + getReferencedClass()
+                   + "."
+                   + getRemoteField();
+        }
     }
 
     /**
@@ -257,7 +268,7 @@ public class ForeignKey {
         for (Reference ref : references) {
             try {
                 if (entity.source == null || entity.isChanged(ref.getRemoteProperty().getName(),
-                                     ref.getRemoteProperty().writeToSource(entity))) {
+                                                              ref.getRemoteProperty().writeToSource(entity))) {
                     referenceChanged = true;
                     break;
                 }
@@ -379,5 +390,18 @@ public class ForeignKey {
             otherType = Index.getDescriptor(getReferencedClass()).getType();
         }
         return otherType;
+    }
+
+    @Override
+    public String toString() {
+        return getLocalClass()
+               + "."
+               + getName()
+               + " --> "
+               + getReferencedClass()
+               + " [Cascade: "
+               + refType.cascade()
+               + "] References: "
+               + references;
     }
 }
