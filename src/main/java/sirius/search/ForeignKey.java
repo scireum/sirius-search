@@ -231,14 +231,12 @@ public class ForeignKey {
             Index.select((Class<Entity>) getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
-                 .iterate(row -> {
+                 .iterateAll(row -> {
                      try {
-                         field.set(row, null);
-                         updateReferencedFields(entity, row);
+                         updateReferencedFields(null, row, true);
                      } catch (Throwable e) {
                          Exceptions.handle(Index.LOG, e);
                      }
-                     return true;
                  });
         } catch (Throwable e) {
             Exceptions.handle(Index.LOG, e);
@@ -281,7 +279,7 @@ public class ForeignKey {
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .iterate(row -> {
-                     updateReferencedFields(entity, row);
+                     updateReferencedFields(entity, row, false);
                      return true;
                  });
         } catch (Throwable e) {
@@ -293,7 +291,7 @@ public class ForeignKey {
      * Tries to update all referenced fields. If we cannot update the entity with
      * three retries, we give up and report a warning...
      */
-    private void updateReferencedFields(Entity parent, Entity child) {
+    private void updateReferencedFields(Entity parent, Entity child, boolean updateParent) {
         try {
             UpdateRequestBuilder urb = Index.getClient()
                                             .prepareUpdate()
@@ -319,7 +317,16 @@ public class ForeignKey {
                 sb.append("=");
                 sb.append(ref.getLocalProperty().getName());
                 sb.append(";");
-                urb.addScriptParam(ref.getLocalProperty().getName(), ref.getRemoteProperty().writeToSource(parent));
+                urb.addScriptParam(ref.getLocalProperty().getName(),
+                                   parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
+            }
+            if (updateParent) {
+                sb.append("ctx._source.");
+                sb.append(getName());
+                sb.append("=");
+                sb.append(getName());
+                sb.append(";");
+                urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
             }
             urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
             if (Index.LOG.isFINE()) {
