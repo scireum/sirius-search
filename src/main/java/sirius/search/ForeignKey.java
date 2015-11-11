@@ -256,7 +256,7 @@ public class ForeignKey {
         boolean referenceChanged = false;
         for (Reference ref : references) {
             try {
-                if (entity.isChanged(ref.getRemoteProperty().getName(),
+                if (entity.source == null || entity.isChanged(ref.getRemoteProperty().getName(),
                                      ref.getRemoteProperty().writeToSource(entity))) {
                     referenceChanged = true;
                     break;
