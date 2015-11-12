@@ -1458,6 +1458,7 @@ public class Index {
                                              .put("index.store.type", "memory")
                                              .put("index.number_of_shards", 1)
                                              .put("index.number_of_replicas", 0)
+                                             .put("script.disable_dynamic", false)
                                              .build();
         inMemoryNode = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node();
         client = inMemoryNode.client();
