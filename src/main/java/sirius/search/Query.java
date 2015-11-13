@@ -735,7 +735,7 @@ public class Query<E extends Entity> {
             srb.setPreference("_primary");
         }
 
-        applyRouting(ed, srb);
+        applyRouting(ed, srb::setRouting);
         applyOrderBys(srb);
         applyFacets(srb);
         applyQueriesAndFilters(srb);
@@ -803,7 +803,7 @@ public class Query<E extends Entity> {
         }
     }
 
-    private void applyRouting(EntityDescriptor ed, SearchRequestBuilder srb) {
+    private void applyRouting(EntityDescriptor ed, Consumer<String> routingTaget) {
         if (Strings.isFilled(routing)) {
             if (!ed.hasRouting()) {
                 Exceptions.handle()
@@ -813,7 +813,7 @@ public class Query<E extends Entity> {
                                                   + "This will most probably FAIL!", clazz.getName())
                           .handle();
             }
-            srb.setRouting(routing);
+            routingTaget.accept(routing);
         } else if (ed.hasRouting() && !deliberatelyUnrouted) {
             Exceptions.handle()
                       .to(Index.LOG)
@@ -891,25 +891,9 @@ public class Query<E extends Entity> {
             CountRequestBuilder crb = Index.getClient()
                                            .prepareCount(index != null ? index : Index.getIndex(clazz))
                                            .setTypes(ed.getType());
-            if (Strings.isFilled(routing)) {
-                if (!ed.hasRouting()) {
-                    Exceptions.handle()
-                              .to(Index.LOG)
-                              .withSystemErrorMessage("Performing a search on %s with a routing "
-                                                      + "- but entity has no routing attribute (in @Indexed)! "
-                                                      + "This will most probably FAIL!", clazz.getName())
-                              .handle();
-                }
-                crb.setRouting(routing);
-            } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-                Exceptions.handle()
-                          .to(Index.LOG)
-                          .withSystemErrorMessage("Performing a search on %s without providing a routing. "
-                                                  + "Consider providing a routing for better performance "
-                                                  + "or call deliberatelyUnrouted() to signal that routing "
-                                                  + "was intentionally skipped.", clazz.getName())
-                          .handle();
-            }
+
+            applyRouting(ed, crb::setRouting);
+
             QueryBuilder qb = buildQuery();
             if (qb != null) {
                 crb.setQuery(qb);
