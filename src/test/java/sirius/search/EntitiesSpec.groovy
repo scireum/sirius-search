@@ -33,6 +33,28 @@ class EntitiesSpec extends BaseSpecification {
 
     }
 
+    def "cascase delete works for a EntityRefList"() {
+        given:
+        def parent1 = new ParentEntity();
+        def parent2 = new ParentEntity();
+        parent1.setName("Test1");
+        parent2.setName("Test2");
+        Index.create(parent1);
+        Index.create(parent2);
+        def child = new CascadeManyChildEntity();
+        child.getParents().addValue(parent1)
+        child.getParents().addValue(parent2)
+        Index.create(child);
+        Index.blockThreadForUpdate();
+        when:
+        Index.delete(parent1);
+        and:
+        waitForCompletion();
+        then:
+        Index.refreshOrNull(child) == null;
+
+    }
+
     def "set null on delete works"() {
         given:
         def parent = new ParentEntity();
@@ -50,6 +72,29 @@ class EntitiesSpec extends BaseSpecification {
         !child.getParent().isFilled();
         and:
         child.getParentName() == null;
+    }
+
+    def "set null on delete works for a EntityRefList"() {
+        given:
+        def parent1 = new ParentEntity();
+        def parent2 = new ParentEntity();
+        parent1.setName("Test1");
+        parent2.setName("Test2");
+        Index.create(parent1);
+        Index.create(parent2);
+        def child = new SetNullManyChildEntity();
+        child.getParents().addValue(parent1)
+        child.getParents().addValue(parent2)
+        Index.create(child);
+        Index.blockThreadForUpdate();
+        when:
+        Index.delete(parent1);
+        waitForCompletion();
+        child = Index.refreshOrFail(child);
+        then:
+        child.getParents().getIds().size() == 1
+        and:
+        child.getParents().getValues().size() == 1
     }
 
     def "reject on delete works"() {

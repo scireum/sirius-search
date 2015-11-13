@@ -42,6 +42,8 @@ import sirius.kernel.async.Operation;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
+import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.Wait;
@@ -663,6 +665,30 @@ public class Index {
                                 .handle();
             }
         }
+    }
+
+    /**
+     * Tries to apply the given changes and to save the resulting entity.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public static <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
+        Monoflop mf = Monoflop.create();
+        retry(() -> {
+            E entityToUpdate = entity;
+            if (mf.successiveCall()) {
+                entityToUpdate = refreshIfPossible(entity);
+            }
+
+            preSaveModifier.invoke(entityToUpdate);
+            tryUpdate(entityToUpdate);
+        });
     }
 
     /**
