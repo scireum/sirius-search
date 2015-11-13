@@ -244,7 +244,13 @@ public class ForeignKey {
                  .autoRoute(field.getName(), entity.getId())
                  .iterateAll(row -> {
                      try {
-                         updateReferencedFields(null, row, true);
+                         if (field.getType() == EntityRefList.class) {
+                             Index.retryUpdate(row,
+                                               child -> ((EntityRefList<?>) field.get(child)).getIds()
+                                                                                             .remove(entity.getId()));
+                         } else {
+                             updateReferencedFields(null, row, true);
+                         }
                      } catch (Throwable e) {
                          Exceptions.handle(Index.LOG, e);
                      }
