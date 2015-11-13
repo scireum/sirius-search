@@ -20,6 +20,7 @@ import sirius.search.constraints.Wrapper;
 
 import java.io.StringReader;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -105,11 +106,12 @@ class RobustQueryParser {
             List<QueryBuilder> bqb = parseOR(reader);
             if (!bqb.isEmpty()) {
                 if (bqb.size() == 1) {
-                    String searchText = input.toLowerCase().trim();
+                    String singleToken = obtainSingleToken(input);
                     if (executeAutoexpansion
+                        && singleToken != null
                         && bqb.get(0) instanceof TermQueryBuilder
-                        && searchText.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
-                        return QueryBuilders.prefixQuery(defaultField, searchText).rewrite("top_terms_256");
+                        && singleToken.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
+                        return QueryBuilders.prefixQuery(defaultField, singleToken).rewrite("top_terms_256");
                     }
                     return bqb.get(0);
                 }
@@ -119,6 +121,20 @@ class RobustQueryParser {
                 }
                 return result;
             }
+        }
+        return null;
+    }
+
+    private String obtainSingleToken(String input) {
+        Iterator<List<String>> tokenIter = tokenizer.apply(input).iterator();
+        List<String> firstList = tokenIter.next();
+        if (tokenIter.hasNext()) {
+            // We tokenized into several lists -> give up an return null
+            return null;
+        }
+        if (firstList.size() == 1) {
+            // Only return the first token if it is the only token in the list
+            return firstList.get(0);
         }
         return null;
     }
