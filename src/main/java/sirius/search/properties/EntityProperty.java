@@ -14,6 +14,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
 import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.RefType;
 import sirius.web.http.WebContext;
 
@@ -78,7 +79,7 @@ public class EntityProperty extends Property {
             }
             ((EntityRef<?>) field.get(entity)).setId(ctx.get(getName()).asString());
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -89,7 +90,7 @@ public class EntityProperty extends Property {
             entityRef.setId((String) value);
             entityRef.clearDirty();
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 

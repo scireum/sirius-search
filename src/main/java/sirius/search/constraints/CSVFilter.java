@@ -17,7 +17,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,7 +61,7 @@ public class CSVFilter implements Constraint {
     private CSVFilter(String field, String value, Mode mode) {
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }

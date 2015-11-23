@@ -14,6 +14,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.NotNull;
 import sirius.web.http.WebContext;
 import sirius.web.security.UserContext;
@@ -96,7 +97,7 @@ public class Property {
         try {
             return transformToSource(field.get(entity));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
             return null;
         }
     }
@@ -123,7 +124,7 @@ public class Property {
             field.set(entity, val);
             entity.setSource(field.getName(), val);
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -194,7 +195,7 @@ public class Property {
             }
             field.set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 

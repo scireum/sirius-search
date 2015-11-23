@@ -71,7 +71,7 @@ class RobustQueryParser {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
         QueryBuilder main = parseQuery(reader, autoexpand);
         if (!reader.current().isEndOfInput()) {
-            Index.LOG.FINE("Unexpected character in query: " + reader.current());
+            IndexAccess.LOG.FINE("Unexpected character in query: " + reader.current());
         }
         // If we cannot compile a query from a non empty input, we probably dropped all short tokens
         // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
@@ -80,8 +80,8 @@ class RobustQueryParser {
             main = parseQuery(reader, autoexpand);
         }
         if (main != null) {
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("Compiled '%s' into '%s'", query, main);
             }
             query.where(Wrapper.on(main));
         } else if (failForEmptyQueries) {

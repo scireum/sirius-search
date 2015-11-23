@@ -13,6 +13,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
 import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 /**
  * Represents a constraint which checks if the given field has not the given value.
@@ -28,7 +29,7 @@ public class FieldNotEqual implements Constraint {
     private FieldNotEqual(String field, Object value) {
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }

@@ -10,18 +10,10 @@ package sirius.search;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Tasks;
-import sirius.kernel.commons.Watch;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
 import sirius.kernel.di.std.Part;
@@ -57,16 +49,30 @@ public class Schema {
     @Part
     private Tasks tasks;
 
+    private IndexAccess access;
+
+    /**
+     * To support multiple installations in parallel, an indexPrefix can be supplied, which is added to each index
+     */
+    private String indexPrefix;
+
+    public Schema() {
+        indexPrefix = Sirius.getConfig().getString("index.prefix");
+        if (!indexPrefix.endsWith("-")) {
+            indexPrefix = indexPrefix + "-";
+        }
+    }
+
     /**
      * Contains a map with an entity descriptor for each entity class
      */
-    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable =
+    protected Map<Class<? extends Entity>, EntityDescriptor> descriptorTable =
             Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
 
     /**
      * Contains a map providing the class for each entity type name
      */
-    private Map<String, Class<? extends Entity>> nameTable =
+    protected Map<String, Class<? extends Entity>> nameTable =
             Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
 
     /*
@@ -89,9 +95,9 @@ public class Schema {
             for (ForeignKey fk : e.getForeignKeys()) {
                 EntityDescriptor other = getDescriptor(fk.getReferencedClass());
                 if (other == null) {
-                    Index.LOG.WARN("Cannot reference non-entity class %s from %s",
-                                   fk.getReferencedClass().getSimpleName(),
-                                   e.getType());
+                    IndexAccess.LOG.WARN("Cannot reference non-entity class %s from %s",
+                                         fk.getReferencedClass().getSimpleName(),
+                                         e.getType());
                 } else {
                     other.remoteForeignKeys.add(fk);
                 }
@@ -107,9 +113,47 @@ public class Schema {
     protected Set<String> getIndices() {
         Set<String> result = new TreeSet<String>();
         for (EntityDescriptor e : descriptorTable.values()) {
-            result.add(Index.getIndexName(e.getIndex()));
+            result.add(getIndexName(e.getIndex()));
         }
         return result;
+    }
+
+    /**
+     * Returns the name of the index associated with the given entity.
+     *
+     * @param entity the entity which index is requested
+     * @param <E>    the type of the entity to get the index for
+     * @return the index name associated with the given entity
+     */
+    public <E extends Entity> String getIndex(E entity) {
+        if (entity != null) {
+            String result = entity.getIndex();
+            if (result != null) {
+                return getIndexName(result);
+            }
+        }
+        return getIndexName(getDescriptor(entity.getClass()).getIndex());
+    }
+
+    /**
+     * Returns the name of the index associated with the given class.
+     *
+     * @param clazz the entity type which index is requested
+     * @param <E>   the type of the entity to get the index for
+     * @return the index name associated with the given class
+     */
+    public <E extends Entity> String getIndex(Class<E> clazz) {
+        return getIndexName(getDescriptor(clazz).getIndex());
+    }
+
+    /**
+     * Qualifies the given index name with the prefix.
+     *
+     * @param name the index name to qualify
+     * @return the qualified name of the given index name
+     */
+    public String getIndexName(String name) {
+        return indexPrefix + name;
     }
 
     /**
@@ -127,7 +171,7 @@ public class Schema {
      * @return a list of mapping change actions which were performed
      */
     public List<String> createMappings() {
-        return createMappings(Index.getIndexPrefix());
+        return createMappings(indexPrefix);
     }
 
     protected List<String> createMappings(String indexPrefix) {
@@ -136,15 +180,15 @@ public class Schema {
             String index = indexPrefix + ed.getIndex();
             try {
                 IndicesExistsResponse res =
-                        Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+                        access.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
                 if (!res.isExists()) {
-                    CreateIndexResponse createResponse = Index.getClient()
-                                                              .admin()
-                                                              .indices()
-                                                              .prepareCreate(index)
-                                                              .setSettings(createIndexSettings(ed))
-                                                              .execute()
-                                                              .get(10, TimeUnit.SECONDS);
+                    CreateIndexResponse createResponse = access.getClient()
+                                                               .admin()
+                                                               .indices()
+                                                               .prepareCreate(index)
+                                                               .setSettings(createIndexSettings(ed))
+                                                               .execute()
+                                                               .get(10, TimeUnit.SECONDS);
                     if (createResponse.isAcknowledged()) {
                         changes.add("Created index " + index + " successfully!");
                     } else {
@@ -152,23 +196,23 @@ public class Schema {
                     }
                 }
             } catch (Throwable e) {
-                Index.LOG.WARN(e);
+                IndexAccess.LOG.WARN(e);
                 changes.add("Cannot create index " + index + ": " + e.getMessage());
             }
         }
         for (Map.Entry<Class<? extends Entity>, EntityDescriptor> e : descriptorTable.entrySet()) {
             try {
-                if (Index.LOG.isFINE()) {
-                    Index.LOG.FINE("MAPPING OF %s : %s",
-                                   e.getValue().getType(),
-                                   e.getValue().createMapping().prettyPrint().string());
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("MAPPING OF %s : %s",
+                                         e.getValue().getType(),
+                                         e.getValue().createMapping().prettyPrint().string());
                 }
-                Index.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey());
+                index.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey());
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
             } catch (Throwable ex) {
-                changes.add(Exceptions.handle(Index.LOG, ex).getMessage());
+                changes.add(Exceptions.handle(IndexAccess.LOG, ex).getMessage());
             }
         }
 
@@ -246,88 +290,6 @@ public class Schema {
             prefix = prefix + "-";
         }
         final String newPrefix = prefix;
-        tasks.defaultExecutor().fork(new ReIndexTask(newPrefix));
-    }
-
-    private class ReIndexTask implements Runnable {
-        private final String newPrefix;
-        private int counter;
-        private BulkRequestBuilder bulk;
-
-        private ReIndexTask(String newPrefix) {
-            this.newPrefix = newPrefix;
-        }
-
-        @Override
-        public void run() {
-            Index.LOG.INFO("Creating Mappings: " + newPrefix);
-            for (String result : createMappings(newPrefix)) {
-                Index.LOG.INFO(result);
-            }
-            Index.LOG.INFO("Re-Indexing from: " + Index.getIndexPrefix() + " to " + newPrefix);
-            executeAndReCreateBulk();
-            try {
-                for (EntityDescriptor ed : descriptorTable.values()) {
-                    Index.LOG.INFO("Re-Indexing: " + newPrefix + ed.getIndex() + "." + ed.getType());
-                    reIndexEntitiesOfDescriptor(ed);
-                }
-            } finally {
-                executeAndReCreateBulk();
-                Index.LOG.INFO("Re-Index is COMPLETED! You may now start breathing again...");
-            }
-        }
-
-        private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
-            try {
-                SearchRequestBuilder srb =
-                        Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
-                srb.setSearchType(SearchType.SCAN);
-                // Limit to 10 per shard
-                srb.setSize(10);
-                srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60));
-                SearchResponse searchResponse = srb.execute().actionGet();
-                while (true) {
-                    Watch w = Watch.start();
-                    searchResponse = Index.getClient()
-                                          .prepareSearchScroll(searchResponse.getScrollId())
-                                          .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60))
-                                          .execute()
-                                          .actionGet();
-                    for (SearchHit hit : searchResponse.getHits()) {
-                        bulk.add(Index.getClient()
-                                      .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
-                                      .setId(hit.getId())
-                                      .setSource(hit.source())
-                                      .request());
-                        counter++;
-                        if (counter > 1000) {
-                            executeAndReCreateBulk();
-                        }
-                    }
-                    //Break condition: No hits are returned
-                    if (searchResponse.getHits().hits().length == 0) {
-                        return;
-                    }
-                }
-            } catch (Throwable t) {
-                throw Exceptions.handle(Index.LOG, t);
-            }
-        }
-
-        private void executeAndReCreateBulk() {
-            if (counter > 0) {
-                Index.LOG.INFO("Executing bulk...");
-                BulkResponse res = bulk.execute().actionGet();
-                if (res.hasFailures()) {
-                    for (BulkItemResponse itemRes : res.getItems()) {
-                        if (itemRes.isFailed()) {
-                            Index.LOG.SEVERE("Re-Indexing failed: " + itemRes.getFailureMessage());
-                        }
-                    }
-                }
-            }
-            bulk = Index.getClient().prepareBulk();
-            counter = 0;
-        }
+        tasks.defaultExecutor().fork(new ReIndexTask(this, newPrefix));
     }
 }

@@ -96,7 +96,7 @@ public class EntityDescriptor {
                     if (f.accepts(field)) {
                         p = f.create(field);
                         if (propertyAlreadyExists(props, p)) {
-                            Index.LOG.SEVERE(Strings.apply(
+                            IndexAccess.LOG.SEVERE(Strings.apply(
                                     "A property named '%s' already exists for the type '%s'. Cannot transform field %s",
                                     p.getName(),
                                     rootClass.getSimpleName(),
@@ -106,15 +106,17 @@ public class EntityDescriptor {
                         }
                         props.add(p);
                         if (!p.acceptsSetter() && hasSetter(field)) {
-                            Index.LOG.WARN("Property %s in type %s does not accept a setter method to be present",
-                                           field.getName(),
-                                           rootClass.getSimpleName());
+                            IndexAccess.LOG.WARN("Property %s in type %s does not accept a setter method to be present",
+                                                 field.getName(),
+                                                 rootClass.getSimpleName());
                         }
                         break;
                     }
                 }
                 if (p == null) {
-                    Index.LOG.WARN("Cannot create property %s in type %s", field.getName(), clazz.getSimpleName());
+                    IndexAccess.LOG.WARN("Cannot create property %s in type %s",
+                                         field.getName(),
+                                         clazz.getSimpleName());
                 } else {
                     if (field.isAnnotationPresent(RefType.class)) {
                         keys.add(new ForeignKey(field, (Class<? extends Entity>) rootClass));
@@ -122,9 +124,9 @@ public class EntityDescriptor {
                     if (field.isAnnotationPresent(RefField.class)) {
                         ForeignKey key = findForeignKey(keys, field.getAnnotation(RefField.class).localRef());
                         if (key == null) {
-                            Index.LOG.WARN("No foreign key %s found for field reference %s    ",
-                                           field.getAnnotation(RefField.class).localRef(),
-                                           field.getName());
+                            IndexAccess.LOG.WARN("No foreign key %s found for field reference %s    ",
+                                                 field.getAnnotation(RefField.class).localRef(),
+                                                 field.getName());
                         } else {
                             key.addReference(p, field.getAnnotation(RefField.class).remoteField());
                         }

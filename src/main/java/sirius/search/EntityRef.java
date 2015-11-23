@@ -11,6 +11,7 @@ package sirius.search;
 import com.google.common.cache.Cache;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 
 /**
@@ -27,6 +28,9 @@ public class EntityRef<E extends Entity> {
     private Class<E> clazz;
     private String id;
     private boolean dirty = false;
+
+    @Part
+    private static IndexAccess index;
 
     /**
      * Creates a new reference.
@@ -66,31 +70,31 @@ public class EntityRef<E extends Entity> {
      */
     public E getValue(String routing) {
         if (!isValueLoaded() || valueFromCache) {
-            EntityDescriptor descriptor = Index.getDescriptor(clazz);
+            EntityDescriptor descriptor = index.getDescriptor(clazz);
             if (descriptor.hasRouting()) {
                 if (Strings.isFilled(routing)) {
-                    value = Index.find(routing, clazz, id);
+                    value = index.find(routing, clazz, id);
                 } else {
                     Exceptions.handle()
-                              .to(Index.LOG)
+                              .to(IndexAccess.LOG)
                               .withSystemErrorMessage(
                                       "Fetching an entity of type %s (%s) without routing! Using SELECT which might be slower!",
                                       clazz.getName(),
                                       id)
                               .handle();
-                    value = Index.select(clazz).eq(Index.ID_FIELD, id).queryFirst();
+                    value = index.select(clazz).eq(IndexAccess.ID_FIELD, id).queryFirst();
                 }
             } else {
                 if (Strings.isFilled(routing)) {
                     Exceptions.handle()
-                              .to(Index.LOG)
+                              .to(IndexAccess.LOG)
                               .withSystemErrorMessage(
                                       "Fetching an entity of type %s (%s) with routing (which is not required for this type)!",
                                       clazz.getName(),
                                       id)
                               .handle();
                 }
-                value = Index.find(clazz, id);
+                value = index.find(clazz, id);
             }
             valueFromCache = false;
             clearDirty();
@@ -124,7 +128,8 @@ public class EntityRef<E extends Entity> {
             return value;
         }
 
-        Tuple<E, Boolean> tuple = Index.fetch(routing, clazz, id, localCache);
+        Tuple<E, Boolean> tuple =
+                localCache == null ? index.fetch(routing, clazz, id) : index.fetch(routing, clazz, id, localCache);
         value = tuple.getFirst();
         valueFromCache = tuple.getSecond();
         markDirty();
@@ -152,16 +157,7 @@ public class EntityRef<E extends Entity> {
      * @return the value represented by this reference
      */
     public E getCachedValueWithRouting(String routing) {
-        if (isValueLoaded()) {
-            return value;
-        }
-
-        Tuple<E, Boolean> tuple = Index.fetch(routing, clazz, id);
-        value = tuple.getFirst();
-        valueFromCache = tuple.getSecond();
-        markDirty();
-
-        return value;
+        return getCachedValueWithRouting(routing, null);
     }
 
     /**

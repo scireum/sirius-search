@@ -15,7 +15,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ public class FieldEqual implements Constraint {
     private FieldEqual(String field, Object value) {
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }

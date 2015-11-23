@@ -16,6 +16,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.search.Entity;
 import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.util.Collection;
 import java.util.List;
@@ -48,7 +49,7 @@ public class OneInField implements Constraint {
         }
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }
