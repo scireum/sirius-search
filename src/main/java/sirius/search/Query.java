@@ -83,6 +83,7 @@ public class Query<E extends Entity> {
     private static final int SCROLL_TTL_SECONDS = 60 * 5;
     private static final int MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD = 50;
     private static final int MAX_SCROLL_RESULTS_PER_SHARD = 10;
+    private static final int MAX_QUERY_LENGTH = 100;
 
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
@@ -251,6 +252,9 @@ public class Query<E extends Entity> {
                           boolean forced) {
         if (Strings.isFilled(query)) {
             this.query = detectLogging(query);
+            if (query.length() > MAX_QUERY_LENGTH) {
+                throw Exceptions.createHandled().withNLSKey("Query.queryTooLong").handle();
+            }
             RobustQueryParser rqp = new RobustQueryParser(defaultField, this.query, tokenizer, autoexpand);
             rqp.compileAndApply(this, forced);
         }
