@@ -8,8 +8,10 @@
 
 package sirius.search;
 
+import sirius.kernel.commons.Callback;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.HandledException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -121,7 +123,8 @@ public class IndexAccess {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts fail
+     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts
+     *                                               fail
      *                                               with an optimistic lock error.
      */
     public void retry(UnitOfWork uow) {
@@ -154,6 +157,21 @@ public class IndexAccess {
      */
     public <E extends Entity> E tryUpdate(E entity) throws OptimisticLockException {
         return Index.tryUpdate(entity);
+    }
+
+    /**
+     * Tries to apply the given changes and to save the resulting entity.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
+        Index.retryUpdate(entity, preSaveModifier);
     }
 
     /**
