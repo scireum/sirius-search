@@ -247,7 +247,13 @@ public class ForeignKey {
                  .autoRoute(field.getName(), entity.getId())
                  .iterateAll(row -> {
                      try {
-                         updateReferencedFields(null, row, true);
+                         if (field.getType() == EntityRefList.class) {
+                             index.retryUpdate(row,
+                                               child -> ((EntityRefList<?>) field.get(child)).getIds()
+                                                                                             .remove(entity.getId()));
+                         } else {
+                             updateReferencedFields(null, row, true);
+                         }
                      } catch (Throwable e) {
                          Exceptions.handle(IndexAccess.LOG, e);
                      }
@@ -307,48 +313,7 @@ public class ForeignKey {
      */
     private void updateReferencedFields(Entity parent, Entity child, boolean updateParent) {
         try {
-            UpdateRequestBuilder urb = index.getClient()
-                                            .prepareUpdate()
-                                            .setIndex(index.getIndex(getLocalClass()))
-                                            .setType(getLocalType())
-                                            .setRetryOnConflict(3)
-                                            .setId(child.getId());
-            EntityDescriptor descriptor = index.getDescriptor(getLocalClass());
-            if (descriptor.hasRouting()) {
-                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
-                if (Strings.isEmpty(routingKey)) {
-                    IndexAccess.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
-                                         child.getClass().getName(),
-                                         child.getId());
-                } else {
-                    urb.setRouting(String.valueOf(routingKey));
-                }
-            }
-            StringBuilder sb = new StringBuilder();
-            for (Reference ref : references) {
-                sb.append("ctx._source.");
-                sb.append(ref.getLocalProperty().getName());
-                sb.append("=");
-                sb.append(ref.getLocalProperty().getName());
-                sb.append(";");
-                urb.addScriptParam(ref.getLocalProperty().getName(),
-                                   parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
-            }
-            if (updateParent) {
-                sb.append("ctx._source.");
-                sb.append(getName());
-                sb.append("=");
-                sb.append(getName());
-                sb.append(";");
-                urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
-            }
-            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
-            if (IndexAccess.LOG.isFINE()) {
-                IndexAccess.LOG.FINE("UPDATE: %s.%s: %s",
-                                     index.getIndex(getLocalClass()),
-                                     getLocalType(),
-                                     sb.toString());
-            }
+            UpdateRequestBuilder urb = buildUpdateRequestForReferencedFields(parent, child, updateParent);
             urb.execute().actionGet();
             if (IndexAccess.LOG.isFINE()) {
                 IndexAccess.LOG.FINE("UPDATE: %s.%s: SUCCEEDED", index.getIndex(getLocalClass()), getLocalType());
@@ -372,6 +337,54 @@ public class ForeignKey {
             }
             throw Exceptions.handle(IndexAccess.LOG, t);
         }
+    }
+
+    private UpdateRequestBuilder buildUpdateRequestForReferencedFields(Entity parent,
+                                                                       Entity child,
+                                                                       boolean updateParent) {
+        UpdateRequestBuilder urb = index.getClient()
+                                        .prepareUpdate()
+                                        .setIndex(index.getIndex(getLocalClass()))
+                                        .setType(getLocalType())
+                                        .setRetryOnConflict(3)
+                                        .setId(child.getId());
+        EntityDescriptor descriptor = index.getDescriptor(getLocalClass());
+        if (descriptor.hasRouting()) {
+            Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
+            if (Strings.isEmpty(routingKey)) {
+                IndexAccess.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
+                                     child.getClass().getName(),
+                                     child.getId());
+            } else {
+                urb.setRouting(String.valueOf(routingKey));
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Reference ref : references) {
+            sb.append("ctx._source.");
+            sb.append(ref.getLocalProperty().getName());
+            sb.append("=");
+            sb.append(ref.getLocalProperty().getName());
+            sb.append(";");
+            urb.addScriptParam(ref.getLocalProperty().getName(),
+                               parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
+        }
+        if (updateParent) {
+            sb.append("ctx._source.");
+            sb.append(getName());
+            sb.append("=");
+            sb.append(getName());
+            sb.append(";");
+            urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
+        }
+        urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("UPDATE: %s.%s: %s",
+                                 index.getIndex(getLocalClass()),
+                                 getLocalType(),
+                                 sb.toString());
+        }
+        return urb;
     }
 
     /**

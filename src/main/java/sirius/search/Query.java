@@ -876,6 +876,7 @@ public class Query<E extends Entity> {
                                                  .prepareCount(index != null ? index : indexAccess.getIndex(clazz))
                                                  .setTypes(ed.getType());
             applyRouting(ed, crb::setRouting);
+
             QueryBuilder qb = buildQuery();
             if (qb != null) {
                 crb.setQuery(qb);
@@ -898,10 +899,9 @@ public class Query<E extends Entity> {
             if (!ed.hasRouting()) {
                 Exceptions.handle()
                           .to(IndexAccess.LOG)
-                          .withSystemErrorMessage("Performing a search on %s without providing a routing. "
-                                                  + "Consider providing a routing for better performance "
-                                                  + "or call deliberatelyUnrouted() to signal that routing "
-                                                  + "was intentionally skipped. Query: %s",
+                          .withSystemErrorMessage("Performing a query on %s with a routing "
+                                                  + "- but entity has no routing attribute (in @Indexed)! "
+                                                  + "This will most probably FAIL! Query: %s",
                                                   clazz.getName(),
                                                   this.toString())
                           .handle();
@@ -910,9 +910,10 @@ public class Query<E extends Entity> {
         } else if (ed.hasRouting() && !deliberatelyUnrouted) {
             Exceptions.handle()
                       .to(IndexAccess.LOG)
-                      .withSystemErrorMessage("Performing a query on %s with a routing "
-                                              + "- but entity has no routing attribute (in @Indexed)! "
-                                              + "This will most probably FAIL! Query: %s",
+                      .withSystemErrorMessage("Performing a query on %s without providing a routing. "
+                                              + "Consider providing a routing for better performance "
+                                              + "or call deliberatelyUnrouted() to signal that routing "
+                                              + "was intentionally skipped. Query: %s",
                                               clazz.getName(),
                                               this.toString())
                       .handle();

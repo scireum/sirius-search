@@ -44,7 +44,7 @@ public class IndexReport implements MetricProvider {
                          res.getUnassignedShards(),
                          null,
                          res.getUnassignedShards() > 0 ? MetricState.RED : MetricState.GRAY);
-        collector.metric("index-delay-line", "ES-DelayLine", index.oneSecondDelayLine.size(), null);
+        collector.metric("index-delay-line", "ES-DelayLine", IndexAccess.oneSecondDelayLine.size(), null);
         collector.differentialMetric("index-blocks", "index-blocks", "ES-DelayBlocks", index.blocks.getCount(), "/min");
         collector.differentialMetric("index-delays", "index-delays", "ES-Delays", index.delays.getCount(), "/min");
         collector.differentialMetric("index-locking-errors",

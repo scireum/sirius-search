@@ -10,7 +10,6 @@ package sirius.search.util;
 
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 import sirius.web.health.console.Command;
 

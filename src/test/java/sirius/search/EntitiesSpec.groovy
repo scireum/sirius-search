@@ -15,21 +15,46 @@ import sirius.kernel.health.HandledException
 
 class EntitiesSpec extends BaseSpecification {
 
+    @Part
+    private static IndexAccess index;
+
     def "cascase delete works"() {
         given:
         def parent = new ParentEntity();
         parent.setName("Test");
-        Index.create(parent);
+        index.create(parent);
         def child = new CascadingChildEntity();
         child.getParent().setValue(parent)
-        Index.create(child);
-        Index.blockThreadForUpdate();
+        index.create(child);
+        index.blockThreadForUpdate();
         when:
-        Index.delete(parent);
+        index.delete(parent);
         and:
         waitForCompletion();
         then:
-        Index.refreshOrNull(child) == null;
+        index.refreshOrNull(child) == null;
+
+    }
+
+    def "cascase delete works for a EntityRefList"() {
+        given:
+        def parent1 = new ParentEntity();
+        def parent2 = new ParentEntity();
+        parent1.setName("Test1");
+        parent2.setName("Test2");
+        index.create(parent1);
+        index.create(parent2);
+        def child = new CascadeManyChildEntity();
+        child.getParents().addValue(parent1)
+        child.getParents().addValue(parent2)
+        index.create(child);
+        index.blockThreadForUpdate();
+        when:
+        index.delete(parent1);
+        and:
+        waitForCompletion();
+        then:
+        index.refreshOrNull(child) == null;
 
     }
 
@@ -37,32 +62,55 @@ class EntitiesSpec extends BaseSpecification {
         given:
         def parent = new ParentEntity();
         parent.setName("Test");
-        Index.create(parent);
+        index.create(parent);
         def child = new SetNullChildEntity();
         child.getParent().setValue(parent)
-        Index.create(child);
-        Index.blockThreadForUpdate();
+        index.create(child);
+        index.blockThreadForUpdate();
         when:
-        Index.delete(parent);
+        index.delete(parent);
         waitForCompletion();
-        child = Index.refreshOrFail(child);
+        child = index.refreshOrFail(child);
         then:
         !child.getParent().isFilled();
         and:
         child.getParentName() == null;
     }
 
+    def "set null on delete works for a EntityRefList"() {
+        given:
+        def parent1 = new ParentEntity();
+        def parent2 = new ParentEntity();
+        parent1.setName("Test1");
+        parent2.setName("Test2");
+        index.create(parent1);
+        index.create(parent2);
+        def child = new SetNullManyChildEntity();
+        child.getParents().addValue(parent1)
+        child.getParents().addValue(parent2)
+        index.create(child);
+        index.blockThreadForUpdate();
+        when:
+        index.delete(parent1);
+        waitForCompletion();
+        child = index.refreshOrFail(child);
+        then:
+        child.getParents().getIds().size() == 1
+        and:
+        child.getParents().getValues().size() == 1
+    }
+
     def "reject on delete works"() {
         given:
         def parent = new ParentEntity();
         parent.setName("Test");
-        Index.create(parent);
+        index.create(parent);
         def child = new RejectChildEntity();
         child.getParent().setValue(parent)
-        Index.create(child);
-        Index.blockThreadForUpdate();
+        index.create(child);
+        index.blockThreadForUpdate();
         when:
-        Index.delete(parent);
+        index.delete(parent);
         then:
         thrown(HandledException)
     }
@@ -71,17 +119,17 @@ class EntitiesSpec extends BaseSpecification {
         given:
         def parent = new ParentEntity();
         parent.setName("Test");
-        Index.create(parent);
+        index.create(parent);
         def child = new SetNullChildEntity();
         child.getParent().setValue(parent)
-        Index.create(child);
-        Index.blockThreadForUpdate();
+        index.create(child);
+        index.blockThreadForUpdate();
         when:
         parent.setName("Test1")
-        Index.update(parent);
+        index.update(parent);
         waitForCompletion();
         then:
-        Index.refreshIfPossible(child).getParentName() == "Test1"
+        index.refreshIfPossible(child).getParentName() == "Test1"
     }
 
     @Part
@@ -91,12 +139,12 @@ class EntitiesSpec extends BaseSpecification {
      * Blocks until all async index updates (cascades, ref field updates ..) have been handled
      */
     def waitForCompletion() {
-        Index.blockThreadForUpdate();
-        def exec = tasks.findExecutor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY);
+        index.blockThreadForUpdate();
+        def exec = tasks.findExecutor(IndexAccess.ASYNC_CATEGORY_INDEX_INTEGRITY);
         while (exec.activeCount > 0 && exec.queue.size() > 0) {
             Thread.sleep(500);
         }
-        Index.blockThreadForUpdate();
+        index.blockThreadForUpdate();
     }
 
 }

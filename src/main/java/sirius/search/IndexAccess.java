@@ -39,6 +39,8 @@ import sirius.kernel.async.Operation;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
+import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.Wait;
@@ -66,6 +68,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Central access class to the persistence layer.
@@ -165,7 +168,7 @@ public class IndexAccess {
     public static final String FETCH_DELIBERATELY_UNROUTED = "_DELIBERATELY_UNROUTED";
 
     @Part
-    private Tasks tasks;
+    protected Tasks tasks;
 
     /**
      * Returns the underlying ElasticSearch client
@@ -433,7 +436,7 @@ public class IndexAccess {
     protected void startup() {
         Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
 
-        schema = new Schema();
+        schema = new Schema(this);
         schema.load();
 
         Operation.cover("index", () -> "IndexLifecycle.updateMappings", Duration.ofSeconds(30), this::updateMappings);
@@ -700,9 +703,8 @@ public class IndexAccess {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts
-     *                                               fail
-     *                                               with an optimistic lock error.
+     * @throws HandledException if either any other exception occurs, or if all three attempts
+     *                          fail with an optimistic lock error.
      */
     public void retry(UnitOfWork uow) {
         int retries = 3;
@@ -739,6 +741,31 @@ public class IndexAccess {
                                 .handle();
             }
         }
+    }
+
+    /**
+     * Tries to apply the given changes and to save the resulting entity.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @param <E>             the type of the entity to update
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
+        Monoflop mf = Monoflop.create();
+        retry(() -> {
+            E entityToUpdate = entity;
+            if (mf.successiveCall()) {
+                entityToUpdate = refreshIfPossible(entity);
+            }
+
+            preSaveModifier.invoke(entityToUpdate);
+            tryUpdate(entityToUpdate);
+        });
     }
 
     /**
@@ -921,17 +948,8 @@ public class IndexAccess {
             if (!entity.isNew() && performVersionCheck) {
                 irb.setVersion(entity.getVersion());
             }
-            if (descriptor.hasRouting()) {
-                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
-                if (Strings.isEmpty(routingKey)) {
-                    LOG.WARN("Updating an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(),
-                             entity.getId(),
-                             ExecutionPoint.snapshot());
-                } else {
-                    irb.setRouting(String.valueOf(routingKey));
-                }
-            }
+
+            applyRouting("Updating", entity, descriptor, irb::setRouting);
 
             return executeUpdate(entity, descriptor, irb);
         } catch (VersionConflictEngineException e) {
@@ -948,6 +966,24 @@ public class IndexAccess {
                                                     entity.toDebugString(),
                                                     entity.getId())
                             .handle();
+        }
+    }
+
+    private <E extends Entity> void applyRouting(String action,
+                                                 E entity,
+                                                 EntityDescriptor descriptor,
+                                                 Consumer<String> routingTarget) {
+        if (descriptor.hasRouting()) {
+            Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
+            if (Strings.isEmpty(routingKey)) {
+                LOG.WARN("%s an entity of type %s (%s) without routing information! Location: %s",
+                         action,
+                         entity.getClass().getName(),
+                         entity.getId(),
+                         ExecutionPoint.snapshot());
+            } else {
+                routingTarget.accept(String.valueOf(routingKey));
+            }
         }
     }
 
@@ -1243,17 +1279,9 @@ public class IndexAccess {
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }
-            if (descriptor.hasRouting()) {
-                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
-                if (Strings.isEmpty(routingKey)) {
-                    LOG.WARN("Deleting an entity of type %s (%s) without routing information! Location: %s",
-                             entity.getClass().getName(),
-                             entity.getId(),
-                             ExecutionPoint.snapshot());
-                } else {
-                    drb.setRouting(String.valueOf(routingKey));
-                }
-            }
+
+            applyRouting("Deleting", entity, descriptor, drb::setRouting);
+
             drb.execute().actionGet();
             entity.deleted = true;
             queryDuration.addValue(w.elapsedMillis());

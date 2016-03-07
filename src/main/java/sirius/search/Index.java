@@ -9,6 +9,7 @@
 package sirius.search;
 
 import sirius.kernel.async.Future;
+import sirius.kernel.commons.Callback;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
@@ -187,6 +188,23 @@ public class Index {
     public static void retry(UnitOfWork uow) {
         Exceptions.logDeprecatedMethodUse();
         access.retry(uow);
+    }
+
+    /**
+     * Tries to apply the given changes and to save the resulting entity.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @param <E>             the type of the entity to update
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public static <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
+        Exceptions.logDeprecatedMethodUse();
+        access.retryUpdate(entity, preSaveModifier);
     }
 
     /**

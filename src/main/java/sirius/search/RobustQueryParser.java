@@ -10,6 +10,7 @@ package sirius.search;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanNearQueryBuilder;
@@ -20,6 +21,7 @@ import sirius.search.constraints.Wrapper;
 
 import java.io.StringReader;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -105,11 +107,12 @@ class RobustQueryParser {
             List<QueryBuilder> bqb = parseOR(reader);
             if (!bqb.isEmpty()) {
                 if (bqb.size() == 1) {
-                    String searchText = input.toLowerCase().trim();
+                    String singleToken = obtainSingleToken(input);
                     if (executeAutoexpansion
+                        && singleToken != null
                         && bqb.get(0) instanceof TermQueryBuilder
-                        && searchText.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
-                        return QueryBuilders.prefixQuery(defaultField, searchText).rewrite("top_terms_256");
+                        && singleToken.length() >= EXPANSION_TOKEN_MIN_LENGTH) {
+                        return QueryBuilders.prefixQuery(defaultField, singleToken).rewrite("top_terms_256");
                     }
                     return bqb.get(0);
                 }
@@ -123,6 +126,20 @@ class RobustQueryParser {
         return null;
     }
 
+    private String obtainSingleToken(String input) {
+        Iterator<List<String>> tokenIter = tokenizer.apply(input).iterator();
+        List<String> firstList = tokenIter.next();
+        if (tokenIter.hasNext()) {
+            // We tokenized into several lists -> give up an return null
+            return null;
+        }
+        if (firstList.size() == 1) {
+            // Only return the first token if it is the only token in the list
+            return firstList.get(0);
+        }
+        return null;
+    }
+
     /*
      * Parses all tokens which are combined with AND and creates a subquery for each occurence of
      * OR. This way operator precedence is handled correctly.
@@ -130,6 +147,21 @@ class RobustQueryParser {
     private List<QueryBuilder> parseOR(LookaheadReader reader) {
         List<QueryBuilder> result = Lists.newArrayList();
         List<QueryBuilder> subQuery = parseAND(reader);
+        simplifySubquery(result, subQuery);
+        while (!reader.current().isEndOfInput()) {
+            skipWhitespace(reader);
+            if (isAtOR(reader)) {
+                reader.consume(2);
+                subQuery = parseAND(reader);
+                simplifySubquery(result, subQuery);
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
+    private void simplifySubquery(List<QueryBuilder> result, List<QueryBuilder> subQuery) {
         if (!subQuery.isEmpty()) {
             if (subQuery.size() == 1) {
                 result.add(subQuery.get(0));
@@ -141,27 +173,6 @@ class RobustQueryParser {
                 result.add(qry);
             }
         }
-        while (!reader.current().isEndOfInput()) {
-            skipWhitespace(reader);
-            if (isAtOR(reader)) {
-                reader.consume(2);
-                subQuery = parseAND(reader);
-                if (!subQuery.isEmpty()) {
-                    if (subQuery.size() == 1) {
-                        result.add(subQuery.get(0));
-                    } else {
-                        BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                        for (QueryBuilder qb : subQuery) {
-                            qry.must(qb);
-                        }
-                        result.add(qry);
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-        return result;
     }
 
     /*
@@ -305,11 +316,14 @@ class RobustQueryParser {
             if ("id".equals(field)) {
                 field = "_id";
             }
-
-            if (negate) {
-                qry.mustNot(QueryBuilders.termQuery(field, value));
+            if ("-".equals(value)) {
+                result.add(QueryBuilders.filteredQuery(null, FilterBuilders.missingFilter(field)));
             } else {
-                result.add(QueryBuilders.termQuery(field, value));
+                if (negate) {
+                    qry.mustNot(QueryBuilders.termQuery(field, value));
+                } else {
+                    result.add(QueryBuilders.termQuery(field, value));
+                }
             }
         }
         if (negate) {

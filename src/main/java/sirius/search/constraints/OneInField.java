@@ -15,7 +15,6 @@ import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.search.Entity;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 
 import java.util.Collection;

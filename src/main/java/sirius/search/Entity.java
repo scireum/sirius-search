@@ -85,7 +85,7 @@ public abstract class Entity {
      * All mapped properties will be initialized by their {@link Property} if necessary.
      */
     protected Entity() {
-        if (index.schema != null) {
+        if (index != null && index.schema != null) {
             for (Property p : index.getDescriptor(getClass()).getProperties()) {
                 try {
                     p.init(this);

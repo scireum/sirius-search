@@ -13,7 +13,6 @@ import sirius.kernel.commons.Value;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 import sirius.search.annotations.NotNull;
 import sirius.web.http.WebContext;

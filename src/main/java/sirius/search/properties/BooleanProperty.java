@@ -11,7 +11,6 @@ package sirius.search.properties;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 import sirius.web.http.WebContext;
 

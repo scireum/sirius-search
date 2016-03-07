@@ -13,10 +13,8 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.Tasks;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
-import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
@@ -46,22 +44,20 @@ public class Schema {
     @Parts(PropertyFactory.class)
     protected static PartCollection<PropertyFactory> factories;
 
-    @Part
-    private Tasks tasks;
-
     private IndexAccess access;
 
-    /**
-     * To support multiple installations in parallel, an indexPrefix can be supplied, which is added to each index
-     */
-    private String indexPrefix;
-
-    public Schema() {
+    protected Schema(IndexAccess access) {
+        this.access = access;
         indexPrefix = Sirius.getConfig().getString("index.prefix");
         if (!indexPrefix.endsWith("-")) {
             indexPrefix = indexPrefix + "-";
         }
     }
+
+    /**
+     * To support multiple installations in parallel, an indexPrefix can be supplied, which is added to each index
+     */
+    private String indexPrefix;
 
     /**
      * Contains a map with an entity descriptor for each entity class
@@ -207,7 +203,7 @@ public class Schema {
                                          e.getValue().getType(),
                                          e.getValue().createMapping().prettyPrint().string());
                 }
-                index.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey());
+                access.addMapping(indexPrefix + e.getValue().getIndex(), e.getKey());
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
@@ -290,6 +286,6 @@ public class Schema {
             prefix = prefix + "-";
         }
         final String newPrefix = prefix;
-        tasks.defaultExecutor().fork(new ReIndexTask(this, newPrefix));
+        access.tasks.defaultExecutor().fork(new ReIndexTask(this, newPrefix));
     }
 }

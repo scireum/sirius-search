@@ -11,8 +11,6 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import sirius.search.Entity;
-import sirius.search.EntityRef;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 
 /**

@@ -13,7 +13,6 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
-import sirius.search.Index;
 import sirius.search.IndexAccess;
 import sirius.search.annotations.RefType;
 import sirius.web.http.WebContext;
