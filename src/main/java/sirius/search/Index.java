@@ -675,6 +675,7 @@ public class Index {
      *
      * @param entity          the entity to update
      * @param preSaveModifier the changes to perform on the entity
+     * @param <E>             the type of the entity to modify
      * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
      *                          lock error.
      */
