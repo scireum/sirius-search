@@ -61,6 +61,11 @@ public class StringListProperty extends Property {
         }
     }
 
+    @Override
+    protected boolean isIgnoreFromAll() {
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
