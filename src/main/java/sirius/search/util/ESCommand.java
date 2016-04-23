@@ -13,10 +13,10 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import sirius.kernel.commons.Values;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.console.Command;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.Index;
-import sirius.web.health.console.Command;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.AtomicInteger;

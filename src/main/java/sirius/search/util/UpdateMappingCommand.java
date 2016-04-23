@@ -11,10 +11,10 @@ package sirius.search.util;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.console.Command;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.Index;
-import sirius.web.health.console.Command;
 
 /**
  * Creates or re-creates the mapping for a given entity.
@@ -30,8 +30,7 @@ public class UpdateMappingCommand implements Command {
             if (type != null) {
                 EntityDescriptor ed = Index.getDescriptor(type);
                 try {
-                    Index.addMapping(Index.getIndexPrefix() + ed.getIndex(),
-                                     type);
+                    Index.addMapping(Index.getIndexPrefix() + ed.getIndex(), type);
                     output.line("Mapping was updated...");
                 } catch (Exception e) {
                     output.line(e.getMessage());
