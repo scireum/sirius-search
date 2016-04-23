@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Base class for all types which are stored in ElasticSearch.
@@ -710,7 +711,7 @@ public abstract class Entity {
                 return String.valueOf(sequenceGenerator.getNextId(getClass().getSimpleName().toLowerCase()));
             case BASE32HEX:
                 byte[] rndBytes = new byte[16];
-                idGenerator.nextBytes(rndBytes);
+                ThreadLocalRandom.current().nextBytes(rndBytes);
                 return BaseEncoding.base32Hex().encode(rndBytes).replace("=", "");
             default:
                 return null;
@@ -726,11 +727,6 @@ public abstract class Entity {
 
     @Part
     private static IdGenerator sequenceGenerator;
-
-    /*
-     * Random generator used to compute IDs
-     */
-    private static SecureRandom idGenerator = new SecureRandom();
 
     /**
      * Used by the default implementation of {@link #computePossibleId()} to determine which kind of ID to generate.
