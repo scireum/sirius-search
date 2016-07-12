@@ -275,7 +275,7 @@ public class IndexAccess {
      * @throws sirius.kernel.health.HandledException if the entity is no longer available in the cluster
      */
     @Nullable
-    public static <T extends Entity> T refreshOrFail(@Nullable T entity) {
+    public <T extends Entity> T refreshOrFail(@Nullable T entity) {
         return Index.refreshOrFail(entity);
     }
 
@@ -290,7 +290,7 @@ public class IndexAccess {
      * @return a fresh instance of the given entity or <tt>null</tt> if <tt>null</tt> was passed in
      */
     @Nullable
-    public static <T extends Entity> T refreshIfPossible(@Nullable T entity) {
+    public <T extends Entity> T refreshIfPossible(@Nullable T entity) {
         return Index.refreshIfPossible(entity);
     }
 
