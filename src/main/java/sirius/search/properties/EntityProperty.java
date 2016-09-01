@@ -78,7 +78,7 @@ public class EntityProperty extends Property {
             }
             ((EntityRef<?>) field.get(entity)).setId(ctx.get(getName()).asString());
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(Index.LOG, e);
         }
     }
 
@@ -89,21 +89,12 @@ public class EntityProperty extends Property {
             entityRef.setId((String) value);
             entityRef.clearDirty();
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(Index.LOG, e);
         }
     }
 
     @Override
     protected Object transformFromSource(Object value) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
-        builder.field("store", isStored() ? "yes" : "no");
-        builder.field("index", "not_analyzed");
-        builder.endObject();
     }
 }
