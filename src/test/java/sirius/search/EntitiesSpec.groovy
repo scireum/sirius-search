@@ -8,6 +8,7 @@
 
 package sirius.search
 
+import com.google.common.collect.Lists
 import sirius.kernel.BaseSpecification
 import sirius.kernel.async.Tasks
 import sirius.kernel.di.std.Part
@@ -21,7 +22,7 @@ class EntitiesSpec extends BaseSpecification {
         parent.setName("Test");
         Index.create(parent);
         def child = new CascadingChildEntity();
-        child.getParent().setValue(parent)
+        child.getParent().setValue(parent);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
@@ -42,8 +43,8 @@ class EntitiesSpec extends BaseSpecification {
         Index.create(parent1);
         Index.create(parent2);
         def child = new CascadeManyChildEntity();
-        child.getParents().addValue(parent1)
-        child.getParents().addValue(parent2)
+        child.getParents().addValue(parent1);
+        child.getParents().addValue(parent2);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
@@ -61,7 +62,7 @@ class EntitiesSpec extends BaseSpecification {
         parent.setName("Test");
         Index.create(parent);
         def child = new SetNullChildEntity();
-        child.getParent().setValue(parent)
+        child.getParent().setValue(parent);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
@@ -83,8 +84,8 @@ class EntitiesSpec extends BaseSpecification {
         Index.create(parent1);
         Index.create(parent2);
         def child = new SetNullManyChildEntity();
-        child.getParents().addValue(parent1)
-        child.getParents().addValue(parent2)
+        child.getParents().addValue(parent1);
+        child.getParents().addValue(parent2);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
@@ -92,9 +93,9 @@ class EntitiesSpec extends BaseSpecification {
         waitForCompletion();
         child = Index.refreshOrFail(child);
         then:
-        child.getParents().getIds().size() == 1
+        child.getParents().getIds().size() == 1;
         and:
-        child.getParents().getValues().size() == 1
+        child.getParents().getValues().size() == 1;
     }
 
     def "reject on delete works"() {
@@ -103,13 +104,13 @@ class EntitiesSpec extends BaseSpecification {
         parent.setName("Test");
         Index.create(parent);
         def child = new RejectChildEntity();
-        child.getParent().setValue(parent)
+        child.getParent().setValue(parent);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
         Index.delete(parent);
         then:
-        thrown(HandledException)
+        thrown(HandledException);
     }
 
     def "updating a ref field works"() {
@@ -118,7 +119,7 @@ class EntitiesSpec extends BaseSpecification {
         parent.setName("Test");
         Index.create(parent);
         def child = new SetNullChildEntity();
-        child.getParent().setValue(parent)
+        child.getParent().setValue(parent);
         Index.create(child);
         Index.blockThreadForUpdate();
         when:
@@ -127,6 +128,35 @@ class EntitiesSpec extends BaseSpecification {
         waitForCompletion();
         then:
         Index.refreshIfPossible(child).getParentName() == "Test1"
+    }
+
+    def "test including and excluding from _all"() {
+        when:
+        def stringProp = new StringPropertiesEntity();
+        stringProp.setSoloStringIncluded("soloStringIncluded");
+        stringProp.setSoloStringExcluded("soloStringExcluded");
+        stringProp.getStringListIncluded().addAll(Lists.newArrayList("stringListIncludedElement1", "stringListIncludedElement2"));
+        stringProp.getStringListExcluded().addAll(Lists.newArrayList("stringListExcludedElement1", "stringListExcludedElement2"));
+        Index.create(stringProp);
+        Index.blockThreadForUpdate();
+        then:
+        List<StringPropertiesEntity> resultList = Index.select(StringPropertiesEntity.class).queryList();
+        resultList.size() == 1;
+        StringPropertiesEntity result = resultList.get(0);
+        result.getSoloStringIncluded() == "soloStringIncluded";
+        result.getSoloStringExcluded() == "soloStringExcluded";
+        result.getStringListIncluded().size() == 2;
+        result.getStringListIncluded().get(0) == "stringListIncludedElement1";
+        result.getStringListIncluded().get(1) == "stringListIncludedElement2";
+        result.getStringListExcluded().size() == 2;
+        result.getStringListExcluded().get(0) == "stringListExcludedElement1";
+        result.getStringListExcluded().get(1) == "stringListExcludedElement2";
+        Index.select(StringPropertiesEntity.class).query("soloStringIncluded").count() == 1;
+        Index.select(StringPropertiesEntity.class).query("soloStringExcluded").count() == 0;
+        Index.select(StringPropertiesEntity.class).query("stringListIncludedElement1").count() == 1;
+        Index.select(StringPropertiesEntity.class).query("stringListIncludedElement2").count() == 1;
+        Index.select(StringPropertiesEntity.class).query("stringListExcludedElement1").count() == 0;
+        Index.select(StringPropertiesEntity.class).query("stringListExcludedElement2").count() == 0;
     }
 
     @Part
