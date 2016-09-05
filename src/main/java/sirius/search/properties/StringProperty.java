@@ -61,7 +61,7 @@ public class StringProperty extends Property {
         this.analyzer =
                 field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).analyzer() : "";
         this.includeInAll =
-                !field.isAnnotationPresent(IndexMode.class) || field.getAnnotation(IndexMode.class).includeInAll();
+                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).includeInAll() : true;
     }
 
     @Override
