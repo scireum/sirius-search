@@ -19,8 +19,7 @@ import java.lang.reflect.Field;
 
 /**
  * Contains a string property. If the field wears an {@link sirius.search.annotations.IndexMode} annotation, the
- * contents of the field will be
- * analyzed and tokenized by ElasticSearch.
+ * contents of the field will be analyzed and tokenized by ElasticSearch.
  */
 public class StringProperty extends Property {
 
@@ -50,7 +49,7 @@ public class StringProperty extends Property {
     /*
      * Instances are only created by the factory
      */
-    private StringProperty(Field field) {
+    protected StringProperty(Field field) {
         super(field);
         this.indexMode = field.isAnnotationPresent(IndexMode.class) ?
                          field.getAnnotation(IndexMode.class).indexMode() :
@@ -62,7 +61,7 @@ public class StringProperty extends Property {
         this.analyzer =
                 field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).analyzer() : "";
         this.includeInAll =
-                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).includeInAll() : true;
+                !field.isAnnotationPresent(IndexMode.class) || field.getAnnotation(IndexMode.class).includeInAll();
     }
 
     @Override
@@ -81,9 +80,6 @@ public class StringProperty extends Property {
         builder.field("type", getMappingType());
         builder.field("store", isStored() ? "yes" : "no");
         builder.field("index", indexMode);
-        if (Strings.isFilled(options)) {
-            builder.field("index_options", options);
-        }
         if (Strings.isFilled(options)) {
             builder.field("index_options", options);
         }
