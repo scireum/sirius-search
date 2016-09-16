@@ -6,17 +6,20 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.constraints;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanNearQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import parsii.tokenizer.LookaheadReader;
+import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
-import sirius.search.constraints.Wrapper;
+import sirius.search.Index;
+import sirius.search.Query;
 
 import java.io.StringReader;
 import java.util.Collections;
@@ -34,67 +37,79 @@ import java.util.function.Function;
  *
  * @see Query#query(String)
  */
-public class RobustQueryParser {
+public class RobustQueryParser implements Constraint {
 
     private static final int EXPANSION_TOKEN_MIN_LENGTH = 2;
-    private String defaultField;
-    private String input;
-    private Function<String, Iterable<List<String>>> tokenizer;
-    private boolean autoexpand;
+    private final String input;
+    private final String defaultField;
+    private final Function<String, Iterable<List<String>>> tokenizer;
+    private boolean autoExpand;
+    private QueryBuilder finishedQuery;
+    private Monoflop parsed;
 
-    /**
-     * Creates a parser using the given query, defaultField and analyzer.
-     *
-     * @param defaultField the default field to search in, if no field is given.
-     * @param input        the query to parse
-     * @param tokenizer    the function to used for tokenization of the input
-     * @param autoexpand   should single token queries be auto expanded. That will put a "*" after the resulting token
-     *                     but limits the number of expansions to the top 256 terms.
+    /*
+     * Use the #on(Object, String) factory method
      */
-    public RobustQueryParser(String defaultField,
-                             String input,
-                             Function<String, Iterable<List<String>>> tokenizer,
-                             boolean autoexpand) {
-        this.defaultField = defaultField;
+    private RobustQueryParser(String input,
+                              String defaultField,
+                              Function<String, Iterable<List<String>>> tokenizer,
+                              boolean autoExpand) {
         this.input = input;
+        this.defaultField = defaultField;
         this.tokenizer = tokenizer;
-        this.autoexpand = autoexpand;
+        this.autoExpand = autoExpand;
+        this.parsed = Monoflop.create();
+        this.finishedQuery = createQuery();
     }
 
     /**
-     * Compiles and applies the query to the given one.
+     * Creates a new constraint which queriess the given field.
      *
-     * @param query               the query to enhance with the parsed result
-     * @param failForEmptyQueries determines if a query was forced, see {@link Query#forceQuery(String, String, *                            Function)}
+     * @param input      the query to parse
+     * @param field      the field to search in
+     * @param tokenizer  the function to used for tokenization of the input
+     * @param autoExpand should single token queries be auto expanded. That will put a "*" after the resulting token
+     *                   but limits the number of expansions to the top 256 terms.
+     * @return the newly created constraint
      */
-    void compileAndApply(Query<?> query, boolean failForEmptyQueries) {
-        QueryBuilder main = compile();
-        if (main != null) {
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
-            }
-            query.where(Wrapper.on(main));
-        } else if (failForEmptyQueries) {
-            query.fail();
-        }
+    public static RobustQueryParser on(String input,
+                                       String field,
+                                       Function<String, Iterable<List<String>>> tokenizer,
+                                       boolean autoExpand) {
+        return new RobustQueryParser(input, field, tokenizer, autoExpand);
     }
 
-    /**
-     * Compiles the query.
-     */
-    public QueryBuilder compile() {
-        LookaheadReader reader = new LookaheadReader(new StringReader(input));
-        QueryBuilder main = parseQuery(reader, autoexpand);
-        if (!reader.current().isEndOfInput()) {
-            Index.LOG.FINE("Unexpected character in query: " + reader.current());
+    @Override
+    public QueryBuilder createQuery() {
+        if (parsed.firstCall()) {
+            LookaheadReader reader = new LookaheadReader(new StringReader(input));
+            QueryBuilder main = parseQuery(reader, autoExpand);
+            if (!reader.current().isEndOfInput()) {
+                Index.LOG.FINE("Unexpected character in query: " + reader.current());
+            }
+            // If we cannot compile a query from a non empty input, we probably dropped all short tokens
+            // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
+            if (main == null && !Strings.isEmpty(input) && input.contains(" ")) {
+                reader = new LookaheadReader(new StringReader(input.replaceAll("\\s", "")));
+                main = parseQuery(reader, autoExpand);
+            }
+            finishedQuery = main;
         }
-        // If we cannot compile a query from a non empty input, we probably dropped all short tokens
-        // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
-        if (main == null && !Strings.isEmpty(input) && input.contains(" ")) {
-            reader = new LookaheadReader(new StringReader(input.replaceAll("\\s", "")));
-            main = parseQuery(reader, autoexpand);
-        }
-        return main;
+        return finishedQuery;
+    }
+
+    @Override
+    public FilterBuilder createFilter() {
+        return null;
+    }
+
+    @Override
+    public String toString(boolean skipConstraintValues) {
+        return "'" + (skipConstraintValues ? "?" : input) + "' ROBUST QUERY IN " + defaultField;
+    }
+
+    public boolean isEmpty() {
+        return finishedQuery == null;
     }
 
     private void skipWhitespace(LookaheadReader reader) {
@@ -154,15 +169,7 @@ public class RobustQueryParser {
         List<QueryBuilder> result = Lists.newArrayList();
         List<QueryBuilder> subQuery = parseAND(reader);
         if (!subQuery.isEmpty()) {
-            if (subQuery.size() == 1) {
-                result.add(subQuery.get(0));
-            } else {
-                BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                for (QueryBuilder qb : subQuery) {
-                    qry.must(qb);
-                }
-                result.add(qry);
-            }
+            parseSubQuery(result, subQuery);
         }
         while (!reader.current().isEndOfInput()) {
             skipWhitespace(reader);
@@ -170,21 +177,25 @@ public class RobustQueryParser {
                 reader.consume(2);
                 subQuery = parseAND(reader);
                 if (!subQuery.isEmpty()) {
-                    if (subQuery.size() == 1) {
-                        result.add(subQuery.get(0));
-                    } else {
-                        BoolQueryBuilder qry = QueryBuilders.boolQuery();
-                        for (QueryBuilder qb : subQuery) {
-                            qry.must(qb);
-                        }
-                        result.add(qry);
-                    }
+                    parseSubQuery(result, subQuery);
                 }
             } else {
                 break;
             }
         }
         return result;
+    }
+
+    private void parseSubQuery(List<QueryBuilder> result, List<QueryBuilder> subQuery) {
+        if (subQuery.size() == 1) {
+            result.add(subQuery.get(0));
+        } else {
+            BoolQueryBuilder qry = QueryBuilders.boolQuery();
+            for (QueryBuilder qb : subQuery) {
+                qry.must(qb);
+            }
+            result.add(qry);
+        }
     }
 
     /*
@@ -241,14 +252,14 @@ public class RobustQueryParser {
         if (reader.current().is('(')) {
             return parseTokenInBrackets(reader);
         }
-        String field = defaultField;
+        String currentField = defaultField;
         boolean couldBeFieldNameSoFar = true;
         StringBuilder sb = new StringBuilder();
         boolean negate = checkIfNegated(reader);
         while (!reader.current().isEndOfInput() && !reader.current().isWhitepace() && !reader.current().is(')')) {
             if (reader.current().is(':') && sb.length() > 0 && couldBeFieldNameSoFar) {
-                field = sb.toString();
-                autoexpand = false;
+                currentField = sb.toString();
+                autoExpand = false;
                 sb = new StringBuilder();
                 // Ignore :
                 reader.consume();
@@ -262,7 +273,7 @@ public class RobustQueryParser {
             }
         }
         if (sb.length() > 0) {
-            return compileToken(field, sb, negate);
+            return compileToken(currentField, sb, negate);
         }
 
         return Collections.emptyList();
@@ -278,7 +289,7 @@ public class RobustQueryParser {
             reader.consume();
         }
         if (negate) {
-            autoexpand = false;
+            autoExpand = false;
         }
         return negate;
     }
