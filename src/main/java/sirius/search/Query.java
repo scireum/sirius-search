@@ -256,7 +256,7 @@ public class Query<E extends Entity> {
             if (query.length() > MAX_QUERY_LENGTH) {
                 throw Exceptions.createHandled().withNLSKey("Query.queryTooLong").handle();
             }
-            RobustQueryParser constraint = RobustQueryParser.on(this.query, defaultField, tokenizer, autoexpand);
+            RobustQueryParser constraint = new RobustQueryParser(this.query, defaultField, tokenizer, autoexpand);
             if (!constraint.isEmpty()) {
                 if (Index.LOG.isFINE()) {
                     Index.LOG.FINE("Compiled '%s' into '%s'", query, constraint);

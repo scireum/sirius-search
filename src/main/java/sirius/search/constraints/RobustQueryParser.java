@@ -47,36 +47,25 @@ public class RobustQueryParser implements Constraint {
     private QueryBuilder finishedQuery;
     private Monoflop parsed;
 
-    /*
-     * Use the #on(Object, String) factory method
+    /**
+     * Creates a new constraint which queriess the given field.
+     *
+     * @param input        the query to parse
+     * @param defaultField the defaultField to search in
+     * @param tokenizer    the function to used for tokenization of the input
+     * @param autoExpand   should single token queries be auto expanded. That will put a "*" after the resulting token
+     *                     but limits the number of expansions to the top 256 terms.
      */
-    private RobustQueryParser(String input,
-                              String defaultField,
-                              Function<String, Iterable<List<String>>> tokenizer,
-                              boolean autoExpand) {
+    public RobustQueryParser(String input,
+                             String defaultField,
+                             Function<String, Iterable<List<String>>> tokenizer,
+                             boolean autoExpand) {
         this.input = input;
         this.defaultField = defaultField;
         this.tokenizer = tokenizer;
         this.autoExpand = autoExpand;
         this.parsed = Monoflop.create();
         this.finishedQuery = createQuery();
-    }
-
-    /**
-     * Creates a new constraint which queriess the given field.
-     *
-     * @param input      the query to parse
-     * @param field      the field to search in
-     * @param tokenizer  the function to used for tokenization of the input
-     * @param autoExpand should single token queries be auto expanded. That will put a "*" after the resulting token
-     *                   but limits the number of expansions to the top 256 terms.
-     * @return the newly created constraint
-     */
-    public static RobustQueryParser on(String input,
-                                       String field,
-                                       Function<String, Iterable<List<String>>> tokenizer,
-                                       boolean autoExpand) {
-        return new RobustQueryParser(input, field, tokenizer, autoExpand);
     }
 
     @Override
