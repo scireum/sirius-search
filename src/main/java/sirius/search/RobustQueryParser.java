@@ -34,7 +34,7 @@ import java.util.function.Function;
  *
  * @see Query#query(String)
  */
-class RobustQueryParser {
+public class RobustQueryParser {
 
     private static final int EXPANSION_TOKEN_MIN_LENGTH = 2;
     private String defaultField;
@@ -51,10 +51,10 @@ class RobustQueryParser {
      * @param autoexpand   should single token queries be auto expanded. That will put a "*" after the resulting token
      *                     but limits the number of expansions to the top 256 terms.
      */
-    RobustQueryParser(String defaultField,
-                      String input,
-                      Function<String, Iterable<List<String>>> tokenizer,
-                      boolean autoexpand) {
+    public RobustQueryParser(String defaultField,
+                             String input,
+                             Function<String, Iterable<List<String>>> tokenizer,
+                             boolean autoexpand) {
         this.defaultField = defaultField;
         this.input = input;
         this.tokenizer = tokenizer;
@@ -62,13 +62,27 @@ class RobustQueryParser {
     }
 
     /**
-     * Compiles an applies the query to the given one.
+     * Compiles and applies the query to the given one.
      *
      * @param query               the query to enhance with the parsed result
-     * @param failForEmptyQueries determines if a query was forced, see {@link Query#forceQuery(String, String,
-     *                            Function)}
+     * @param failForEmptyQueries determines if a query was forced, see {@link Query#forceQuery(String, String, *                            Function)}
      */
     void compileAndApply(Query<?> query, boolean failForEmptyQueries) {
+        QueryBuilder main = compile();
+        if (main != null) {
+            if (Index.LOG.isFINE()) {
+                Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
+            }
+            query.where(Wrapper.on(main));
+        } else if (failForEmptyQueries) {
+            query.fail();
+        }
+    }
+
+    /**
+     * Compiles the query.
+     */
+    public QueryBuilder compile() {
         LookaheadReader reader = new LookaheadReader(new StringReader(input));
         QueryBuilder main = parseQuery(reader, autoexpand);
         if (!reader.current().isEndOfInput()) {
@@ -80,14 +94,7 @@ class RobustQueryParser {
             reader = new LookaheadReader(new StringReader(input.replaceAll("\\s", "")));
             main = parseQuery(reader, autoexpand);
         }
-        if (main != null) {
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("Compiled '%s' into '%s'", query, main);
-            }
-            query.where(Wrapper.on(main));
-        } else if (failForEmptyQueries) {
-            query.fail();
-        }
+        return main;
     }
 
     private void skipWhitespace(LookaheadReader reader) {
