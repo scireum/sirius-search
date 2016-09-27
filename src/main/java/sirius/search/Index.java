@@ -53,7 +53,7 @@ public class Index {
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
                                                              @Nonnull
-                                                             com.google.common.cache.Cache<String, Object> cache) {
+                                                                     com.google.common.cache.Cache<String, Object> cache) {
         Exceptions.logDeprecatedMethodUse();
         return access.fetch(routing, type, id, cache);
     }
@@ -198,11 +198,7 @@ public class Index {
      *
      * @param entity          the entity to update
      * @param preSaveModifier the changes to perform on the entity
-<<<<<<< HEAD
      * @param <E>             the type of the entity to update
-=======
-     * @param <E>             the type of the entity to modify
->>>>>>> origin/master
      * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
      *                          lock error.
      */

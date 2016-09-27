@@ -36,7 +36,7 @@ class QueriesSpec extends BaseSpecification {
         and:
         idx.blockThreadForUpdate();
         then:
-        idx.select(ParentEntity.class).query("name:- id:"+e.getId()).count() == 1
+        idx.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
     }
 
 

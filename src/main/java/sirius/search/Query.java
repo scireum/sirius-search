@@ -52,6 +52,7 @@ import sirius.search.constraints.FieldNotEqual;
 import sirius.search.constraints.Filled;
 import sirius.search.constraints.Or;
 import sirius.search.constraints.QueryString;
+import sirius.search.constraints.RobustQueryParser;
 import sirius.search.constraints.ValueInField;
 import sirius.search.properties.EnumProperty;
 import sirius.search.properties.Property;
@@ -259,8 +260,15 @@ public class Query<E extends Entity> {
             if (query.length() > MAX_QUERY_LENGTH) {
                 throw Exceptions.createHandled().withNLSKey("Query.queryTooLong").handle();
             }
-            RobustQueryParser rqp = new RobustQueryParser(defaultField, this.query, tokenizer, autoexpand);
-            rqp.compileAndApply(this, forced);
+            RobustQueryParser constraint = new RobustQueryParser(this.query, defaultField, tokenizer, autoexpand);
+            if (!constraint.isEmpty()) {
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
+                }
+                where(constraint);
+            } else if (forced) {
+                fail();
+            }
         }
 
         return this;
@@ -269,8 +277,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -282,8 +290,7 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -298,8 +305,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -313,8 +320,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -594,7 +601,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addBooleanTermFacet(String field, String value) {
-        return addTermFacet(field, value, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
+        return addTermFacet(field, value, key -> NLS.get("T".equals(key) ? "NLS.yes" : "NLS.no"));
     }
 
     /**
@@ -605,7 +612,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addBooleanTermFacet(String field, WebContext request) {
-        return addTermFacet(field, request, key -> "T".equals(key) ? NLS.get("NLS.yes") : NLS.get("NLS.no"));
+        return addTermFacet(field, request, key -> NLS.get("T".equals(key) ? "NLS.yes" : "NLS.no"));
     }
 
     /**

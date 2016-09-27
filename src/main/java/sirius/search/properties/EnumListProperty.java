@@ -36,8 +36,9 @@ public class EnumListProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return List.class.equals(field.getType()) && field.isAnnotationPresent(ListType.class) &&
-                   field.getAnnotation(ListType.class).value().isEnum();
+            return List.class.equals(field.getType())
+                   && field.isAnnotationPresent(ListType.class)
+                   && field.getAnnotation(ListType.class).value().isEnum();
         }
 
         @Override

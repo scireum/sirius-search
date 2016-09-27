@@ -6,7 +6,6 @@ import sirius.search.annotations.Indexed;
 import sirius.search.annotations.ListType;
 
 import java.util.List;
-import java.util.Map;
 
 @Indexed(index = "test")
 public class StringPropertiesEntity extends Entity {
