@@ -379,12 +379,31 @@ public class ForeignKey {
         }
         urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
         if (IndexAccess.LOG.isFINE()) {
-            IndexAccess.LOG.FINE("UPDATE: %s.%s: %s",
-                                 index.getIndex(getLocalClass()),
-                                 getLocalType(),
-                                 sb.toString());
+            IndexAccess.LOG.FINE("UPDATE: %s.%s: %s", index.getIndex(getLocalClass()), getLocalType(), sb.toString());
         }
         return urb;
+    }
+
+    private StringBuilder computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+        StringBuilder sb = new StringBuilder();
+        for (Reference ref : references) {
+            sb.append("ctx._source.");
+            sb.append(ref.getLocalProperty().getName());
+            sb.append("=");
+            sb.append(ref.getLocalProperty().getName());
+            sb.append(";");
+            urb.addScriptParam(ref.getLocalProperty().getName(),
+                               parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
+        }
+        if (updateParent) {
+            sb.append("ctx._source.");
+            sb.append(getName());
+            sb.append("=");
+            sb.append(getName());
+            sb.append(";");
+            urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
+        }
+        return sb;
     }
 
     /**

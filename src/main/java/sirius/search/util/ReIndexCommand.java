@@ -10,8 +10,8 @@ package sirius.search.util;
 
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.console.Command;
 import sirius.search.IndexAccess;
-import sirius.web.health.console.Command;
 
 /**
  * Performs a re-index of all indices into new ones starting with the given index prefix instead of the

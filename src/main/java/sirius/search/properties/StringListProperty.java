@@ -24,7 +24,7 @@ import java.util.List;
  * Represents a property which contains a list of strings. Such fields must wear a {@link ListType} annotation with
  * <tt>String</tt> as their value.
  */
-public class StringListProperty extends Property {
+public class StringListProperty extends StringProperty {
 
     /**
      * Factory for generating properties based on their field type
@@ -59,6 +59,11 @@ public class StringListProperty extends Property {
         } else {
             return value;
         }
+    }
+
+    @Override
+    protected boolean isIgnoreFromAll() {
+        return false;
     }
 
     @SuppressWarnings("unchecked")

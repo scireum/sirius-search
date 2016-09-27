@@ -84,6 +84,7 @@ public class Query<E extends Entity> {
     private static final int SCROLL_TTL_SECONDS = 60 * 5;
     private static final int MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD = 50;
     private static final int MAX_SCROLL_RESULTS_PER_SHARD = 10;
+    private static final int MAX_QUERY_LENGTH = 100;
 
     /**
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
@@ -255,6 +256,9 @@ public class Query<E extends Entity> {
                           boolean forced) {
         if (Strings.isFilled(query)) {
             this.query = detectLogging(query);
+            if (query.length() > MAX_QUERY_LENGTH) {
+                throw Exceptions.createHandled().withNLSKey("Query.queryTooLong").handle();
+            }
             RobustQueryParser rqp = new RobustQueryParser(defaultField, this.query, tokenizer, autoexpand);
             rqp.compileAndApply(this, forced);
         }
@@ -276,6 +280,20 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a textual query to a specific field.
+     * <p>
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function, boolean, boolean)}.
+     *
+     * @param query the query to search for
+     * @param field the field to apply query to
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> query(String query, String field) {
+        return query(query, field, this::defaultTokenizer, false, false);
+    }
+
+    /**
      * Adds a textual query across all searchable fields.
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
@@ -288,6 +306,22 @@ public class Query<E extends Entity> {
      */
     public Query<E> expandedQuery(String query) {
         return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, false);
+    }
+
+    /**
+     * Adds a textual query to a specific field.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function, boolean, boolean)}.
+     *
+     * @param query the query to search for
+     * @param field the field to apply query to
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(String query, String field) {
+        return query(query, field, this::defaultTokenizer, true, false);
     }
 
     /**

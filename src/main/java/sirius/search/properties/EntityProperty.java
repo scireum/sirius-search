@@ -8,7 +8,6 @@
 
 package sirius.search.properties;
 
-import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
@@ -17,7 +16,6 @@ import sirius.search.IndexAccess;
 import sirius.search.annotations.RefType;
 import sirius.web.http.WebContext;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 
 /**
@@ -78,7 +76,7 @@ public class EntityProperty extends Property {
             }
             ((EntityRef<?>) field.get(entity)).setId(ctx.get(getName()).asString());
         } catch (IllegalAccessException e) {
-            Exceptions.handle(IndexAccess.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -89,21 +87,12 @@ public class EntityProperty extends Property {
             entityRef.setId((String) value);
             entityRef.clearDirty();
         } catch (IllegalAccessException e) {
-            Exceptions.handle(IndexAccess.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
     @Override
     protected Object transformFromSource(Object value) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
-        builder.field("store", isStored() ? "yes" : "no");
-        builder.field("index", "not_analyzed");
-        builder.endObject();
     }
 }

@@ -12,10 +12,10 @@ import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.console.Command;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.IndexAccess;
-import sirius.web.health.console.Command;
 
 /**
  * Creates or re-creates the mapping for a given entity.

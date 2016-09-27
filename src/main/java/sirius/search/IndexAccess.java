@@ -703,8 +703,14 @@ public class IndexAccess {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws HandledException if either any other exception occurs, or if all three attempts
-     *                          fail with an optimistic lock error.
+     *            <<<<<<< HEAD
+     * @throws HandledException                      if either any other exception occurs, or if all three attempts
+     *                                               fail with an optimistic lock error.
+     *                                               =======
+     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts
+     *                                               fail
+     *                                               with an optimistic lock error.
+     *                                               >>>>>>> origin/master
      */
     public void retry(UnitOfWork uow) {
         int retries = 3;
@@ -793,9 +799,9 @@ public class IndexAccess {
      * @param entity the entity to save
      * @param <E>    the type of the entity to update
      * @return the saved entity
-     * @throws sirius.search.OptimisticLockException if the entity was modified in the database and those changes where
-     *                                               not reflected
-     *                                               by the entity to be saved
+     * @throws OptimisticLockException if the entity was modified in the database and those changes where
+     *                                 not reflected
+     *                                 by the entity to be saved
      */
     public <E extends Entity> E tryUpdate(E entity) throws OptimisticLockException {
         return update(entity, true, false);
@@ -1207,7 +1213,7 @@ public class IndexAccess {
      *
      * @param entity the entity to delete
      * @param <E>    the type of the entity to delete
-     * @throws sirius.search.OptimisticLockException if the entity was modified since the last read
+     * @throws OptimisticLockException if the entity was modified since the last read
      */
     public <E extends Entity> void tryDelete(E entity) throws OptimisticLockException {
         delete(entity, false);
