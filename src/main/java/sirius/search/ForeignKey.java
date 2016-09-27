@@ -359,24 +359,7 @@ public class ForeignKey {
                 urb.setRouting(String.valueOf(routingKey));
             }
         }
-        StringBuilder sb = new StringBuilder();
-        for (Reference ref : references) {
-            sb.append("ctx._source.");
-            sb.append(ref.getLocalProperty().getName());
-            sb.append("=");
-            sb.append(ref.getLocalProperty().getName());
-            sb.append(";");
-            urb.addScriptParam(ref.getLocalProperty().getName(),
-                               parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
-        }
-        if (updateParent) {
-            sb.append("ctx._source.");
-            sb.append(getName());
-            sb.append("=");
-            sb.append(getName());
-            sb.append(";");
-            urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
-        }
+        StringBuilder sb = computeUpdateScript(parent, updateParent, urb);
         urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("UPDATE: %s.%s: %s", index.getIndex(getLocalClass()), getLocalType(), sb.toString());
