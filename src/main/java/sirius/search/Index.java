@@ -1444,6 +1444,15 @@ public class Index {
     }
 
     /**
+     * Creates a new suggester for objects of the given class.
+     *
+     * @param clazz the class of objects to suggest for/from
+     * @param <E>   the type of the entity
+     * @return a new suggester against the database
+     */
+    public static <E extends Entity> Suggest<E> suggest(Class<E> clazz) { return new Suggest<>(clazz); }
+
+    /**
      * Installs the given ElasticSearch client
      *
      * @param client the client to use
