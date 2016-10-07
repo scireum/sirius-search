@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptService;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Strings;
@@ -327,10 +328,10 @@ public class ForeignKey {
                     urb.setRouting(String.valueOf(routingKey));
                 }
             }
-            StringBuilder sb = computeUpdateScript(parent, updateParent, urb);
-            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
+            Script script = computeUpdateScript(parent, updateParent, urb);
+            urb.setScript(script);
             if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), sb.toString());
+                Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), script);
             }
             urb.execute().actionGet();
             if (Index.LOG.isFINE()) {
@@ -357,7 +358,8 @@ public class ForeignKey {
         }
     }
 
-    private StringBuilder computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+    private Script computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+        sirius.kernel.commons.Context ctx = sirius.kernel.commons.Context.create();
         StringBuilder sb = new StringBuilder();
         for (Reference ref : references) {
             sb.append("ctx._source.");
@@ -365,8 +367,8 @@ public class ForeignKey {
             sb.append("=");
             sb.append(ref.getLocalProperty().getName());
             sb.append(";");
-            urb.addScriptParam(ref.getLocalProperty().getName(),
-                               parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
+            ctx.put(ref.getLocalProperty().getName(),
+                    parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
         }
         if (updateParent) {
             sb.append("ctx._source.");
@@ -374,9 +376,9 @@ public class ForeignKey {
             sb.append("=");
             sb.append(getName());
             sb.append(";");
-            urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
+            ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return sb;
+        return new Script(sb.toString(), ScriptService.ScriptType.INLINE, "groovy", ctx);
     }
 
     /**

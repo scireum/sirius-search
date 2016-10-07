@@ -8,8 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
@@ -117,21 +115,6 @@ public class FieldEqual implements Constraint {
         }
         if (!isFilter) {
             return QueryBuilders.termQuery(field, value);
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (Strings.isEmpty(value)) {
-            if (ignoreNull) {
-                return null;
-            }
-            // We need a filter in that case...
-            return FilterBuilders.missingFilter(field);
-        }
-        if (isFilter) {
-            return FilterBuilders.termFilter(field, value);
         }
         return null;
     }

@@ -9,7 +9,6 @@
 package sirius.search.util;
 
 import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import sirius.kernel.commons.Values;
 import sirius.kernel.di.std.Register;
@@ -125,8 +124,7 @@ public class ESCommand implements Command {
         output.line("Disabling automatic allocation.");
 
         ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
-        Settings settings =
-                ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "none").build();
+        Settings settings = Settings.settingsBuilder().put("cluster.routing.allocation.enable", "none").build();
         request.transientSettings(settings);
         Index.getClient().admin().cluster().updateSettings(request);
 
@@ -138,7 +136,7 @@ public class ESCommand implements Command {
         output.line("Enabling automatic allocation.");
 
         ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
-        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "all").build();
+        Settings settings = Settings.settingsBuilder().put("cluster.routing.allocation.enable", "all").build();
         request.transientSettings(settings);
         Index.getClient().admin().cluster().updateSettings(request);
 

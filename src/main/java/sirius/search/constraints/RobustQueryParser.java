@@ -10,7 +10,6 @@ package sirius.search.constraints;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanNearQueryBuilder;
@@ -85,11 +84,6 @@ public class RobustQueryParser implements Constraint {
             finishedQuery = main;
         }
         return finishedQuery;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        return null;
     }
 
     @Override

@@ -8,8 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 
 /**
@@ -39,11 +37,6 @@ public class NotFilled implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        return FilterBuilders.missingFilter(field);
     }
 
     @Override

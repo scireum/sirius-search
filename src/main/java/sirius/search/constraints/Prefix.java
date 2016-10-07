@@ -8,8 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
@@ -57,14 +55,6 @@ public class Prefix implements Constraint {
     public QueryBuilder createQuery() {
         if (Strings.isFilled(value) && !isFilter) {
             return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256");
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (Strings.isFilled(value) && isFilter) {
-            return FilterBuilders.prefixFilter(field, value);
         }
         return null;
     }

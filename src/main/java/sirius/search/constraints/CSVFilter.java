@@ -8,10 +8,7 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
@@ -48,7 +45,6 @@ public class CSVFilter implements Constraint {
 
     private final String field;
     private List<String> values;
-    private boolean isFilter;
     private boolean orEmpty = false;
     private Mode mode;
     private String commaSeparatedValues;
@@ -132,23 +128,13 @@ public class CSVFilter implements Constraint {
         return this;
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public CSVFilter asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
         collectValues();
         if (values.isEmpty()) {
             return null;
         }
-        if (!isFilter && !orEmpty) {
+        if (!orEmpty) {
             BoolQueryBuilder bqb = QueryBuilders.boolQuery();
             switch (mode) {
                 case CONTAINS_ANY:
@@ -163,34 +149,6 @@ public class CSVFilter implements Constraint {
                     break;
             }
             return bqb;
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        collectValues();
-        if (values.isEmpty()) {
-            return null;
-        }
-        if (isFilter || orEmpty) {
-            BoolFilterBuilder bfb = FilterBuilders.boolFilter();
-            switch (mode) {
-                case CONTAINS_ANY:
-                    for (String val : values) {
-                        bfb.should(FilterBuilders.termFilter(field, val));
-                    }
-                    break;
-                case CONTAINS_ALL:
-                    for (String val : values) {
-                        bfb.must(FilterBuilders.termFilter(field, val));
-                    }
-                    break;
-            }
-            if (orEmpty) {
-                bfb.should(FilterBuilders.missingFilter(field));
-            }
-            return bfb;
         }
         return null;
     }

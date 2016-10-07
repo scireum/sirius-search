@@ -10,7 +10,7 @@ package sirius.search;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRange;
+import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
 import sirius.web.controller.Facet;
@@ -95,17 +95,19 @@ public class ResultList<T> implements Iterable<T> {
         if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
                 if (facet instanceof DateFacet) {
-                    DateRange range = response.getAggregations().get(facet.getName());
-                    for (sirius.search.DateRange dr : ((DateFacet) facet).getRanges()) {
-                        DateRange.Bucket bucket = range.getBucketByKey(dr.getKey());
-                        if (bucket != null && bucket.getDocCount() > 0) {
-                            facet.addItem(dr.getKey(), dr.getName(), bucket.getDocCount());
+                    Range range = response.getAggregations().get(facet.getName());
+                    for (Range.Bucket bucket : range.getBuckets()) {
+                        if (bucket.getDocCount() > 0) {
+                            DateRange dateRange = ((DateFacet) facet).getRangeByName(bucket.getKeyAsString());
+                            if (dateRange != null) {
+                                facet.addItem(dateRange.getKey(), dateRange.getName(), bucket.getDocCount());
+                            }
                         }
                     }
                 } else {
                     Terms terms = response.getAggregations().get(facet.getName());
                     for (Terms.Bucket bucket : terms.getBuckets()) {
-                        String key = bucket.getKey();
+                        String key = bucket.getKeyAsString();
                         facet.addItem(key, key, bucket.getDocCount());
                     }
                 }

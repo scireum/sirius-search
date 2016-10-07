@@ -8,8 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -55,14 +53,6 @@ public class ValueInField implements Constraint {
     public QueryBuilder createQuery() {
         if (!isFilter) {
             return QueryBuilders.termQuery(field, value);
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            return FilterBuilders.termFilter(field, value);
         }
         return null;
     }

@@ -15,8 +15,8 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.CharStreams;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -26,12 +26,15 @@ import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.elasticsearch.node.internal.InternalSettingsPreparer;
+import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.script.groovy.GroovyPlugin;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
@@ -43,6 +46,7 @@ import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Files;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
@@ -68,7 +72,11 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -202,7 +210,7 @@ public class Index {
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
                                                              @Nonnull
-                                                             com.google.common.cache.Cache<String, Object> cache) {
+                                                                     com.google.common.cache.Cache<String, Object> cache) {
         if (Strings.isEmpty(id)) {
             return Tuple.create(null, false);
         }
@@ -576,6 +584,15 @@ public class Index {
             }
         }
 
+        @ConfigValue("index.host")
+        private String hostAddress;
+
+        @ConfigValue("index.cluster")
+        private String clusterName;
+
+        @ConfigValue("index.port")
+        private int port;
+
         private void startClient() {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
@@ -584,17 +601,15 @@ public class Index {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
             } else {
-                LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...",
-                         Sirius.getConfig().getString("index.cluster"),
-                         Sirius.getConfig().getString("index.host"));
-                Settings settings = ImmutableSettings.settingsBuilder()
-                                                     .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
-                                                     .build();
-                TransportClient transportClient = new TransportClient(settings);
-                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
-                                                                                         .getString("index.host"),
-                                                                                   Sirius.getConfig()
-                                                                                         .getInt("index.port")));
+                LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
+                Settings settings = Settings.settingsBuilder().put("cluster.name", clusterName).build();
+                TransportClient transportClient = TransportClient.builder().settings(settings).build();
+                try {
+                    transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
+                                                                                       port));
+                } catch (UnknownHostException e) {
+                    Exceptions.handle(LOG, e);
+                }
                 client = transportClient;
             }
         }
@@ -1464,6 +1479,12 @@ public class Index {
         Index.indexPrefix = indexPrefix;
     }
 
+    private static class ConfigurableNode extends Node {
+        ConfigurableNode(Settings settings, Collection<Class<? extends Plugin>> classpathPlugins) {
+            super(InternalSettingsPreparer.prepareEnvironment(settings, null), Version.CURRENT, classpathPlugins);
+        }
+    }
+
     /**
      * Generates a pure unclustered in memory instance of elasticsearch (most probably for testing purposes).
      */
@@ -1476,18 +1497,24 @@ public class Index {
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"), CallContext.getNodeName() + "_in_memory_es");
         tmpDir.mkdirs();
+        try {
+            Files.removeChildren(tmpDir.toPath());
+        } catch (IOException e) {
+            Exceptions.handle(LOG, e);
+        }
 
-        Settings settings = ImmutableSettings.settingsBuilder()
-                                             .put("node.http.enabled", false)
-                                             .put("path.data", tmpDir.getAbsolutePath())
-                                             .put("index.gateway.type", "none")
-                                             .put("gateway.type", "none")
-                                             .put("index.store.type", "memory")
-                                             .put("index.number_of_shards", 1)
-                                             .put("index.number_of_replicas", 0)
-                                             .put("script.disable_dynamic", false)
-                                             .build();
-        inMemoryNode = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node();
+        Settings settings = NodeBuilder.nodeBuilder()
+                                       .data(true)
+                                       .local(true)
+                                       .getSettings()
+                                       .put("node.http.enabled", false)
+                                       .put("path.home", tmpDir.getAbsolutePath())
+                                       .put("path.data", tmpDir.getAbsolutePath())
+                                       .put("index.number_of_shards", 1)
+                                       .put("index.number_of_replicas", 0)
+                                       .put("script.inline", "on")
+                                       .build();
+        inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
         client = inMemoryNode.client();
         if (schema != null) {
             for (String msg : schema.createMappings()) {

@@ -258,11 +258,6 @@ public class EntityDescriptor {
             p.createMapping(builder);
         }
         builder.endObject();
-        if (Strings.isFilled(routing)) {
-            builder.startObject("_routing");
-            builder.field("path", routing);
-            builder.endObject();
-        }
 
         return builder.endObject().endObject();
     }

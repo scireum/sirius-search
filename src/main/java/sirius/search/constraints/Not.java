@@ -8,10 +8,7 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -48,17 +45,6 @@ public class Not implements Constraint {
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
         qb.mustNot(innerQuery);
         return qb;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        FilterBuilder innerFilter = inner.createFilter();
-        if (innerFilter == null) {
-            return null;
-        }
-        BoolFilterBuilder fb = FilterBuilders.boolFilter();
-        fb.mustNot(innerFilter);
-        return fb;
     }
 
     @Override

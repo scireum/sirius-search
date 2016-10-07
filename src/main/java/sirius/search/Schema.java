@@ -15,10 +15,10 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Watch;
@@ -281,9 +281,9 @@ public class Schema {
             try {
                 SearchRequestBuilder srb =
                         Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
-                srb.setSearchType(SearchType.SCAN);
                 // Limit to 10 per shard
                 srb.setSize(10);
+                srb.addSort("_doc", SortOrder.ASC);
                 srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60));
                 SearchResponse searchResponse = srb.execute().actionGet();
                 while (true) {

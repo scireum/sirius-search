@@ -13,18 +13,13 @@ import com.google.common.collect.Sets;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.elasticsearch.action.count.CountRequestBuilder;
-import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.action.deletebyquery.DeleteByQueryRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
@@ -273,7 +268,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -283,45 +279,18 @@ public class Query<E extends Entity> {
     }
 
     /**
-     * Adds a textual query to a specific field.
-     * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, * java.util.function.Function, boolean, boolean)}.
-     *
-     * @param query the query to search for
-     * @param field the field to apply query to
-     * @return the query itself for fluent method calls
-     */
-    public Query<E> query(String query, String field) {
-        return query(query, field, this::defaultTokenizer, false, false);
-    }
-
-    /**
      * Adds a textual query across all searchable fields.
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
      */
     public Query<E> expandedQuery(String query) {
         return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, false);
-    }
-
-    /**
-     * Adds a textual query to a specific field.
-     * <p>
-     * If a single term query is given, an expansion like "term*" will be added.
-     * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, * java.util.function.Function, boolean, boolean)}.
-     *
-     * @param query the query to search for
-     * @param field the field to apply query to
-     * @return the query itself for fluent method calls
-     */
-    public Query<E> expandedQuery(String query, String field) {
-        return query(query, field, this::defaultTokenizer, true, false);
     }
 
     /**
@@ -776,7 +745,7 @@ public class Query<E extends Entity> {
         applyRouting(ed, srb::setRouting);
         applyOrderBys(srb);
         applyFacets(srb);
-        applyQueriesAndFilters(srb);
+        applyQueries(srb);
         applyLimit(srb);
 
         if (logQuery) {
@@ -814,10 +783,10 @@ public class Query<E extends Entity> {
     private void applyOrderBys(SearchRequestBuilder srb) {
         if (randomize) {
             if (randomizeField != null) {
-                srb.addSort(SortBuilders.scriptSort("Math.random()*doc['" + randomizeField + "'].value", "number")
-                                        .order(SortOrder.DESC));
+                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()*doc['" + randomizeField + "'].value"),
+                                                    "number").order(SortOrder.DESC));
             } else {
-                srb.addSort(SortBuilders.scriptSort("Math.random()", "number").order(SortOrder.ASC));
+                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()"), "number").order(SortOrder.ASC));
             }
         } else {
             for (Tuple<String, Boolean> sort : orderBys) {
@@ -826,18 +795,10 @@ public class Query<E extends Entity> {
         }
     }
 
-    private void applyQueriesAndFilters(SearchRequestBuilder srb) {
+    private void applyQueries(SearchRequestBuilder srb) {
         QueryBuilder qb = buildQuery();
         if (qb != null) {
             srb.setQuery(qb);
-        }
-        FilterBuilder sb = buildFilter();
-        if (sb != null) {
-            if (qb == null && termFacets.isEmpty()) {
-                srb.setPostFilter(sb);
-            } else {
-                srb.setQuery(QueryBuilders.filteredQuery(qb == null ? QueryBuilders.matchAllQuery() : qb, sb));
-            }
         }
     }
 
@@ -926,20 +887,17 @@ public class Query<E extends Entity> {
                 return 0;
             }
             EntityDescriptor ed = Index.getDescriptor(clazz);
-            CountRequestBuilder crb = Index.getClient()
-                                           .prepareCount(index != null ? index : Index.getIndex(clazz))
-                                           .setTypes(ed.getType());
-
+            SearchRequestBuilder crb = Index.getClient()
+                                            .prepareSearch(index != null ? index : Index.getIndex(clazz))
+                                            .setTypes(ed.getType());
+            crb.setSize(0);
             applyRouting(ed, crb::setRouting);
 
             QueryBuilder qb = buildQuery();
             if (qb != null) {
                 crb.setQuery(qb);
             }
-            FilterBuilder sb = buildFilter();
-            if (sb != null) {
-                crb.setQuery(QueryBuilders.filteredQuery(qb, sb));
-            }
+
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
             }
@@ -973,27 +931,6 @@ public class Query<E extends Entity> {
         } else {
             BoolQueryBuilder result = QueryBuilders.boolQuery();
             for (QueryBuilder qb : queries) {
-                result.must(qb);
-            }
-            return result;
-        }
-    }
-
-    private FilterBuilder buildFilter() {
-        List<FilterBuilder> filters = new ArrayList<FilterBuilder>();
-        for (Constraint constraint : constraints) {
-            FilterBuilder sb = constraint.createFilter();
-            if (sb != null) {
-                filters.add(sb);
-            }
-        }
-        if (filters.isEmpty()) {
-            return null;
-        } else if (filters.size() == 1) {
-            return filters.get(0);
-        } else {
-            BoolFilterBuilder result = FilterBuilders.boolFilter();
-            for (FilterBuilder qb : filters) {
                 result.must(qb);
             }
             return result;
@@ -1071,19 +1008,19 @@ public class Query<E extends Entity> {
      * @param builder the completed query
      * @return the result of the query
      */
-    protected long transformCount(CountRequestBuilder builder) {
+    protected long transformCount(SearchRequestBuilder builder) {
         Watch w = Watch.start();
-        CountResponse res = builder.execute().actionGet();
+        SearchResponse res = builder.execute().actionGet();
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
                            Index.getIndex(clazz),
                            Index.getDescriptor(clazz).getType(),
-                           res.getCount());
+                           res.getHits().getTotalHits());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "COUNT: " + toString(true));
         }
-        return res.getCount();
+        return res.getHits().getTotalHits();
     }
 
     /**
@@ -1249,9 +1186,11 @@ public class Query<E extends Entity> {
             Index.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
                            this,
                            ExecutionPoint.snapshot());
+        } else {
+            srb.addSort("_doc", SortOrder.ASC);
         }
-        srb.setSearchType(SearchType.SCAN);
         srb.setFrom(0);
+        srb.setSearchType(SearchType.SCAN);
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
         // Otherwise we limit to 10 documents per shard...
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
@@ -1421,51 +1360,13 @@ public class Query<E extends Entity> {
             }
             Watch w = Watch.start();
             EntityDescriptor ed = Index.getDescriptor(clazz);
-            // If there are foreign keys we cannot use delete by query...
-            if (ed.hasForeignKeys()) {
-                deleteByIteration();
-            } else {
-                deleteByQuery(ed);
-            }
+            deleteByIteration();
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
         } catch (Throwable e) {
             throw Exceptions.handle(Index.LOG, e);
         }
-    }
-
-    protected void deleteByQuery(EntityDescriptor ed) {
-        DeleteByQueryRequestBuilder builder = Index.getClient()
-                                                   .prepareDeleteByQuery(index != null ? index : Index.getIndex(clazz))
-                                                   .setTypes(ed.getType());
-        if (Strings.isFilled(routing)) {
-            if (!ed.hasRouting()) {
-                throw Exceptions.handle()
-                                .to(Index.LOG)
-                                .withSystemErrorMessage("Performing a delete on %s with a routing "
-                                                        + "- but entity has no routing attribute (in @Indexed)! "
-                                                        + "This will most probably FAIL!", clazz.getName())
-                                .handle();
-            }
-            builder.setRouting(routing);
-        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-            throw Exceptions.handle()
-                            .to(Index.LOG)
-                            .withSystemErrorMessage("Performing a delete on %s without providing a routing. "
-                                                    + "Consider providing a routing for better performance "
-                                                    + "or call deliberatelyUnrouted() to signal that routing was "
-                                                    + "intentionally skipped.", clazz.getName())
-                            .handle();
-        }
-        QueryBuilder qb = buildQuery();
-        if (qb != null) {
-            builder.setQuery(qb);
-        }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("DELETE: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
-        }
-        builder.execute().actionGet();
     }
 
     protected void deleteByIteration() throws Throwable {

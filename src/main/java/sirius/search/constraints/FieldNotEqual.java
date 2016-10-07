@@ -8,10 +8,8 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import sirius.search.Entity;
-import sirius.search.EntityRef;
 import sirius.search.Index;
 
 /**
@@ -60,14 +58,6 @@ public class FieldNotEqual implements Constraint {
     public QueryBuilder createQuery() {
         if (!isFilter) {
             return Not.on(FieldEqual.on(field, value)).createQuery();
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            return Not.on(FieldEqual.on(field, value)).createFilter();
         }
         return null;
     }

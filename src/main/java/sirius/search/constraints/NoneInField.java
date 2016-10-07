@@ -8,10 +8,7 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -66,22 +63,6 @@ public class NoneInField implements Constraint {
                 boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
             }
             return boolQueryBuilder;
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            if (values == null || values.isEmpty()) {
-                return null;
-            }
-            BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
-            for (Object value : values) {
-                boolFilterBuilder.mustNot(FilterBuilders.termFilter(field, FieldEqual.transformFilterValue(value)));
-            }
-
-            return boolFilterBuilder;
         }
         return null;
     }

@@ -8,10 +8,7 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.search.Entity;
@@ -113,32 +110,6 @@ public class OneInField implements Constraint {
                 boolQueryBuilder.should(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
             }
             return boolQueryBuilder;
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            if (values == null) {
-                return null;
-            }
-            BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
-            if (values.isEmpty()) {
-                if (forceEmpty) {
-                    boolFilterBuilder.should(FilterBuilders.missingFilter(field));
-                    return boolFilterBuilder;
-                }
-                return null;
-            }
-            for (Object value : values) {
-                boolFilterBuilder.should(FilterBuilders.termFilter(field, FieldEqual.transformFilterValue(value)));
-            }
-            if (orEmpty) {
-                boolFilterBuilder.should(FilterBuilders.missingFilter(field));
-            }
-
-            return boolFilterBuilder;
         }
         return null;
     }
