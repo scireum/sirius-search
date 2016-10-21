@@ -8,6 +8,7 @@
 
 package sirius.search.properties;
 
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
@@ -16,6 +17,7 @@ import sirius.search.Index;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -156,5 +158,20 @@ public class ObjectListProperty extends Property {
     @Override
     public boolean acceptsSetter() {
         return false;
+    }
+
+    /**
+     * Generates the mapping used by this property
+     *
+     * @param builder the builder used to generate JSON
+     * @throws IOException in case of an io error while generating the mapping
+     */
+    public void createMapping(XContentBuilder builder) throws IOException {
+        builder.startObject(getName());
+        builder.field("type", getMappingType());
+        if (isIgnoreFromAll()) {
+            builder.field("include_in_all", false);
+        }
+        builder.endObject();
     }
 }
