@@ -95,7 +95,7 @@ public class CSVFilter implements Constraint {
      * @return a new constraint representing the given filter setting
      */
     public static CSVFilter containsAll(String field, Value commaSeparatedValues) {
-        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ANY);
+        return new CSVFilter(field, commaSeparatedValues.asString(), Mode.CONTAINS_ALL);
     }
 
     /**
