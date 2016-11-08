@@ -9,6 +9,7 @@
 package sirius.search;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -17,6 +18,7 @@ import sirius.web.controller.Facet;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Combines the result items of a query along with the collected facet filters.
@@ -29,9 +31,12 @@ import java.util.List;
 public class ResultList<T> implements Iterable<T> {
 
     private final List<Facet> termFacets;
+    private final List<Aggregation> aggregations;
+    private final Map<String, List<String>> aggregatedValues = Maps.newHashMap();
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
     private Monoflop facetsProcessed = Monoflop.create();
+    private Monoflop aggregationsProcessed = Monoflop.create();
 
     /**
      * Creates a new result list
@@ -39,9 +44,10 @@ public class ResultList<T> implements Iterable<T> {
      * @param termFacets list of facets created by the query
      * @param response   underlying search response building the result
      */
-    protected ResultList(List<Facet> termFacets, SearchResponse response) {
+    protected ResultList(List<Facet> termFacets, List<Aggregation> aggregations, SearchResponse response) {
         this.termFacets = termFacets;
         this.response = response;
+        this.aggregations = aggregations;
     }
 
     @Override
@@ -114,5 +120,24 @@ public class ResultList<T> implements Iterable<T> {
             }
         }
         return termFacets;
+    }
+
+    public Map<String, List<String>> getAggregations() {
+        if (aggregationsProcessed.firstCall() && response != null) {
+            for (Aggregation aggregation : aggregations) {
+                Terms terms = response.getAggregations().get(aggregation.getName());
+                for (Terms.Bucket bucket : terms.getBuckets()) {
+                    List<String> values = Lists.newArrayList();
+                    for (Terms.Bucket term : ((Terms) bucket.getAggregations()
+                                                            .get(aggregation.getSubAggregations()
+                                                                            .get(0)
+                                                                            .getName())).getBuckets()) {
+                        values.add(term.getKeyAsString());
+                    }
+                    aggregatedValues.put(bucket.getKeyAsString(), values);
+                }
+            }
+        }
+        return aggregatedValues;
     }
 }

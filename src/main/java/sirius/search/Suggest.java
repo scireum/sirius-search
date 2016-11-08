@@ -17,10 +17,9 @@ public class Suggest<E extends Entity> {
     // maxEdit => errors per token
     private Float maxErrors = 2f; // config? 1 or 2 recommended
     private int limit = 5;
-    private Float confidence = 1f; // ?
+    private Float confidence = 1f;
     private String suggestMode = "missing";
-    private String analyzer = "whitespace"; // ?
-
+    private String analyzer = "whitespace";
 
     /**
      * Used to create a new suggestion for entities of the given class
@@ -31,9 +30,9 @@ public class Suggest<E extends Entity> {
         this.clazz = clazz;
     }
 
-
     /**
-     * Sets the query string to generate suggestions for, and the field to generate the suggestions from
+     * Sets the query string to generate suggestions for and the field to generate the suggestions from
+     *
      * @param field the field to get the suggestions from
      * @param query the query to generate suggestions for
      */
@@ -65,7 +64,7 @@ public class Suggest<E extends Entity> {
 
     /**
      * Sets the analyzer to analyze the query with.
-     *
+     * <p>
      * Defaults to the search analyzer of the suggest field passed via 'field'.
      *
      * @param analyzer the analyzer to analyze the query with
@@ -77,7 +76,8 @@ public class Suggest<E extends Entity> {
     /**
      * Sets the confidence level of the suggestion builder (float value).
      * <p>
-     * The confidence level defines a factor applied to the input phrases score which is used as a threshold for other suggest candidates.
+     * The confidence level defines a factor applied to the input phrases score which is used as a threshold for other
+     * suggest candidates.
      * Only candidates that score higher than the threshold will be included in the result. For instance a confidence
      * level of 1.0 will only return suggestions that score higher than the input phrase.
      * If set to 0.0 the top N candidates are returned. The default is 1.0.
@@ -90,9 +90,10 @@ public class Suggest<E extends Entity> {
 
     /**
      * Controls for which terms suggestions should be given, and what kind.
-     *
+     * <p>
      * Options:
-     * "missing" = only suggest for query terms not in the shard. This is the default. If suggestions are still given for words that are in the index,
+     * "missing" = only suggest for query terms not in the shard. This is the default. If suggestions are still given
+     * for words that are in the index,
      * set confidence level higher.
      * "popular" =  only suggest terms that occur in more docs on the shard then the original term.
      * "always" = suggest any matching suggestions based on terms in the suggest text.
@@ -103,9 +104,9 @@ public class Suggest<E extends Entity> {
         this.suggestMode = suggestMode;
     }
 
-
     /**
      * Builds the phrase suggestion builder with all given settings
+     *
      * @return the PhraseSuggestionBuilder
      */
     private PhraseSuggestionBuilder build() {
@@ -119,24 +120,27 @@ public class Suggest<E extends Entity> {
         phraseSuggestionBuilder.confidence(confidence);
 
         if ((query.split("\\s+").length == 1) && (query.length() < 8)) {
-            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(1).suggestMode(suggestMode).minWordLength(4));
-
+            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
+                    1).suggestMode(suggestMode).minWordLength(4));
         } else {
-            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(2).suggestMode(suggestMode).minWordLength(4));
+            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
+                    2).suggestMode(suggestMode).minWordLength(4));
         }
 
         return phraseSuggestionBuilder;
     }
 
-
     /**
      * Builds the SuggestRequest to be given to the index
+     *
      * @param phraseSuggestionBuilder the phrase suggestion
      * @return the index suggest request builder
      */
     private SuggestRequestBuilder buildSuggest(PhraseSuggestionBuilder phraseSuggestionBuilder) {
 
-        return Index.getClient().prepareSuggest(Index.getIndexName(Index.getDescriptor(clazz).getIndex())).addSuggestion(phraseSuggestionBuilder);
+        return Index.getClient()
+                    .prepareSuggest(Index.getIndexName(Index.getDescriptor(clazz).getIndex()))
+                    .addSuggestion(phraseSuggestionBuilder);
     }
 
     /**
@@ -145,7 +149,7 @@ public class Suggest<E extends Entity> {
      *
      * @return tuples of the query string and all suggest options
      */
-    private List<Tuple<String,String>> execute(SuggestRequestBuilder sqb) {
+    private List<Tuple<String, String>> execute(SuggestRequestBuilder sqb) {
 
         SuggestResponse response = sqb.execute().actionGet();
         PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
@@ -157,13 +161,12 @@ public class Suggest<E extends Entity> {
                 List<PhraseSuggestion.Entry.Option> options = entry.getOptions();
                 if (!options.isEmpty()) {
                     float lastMaxScore = options.get(0).getScore();
-                    for(PhraseSuggestion.Entry.Option option : options){
-                        if((lastMaxScore > option.getScore()*2)) {
+                    for (PhraseSuggestion.Entry.Option option : options) {
+                        if ((lastMaxScore > option.getScore() * 2)) {
                             continue;
                         }
-                        //first: term with error, second: corrected suggestion
-                        Tuple<String, String> typoCorrectedPair = new Tuple<>(entry.getText().toString(),
-                                option.getText().toString());
+                        Tuple<String, String> typoCorrectedPair =
+                                new Tuple<>(entry.getText().toString(), option.getText().toString());
                         suggestions.add(typoCorrectedPair);
                     }
                 }
