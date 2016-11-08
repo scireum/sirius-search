@@ -23,6 +23,7 @@ import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -94,6 +95,7 @@ public class Query<E extends Entity> {
     private List<Constraint> constraints = Lists.newArrayList();
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
+    private List<Aggregation> aggregations = Lists.newArrayList();
     private boolean randomize;
     private String randomizeField;
     private int start;
@@ -497,6 +499,11 @@ public class Query<E extends Entity> {
         return this;
     }
 
+    public Query<E> addAggregation(Aggregation aggregation) {
+        aggregations.add(aggregation);
+        return this;
+    }
+
     /**
      * Adds a term facet to be filled by the query.
      *
@@ -745,6 +752,7 @@ public class Query<E extends Entity> {
         applyRouting(ed, srb::setRouting);
         applyOrderBys(srb);
         applyFacets(srb);
+        applyAggregations(srb);
         applyQueries(srb);
         applyLimit(srb);
 
@@ -762,6 +770,32 @@ public class Query<E extends Entity> {
         if (limit != null && limit > 0) {
             srb.setSize(limit);
         }
+    }
+
+    private void applyAggregations(SearchRequestBuilder srb) {
+        for (Aggregation aggregation : aggregations) {
+            TermsBuilder aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
+                                                                 .field(aggregation.getField())
+                                                                 .size(aggregation.getSize());
+
+            for (Aggregation subAggreation : aggregation.getSubAggregations()) {
+                aggregationBuilder.subAggregation(buildSubAggregations(subAggreation));
+            }
+
+            srb.addAggregation(aggregationBuilder);
+        }
+    }
+
+    private TermsBuilder buildSubAggregations(Aggregation aggregation) {
+
+        TermsBuilder aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
+                                                             .field(aggregation.getField())
+                                                             .size(aggregation.getSize());
+        for (Aggregation subSubAggreation : aggregation.getSubAggregations()) {
+            aggregationBuilder.subAggregation(buildSubAggregations(subSubAggreation));
+        }
+
+        return aggregationBuilder;
     }
 
     private void applyFacets(SearchRequestBuilder srb) {
@@ -850,7 +884,7 @@ public class Query<E extends Entity> {
     public ResultList<E> queryResultList() {
         try {
             if (forceFail) {
-                return new ResultList<>(Lists.newArrayList(), null);
+                return new ResultList<>(Lists.newArrayList(), Lists.newArrayList(), null);
             }
             boolean defaultLimitEnforced = false;
             if (limit == null) {
@@ -947,7 +981,7 @@ public class Query<E extends Entity> {
     protected ResultList<E> transform(SearchRequestBuilder builder) throws Exception {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
-        ResultList<E> result = new ResultList<>(termFacets, searchResponse);
+        ResultList<E> result = new ResultList<>(termFacets, aggregations, searchResponse);
         EntityDescriptor descriptor = Index.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
             E entity = clazz.newInstance();
@@ -1036,7 +1070,7 @@ public class Query<E extends Entity> {
         int originalLimit = limit;
         limit++;
         Watch w = Watch.start();
-        ResultList<E> result = new ResultList<>(termFacets, null);
+        ResultList<E> result = new ResultList<>(termFacets, aggregations, null);
         if (!forceFail) {
             try {
                 result = queryResultList();
