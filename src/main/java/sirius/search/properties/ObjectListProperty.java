@@ -15,10 +15,12 @@ import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.Index;
 import sirius.search.annotations.ListType;
+import sirius.search.annotations.Transient;
 import sirius.web.http.WebContext;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,21 +72,24 @@ public class ObjectListProperty extends Property {
                         Object obj = targetClass.newInstance();
 
                         for (Field innerField : targetClass.getDeclaredFields()) {
-                            try {
-                                if (values.containsKey(innerField.getName())) {
-                                    innerField.setAccessible(true);
-                                    innerField.set(obj,
-                                                   NLS.parseMachineString(innerField.getType(),
-                                                                          values.get(innerField.getName())));
+                            if (!innerField.isAnnotationPresent(Transient.class)
+                                && !Modifier.isStatic(innerField.getModifiers())) {
+                                try {
+                                    if (values.containsKey(innerField.getName())) {
+                                        innerField.setAccessible(true);
+                                        innerField.set(obj,
+                                                       NLS.parseMachineString(innerField.getType(),
+                                                                              values.get(innerField.getName())));
+                                    }
+                                } catch (Throwable e) {
+                                    Exceptions.handle()
+                                              .error(e)
+                                              .to(Index.LOG)
+                                              .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
+                                                                      innerField.getName(),
+                                                                      toString())
+                                              .handle();
                                 }
-                            } catch (Throwable e) {
-                                Exceptions.handle()
-                                          .error(e)
-                                          .to(Index.LOG)
-                                          .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
-                                                                  innerField.getName(),
-                                                                  toString())
-                                          .handle();
                             }
                         }
 
@@ -112,20 +117,22 @@ public class ObjectListProperty extends Property {
                     Map<String, String> valueMap = new HashMap<>();
                     Class<?> targetClass = field.getAnnotation(ListType.class).value();
                     for (Field innerField : targetClass.getDeclaredFields()) {
-                        try {
-                            innerField.setAccessible(true);
-                            Object val = innerField.get(obj);
-                            if (val != null) {
-                                valueMap.put(innerField.getName(), NLS.toMachineString(val));
+                        if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                            try {
+                                innerField.setAccessible(true);
+                                Object val = innerField.get(obj);
+                                if (val != null) {
+                                    valueMap.put(innerField.getName(), NLS.toMachineString(val));
+                                }
+                            } catch (Throwable e) {
+                                Exceptions.handle()
+                                          .error(e)
+                                          .to(Index.LOG)
+                                          .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
+                                                                  innerField.getName(),
+                                                                  toString())
+                                          .handle();
                             }
-                        } catch (Throwable e) {
-                            Exceptions.handle()
-                                      .error(e)
-                                      .to(Index.LOG)
-                                      .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
-                                                              innerField.getName(),
-                                                              toString())
-                                      .handle();
                         }
                     }
                     result.add(valueMap);
