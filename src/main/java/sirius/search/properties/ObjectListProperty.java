@@ -9,6 +9,7 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
@@ -159,7 +160,7 @@ public class ObjectListProperty extends Property {
 
     @Override
     protected String getMappingType() {
-        return "object";
+        return field.getAnnotation(ListType.class).nested() ? "nested" : "object";
     }
 
     @Override

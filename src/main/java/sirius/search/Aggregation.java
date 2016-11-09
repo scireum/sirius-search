@@ -16,6 +16,7 @@ public class Aggregation {
     private List<Aggregation> subAggregations = Lists.newArrayList();
     private String field;
     private String name;
+    private String path;
     private int size = 50;
 
     public Aggregation(String name){
@@ -65,5 +66,13 @@ public class Aggregation {
 
     public void setSize(int size) {
         this.size = size;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 }

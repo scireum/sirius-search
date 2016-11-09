@@ -11,9 +11,11 @@ package sirius.search;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.search.aggregations.bucket.nested.InternalNested;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
+import sirius.kernel.commons.Strings;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
@@ -125,13 +127,33 @@ public class ResultList<T> implements Iterable<T> {
     public Map<String, List<String>> getAggregations() {
         if (aggregationsProcessed.firstCall() && response != null) {
             for (Aggregation aggregation : aggregations) {
-                Terms terms = response.getAggregations().get(aggregation.getName());
+                Terms terms;
+
+                if (Strings.isEmpty(aggregation.getPath())) {
+                    terms = response.getAggregations().get(aggregation.getName());
+                } else {
+                    terms = ((InternalNested) response.getAggregations().get(aggregation.getName())).getAggregations()
+                                                                                                    .get(aggregation.getSubAggregations()
+                                                                                                                    .get(0)
+                                                                                                                    .getName());
+                }
+
                 for (Terms.Bucket bucket : terms.getBuckets()) {
                     List<String> values = Lists.newArrayList();
-                    for (Terms.Bucket term : ((Terms) bucket.getAggregations()
-                                                            .get(aggregation.getSubAggregations()
-                                                                            .get(0)
-                                                                            .getName())).getBuckets()) {
+                    List<Terms.Bucket> buckets;
+                    if (Strings.isEmpty(aggregation.getPath())) {
+                        buckets = ((Terms) bucket.getAggregations()
+                                                 .get(aggregation.getSubAggregations().get(0).getName())).getBuckets();
+                    } else {
+                        buckets = ((Terms) bucket.getAggregations()
+                                                 .get(aggregation.getSubAggregations()
+                                                                 .get(0)
+                                                                 .getSubAggregations()
+                                                                 .get(0)
+                                                                 .getName())).getBuckets();
+                    }
+
+                    for (Terms.Bucket term : buckets) {
                         values.add(term.getKeyAsString());
                     }
                     aggregatedValues.put(bucket.getKeyAsString(), values);

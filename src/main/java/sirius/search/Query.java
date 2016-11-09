@@ -21,6 +21,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
@@ -774,9 +775,15 @@ public class Query<E extends Entity> {
 
     private void applyAggregations(SearchRequestBuilder srb) {
         for (Aggregation aggregation : aggregations) {
-            TermsBuilder aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
-                                                                 .field(aggregation.getField())
-                                                                 .size(aggregation.getSize());
+            AggregationBuilder aggregationBuilder;
+
+            if (Strings.isEmpty(aggregation.getPath())) {
+                aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
+                                                                     .field(aggregation.getField())
+                                                                     .size(aggregation.getSize());
+            } else {
+                aggregationBuilder = AggregationBuilders.nested(aggregation.getName()).path(aggregation.getPath());
+            }
 
             for (Aggregation subAggreation : aggregation.getSubAggregations()) {
                 aggregationBuilder.subAggregation(buildSubAggregations(subAggreation));
