@@ -36,9 +36,10 @@ public class Suggest<E extends Entity> {
      * @param field the field to get the suggestions from
      * @param query the query to generate suggestions for
      */
-    public void on(String field, String query) {
+    public Suggest on(String field, String query) {
         this.field = field;
         this.query = query;
+        return this;
     }
 
     /**
@@ -46,8 +47,9 @@ public class Suggest<E extends Entity> {
      *
      * @param limit the max. number of suggestion strings to return
      */
-    public void limit(int limit) {
+    public Suggest limit(int limit) {
         this.limit = limit;
+        return this;
     }
 
     /**
@@ -69,8 +71,9 @@ public class Suggest<E extends Entity> {
      *
      * @param analyzer the analyzer to analyze the query with
      */
-    public void analyzer(String analyzer) {
+    public Suggest analyzer(String analyzer) {
         this.analyzer = analyzer;
+        return this;
     }
 
     /**
@@ -84,8 +87,9 @@ public class Suggest<E extends Entity> {
      *
      * @param confidence the level of confidence
      */
-    public void confidence(Float confidence) {
+    public Suggest confidence(Float confidence) {
         this.confidence = confidence;
+        return this;
     }
 
     /**
@@ -100,8 +104,9 @@ public class Suggest<E extends Entity> {
      *
      * @param suggestMode the suggest mode 'missing', 'popular' or 'always'
      */
-    public void suggestMode(String suggestMode) {
+    public Suggest suggestMode(String suggestMode) {
         this.suggestMode = suggestMode;
+        return this;
     }
 
     /**

@@ -340,6 +340,17 @@ public class IndexAccess {
     }
 
     /**
+     * Creates a new suggestion for objects of the given class
+     *
+     * @param clazz the class from which suggestions should be generated
+     * @param <E> the type of the entity to generated suggestions from
+     * @return a new suggestion against the database
+     */
+    public <E extends Entity> Suggest<E> suggest(Class<E> clazz) {
+        return Index.suggest(clazz);
+    }
+
+    /**
      * Determines if the framework is completely initialized.
      *
      * @return <tt>true</tt> if the framework is completely initialized, <tt>false</tt> otherwise
