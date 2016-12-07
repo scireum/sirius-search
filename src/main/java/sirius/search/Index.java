@@ -580,7 +580,13 @@ public class Index {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 NodeBuilder builder = NodeBuilder.nodeBuilder().data(true).local(true);
-                builder.settings().put("path.home", Sirius.getConfig().getString("index.path"));
+                if (Sirius.getConfig().hasPath("index.path")) {
+                    builder.settings().put("path.home", Sirius.getConfig().getString("index.path"));
+                } else {
+                    File homeDir = new File(new File("data"), "index");
+                    homeDir.mkdirs();
+                    builder.settings().put("path.home", homeDir.getAbsolutePath());
+                }
                 client = builder.build().client();
             } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
