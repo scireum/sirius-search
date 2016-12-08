@@ -46,6 +46,7 @@ import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
 import sirius.search.constraints.Filled;
+import sirius.search.constraints.NoneInField;
 import sirius.search.constraints.Or;
 import sirius.search.constraints.QueryString;
 import sirius.search.constraints.RobustQueryParser;
@@ -231,6 +232,20 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds an <tt>exclude</tt> constraint to the query in the id field.
+     *
+     * This effectively excludes all entities from the given list from the query.
+     *
+     * @param entities the entities to exclude
+     * @return the query itself for fluent method calls
+     * @see NoneInField
+     */
+    public Query<E> exclude(EntityRefList<E> entities) {
+        constraints.add(NoneInField.on(entities.getIds(), Index.ID_FIELD));
+        return this;
+    }
+
+    /**
      * Adds a textual query using the given field.
      * <p>
      * It will try to parse queries in Lucene syntax (+token, -token, AND, OR and brackets are supported) but it
@@ -282,6 +297,20 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a textual query to a specific field.
+     * <p>
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
+     * boolean)}.
+     *
+     * @param query the query to search for
+     * @param field the field to apply query to
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> query(String query, String field) {
+        return query(query, field, this::defaultTokenizer, false, false);
+    }
+
+    /**
      * Adds a textual query across all searchable fields.
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
@@ -294,6 +323,22 @@ public class Query<E extends Entity> {
      */
     public Query<E> expandedQuery(String query) {
         return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, false);
+    }
+
+    /**
+     * Adds a textual query to a specific field.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
+     * boolean)}.
+     *
+     * @param query the query to search for
+     * @param field the field to apply query to
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(String query, String field) {
+        return query(query, field, this::defaultTokenizer, true, false);
     }
 
     /**
