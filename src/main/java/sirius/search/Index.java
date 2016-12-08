@@ -202,7 +202,7 @@ public class Index {
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
                                                              @Nonnull
-                                                             com.google.common.cache.Cache<String, Object> cache) {
+                                                                     com.google.common.cache.Cache<String, Object> cache) {
         if (Strings.isEmpty(id)) {
             return Tuple.create(null, false);
         }
@@ -579,7 +579,15 @@ public class Index {
         private void startClient() {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
-                client = NodeBuilder.nodeBuilder().data(true).local(true).build().client();
+                NodeBuilder builder = NodeBuilder.nodeBuilder().data(true).local(true);
+                if (Sirius.getConfig().hasPath("index.path")) {
+                    builder.settings().put("path.home", Sirius.getConfig().getString("index.path"));
+                } else {
+                    File homeDir = new File(new File("data"), "index");
+                    homeDir.mkdirs();
+                    builder.settings().put("path.home", homeDir.getAbsolutePath());
+                }
+                client = builder.build().client();
             } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
