@@ -1466,7 +1466,7 @@ public class Index {
     /**
      * Sets the index prefix to use
      *
-     * @param indexPref„ix the index prefix to use
+     * @param indexPrefix the index prefix to use
      */
     public static void setIndexPrefix(String indexPrefix) {
         Index.indexPrefix = indexPrefix;
