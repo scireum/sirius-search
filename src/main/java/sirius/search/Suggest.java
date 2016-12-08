@@ -13,8 +13,8 @@ public class Suggest<E extends Entity> {
     private Class<E> clazz;
     private String field = "_all";
     private String query;
-    // maxErrors => errors for the whole query
-    // maxEdit => errors per token
+    /* maxErrors => errors for the whole query
+       maxEdit => errors per token */
     private Float maxErrors = 2f; // config? 1 or 2 recommended
     private int limit = 5;
     private Float confidence = 1f;
@@ -36,7 +36,7 @@ public class Suggest<E extends Entity> {
      * @param field the field to get the suggestions from
      * @param query the query to generate suggestions for
      */
-    public Suggest on(String field, String query) {
+    public Suggest<E> on(String field, String query) {
         this.field = field;
         this.query = query;
         return this;
@@ -47,7 +47,7 @@ public class Suggest<E extends Entity> {
      *
      * @param limit the max. number of suggestion strings to return
      */
-    public Suggest limit(int limit) {
+    public Suggest<E> limit(int limit) {
         this.limit = limit;
         return this;
     }
@@ -71,7 +71,7 @@ public class Suggest<E extends Entity> {
      *
      * @param analyzer the analyzer to analyze the query with
      */
-    public Suggest analyzer(String analyzer) {
+    public Suggest<E> analyzer(String analyzer) {
         this.analyzer = analyzer;
         return this;
     }
@@ -87,7 +87,7 @@ public class Suggest<E extends Entity> {
      *
      * @param confidence the level of confidence
      */
-    public Suggest confidence(Float confidence) {
+    public Suggest<E> confidence(Float confidence) {
         this.confidence = confidence;
         return this;
     }
@@ -104,7 +104,7 @@ public class Suggest<E extends Entity> {
      *
      * @param suggestMode the suggest mode 'missing', 'popular' or 'always'
      */
-    public Suggest suggestMode(String suggestMode) {
+    public Suggest<E> suggestMode(String suggestMode) {
         this.suggestMode = suggestMode;
         return this;
     }

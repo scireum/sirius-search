@@ -10,6 +10,7 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.common.unit.Fuzziness;
 
 /**
  * Represents a constraint that allows fuzzy searching on a field for compensating misspellings
@@ -20,7 +21,7 @@ public class Fuzzy implements Constraint {
 
     private final String field;
     private String value;
-    private Object fuzziness = "AUTO";
+    private Fuzziness fuzziness = Fuzziness.AUTO;
 
     private Fuzzy(String field, String value) {
         this.field = field;
@@ -31,7 +32,7 @@ public class Fuzzy implements Constraint {
         return new Fuzzy(field, value);
     }
 
-    public Fuzzy fuzziness(Object value){
+    public Fuzzy fuzziness(Fuzziness value){
         this.fuzziness = value;
         return this;
     }
