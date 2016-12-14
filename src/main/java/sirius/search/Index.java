@@ -596,15 +596,17 @@ public class Index {
         private void startClient() {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
-                NodeBuilder builder = NodeBuilder.nodeBuilder().data(true).local(true);
-                if (Sirius.getConfig().hasPath("index.path")) {
-                    builder.settings().put("path.home", Sirius.getConfig().getString("index.path"));
-                } else {
-                    File homeDir = new File(new File("data"), "index");
-                    homeDir.mkdirs();
-                    builder.settings().put("path.home", homeDir.getAbsolutePath());
-                }
-                client = builder.build().client();
+                Settings settings = ImmutableSettings.settingsBuilder()
+                                                     .put("node.http.enabled", false)
+                                                     .put("path.data", determineDataPath())
+                                                     .put("index.gateway.type", "none")
+                                                     .put("gateway.type", "none")
+                                                     .put("index.store.type", "memory")
+                                                     .put("index.number_of_shards", 1)
+                                                     .put("index.number_of_replicas", 0)
+                                                     .put("script.disable_dynamic", false)
+                                                     .build();
+                client = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node().client();
             } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
@@ -619,6 +621,16 @@ public class Index {
                     Exceptions.handle(LOG, e);
                 }
                 client = transportClient;
+            }
+        }
+
+        private String determineDataPath() {
+            if (Sirius.getConfig().hasPath("index.path")) {
+                return Sirius.getConfig().getString("index.path");
+            } else {
+                File homeDir = new File(new File("data"), "index");
+                homeDir.mkdirs();
+                return homeDir.getAbsolutePath();
             }
         }
 
