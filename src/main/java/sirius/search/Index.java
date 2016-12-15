@@ -581,10 +581,9 @@ public class Index {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 Settings settings = ImmutableSettings.settingsBuilder()
                                                      .put("node.http.enabled", false)
-                                                     .put("path.data", determineDataPath())
+                                                     .put("path.home", determineDataPath())
                                                      .put("index.gateway.type", "none")
                                                      .put("gateway.type", "none")
-                                                     .put("index.store.type", "memory")
                                                      .put("index.number_of_shards", 1)
                                                      .put("index.number_of_replicas", 0)
                                                      .put("script.disable_dynamic", false)
@@ -1499,10 +1498,9 @@ public class Index {
 
         Settings settings = ImmutableSettings.settingsBuilder()
                                              .put("node.http.enabled", false)
-                                             .put("path.data", tmpDir.getAbsolutePath())
+                                             .put("path.home", tmpDir.getAbsolutePath())
                                              .put("index.gateway.type", "none")
                                              .put("gateway.type", "none")
-                                             .put("index.store.type", "memory")
                                              .put("index.number_of_shards", 1)
                                              .put("index.number_of_replicas", 0)
                                              .put("script.disable_dynamic", false)
