@@ -7,6 +7,7 @@ import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
 import sirius.kernel.commons.Tuple;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class Suggest<E extends Entity> {
@@ -132,6 +133,14 @@ public class Suggest<E extends Entity> {
                     2).suggestMode(suggestMode).minWordLength(4));
         }
 
+        //phraseSuggestionBuilder.smoothingModel(new PhraseSuggestionBuilder.StupidBackoff(0.5));
+        /* TODO: put this into the API */
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("field_name", field);
+        phraseSuggestionBuilder.collateQuery("{\"match\": {\"{{field_name}}\": \"{{suggestion}}\"}}");
+        phraseSuggestionBuilder.collateParams(map);
+        phraseSuggestionBuilder.collatePrune(true);
+
         return phraseSuggestionBuilder;
     }
 
@@ -165,14 +174,18 @@ public class Suggest<E extends Entity> {
             for (PhraseSuggestion.Entry entry : entryList) {
                 List<PhraseSuggestion.Entry.Option> options = entry.getOptions();
                 if (!options.isEmpty()) {
-                    float lastMaxScore = options.get(0).getScore();
+                    //float lastMaxScore = options.get(0).getScore();
                     for (PhraseSuggestion.Entry.Option option : options) {
-                        if ((lastMaxScore > option.getScore() * 2)) {
+                        /*if ((lastMaxScore > option.getScore() * 2)) {
                             continue;
+                        }*/
+                        /*TODO: pack the suggestions WITH their score into a wrapper and return these
+                        *       check why ES returns the same text as the input query */
+                        if (option.collateMatch() && !option.getText().toString().equals(query)) {
+                            Tuple<String, String> typoCorrectedPair =
+                                    new Tuple<>(entry.getText().toString(), option.getText().toString());
+                            suggestions.add(typoCorrectedPair);
                         }
-                        Tuple<String, String> typoCorrectedPair =
-                                new Tuple<>(entry.getText().toString(), option.getText().toString());
-                        suggestions.add(typoCorrectedPair);
                     }
                 }
             }

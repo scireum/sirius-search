@@ -596,7 +596,7 @@ public class Index {
         private void startClient() {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
-                Settings settings = ImmutableSettings.settingsBuilder()
+                Settings settings = Settings.settingsBuilder()
                                                      .put("node.http.enabled", false)
                                                      .put("path.data", determineDataPath())
                                                      .put("index.gateway.type", "none")
