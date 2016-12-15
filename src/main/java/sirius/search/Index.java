@@ -598,10 +598,9 @@ public class Index {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 Settings settings = Settings.settingsBuilder()
                                                      .put("node.http.enabled", false)
-                                                     .put("path.data", determineDataPath())
+                                                     .put("path.home", determineDataPath())
                                                      .put("index.gateway.type", "none")
                                                      .put("gateway.type", "none")
-                                                     .put("index.store.type", "memory")
                                                      .put("index.number_of_shards", 1)
                                                      .put("index.number_of_replicas", 0)
                                                      .put("script.disable_dynamic", false)
@@ -1532,18 +1531,16 @@ public class Index {
             Exceptions.handle(LOG, e);
         }
 
-        Settings settings = NodeBuilder.nodeBuilder()
-                                       .data(true)
-                                       .local(true)
-                                       .getSettings()
-                                       .put("node.http.enabled", false)
-                                       .put("path.home", tmpDir.getAbsolutePath())
-                                       .put("path.data", tmpDir.getAbsolutePath())
-                                       .put("index.number_of_shards", 1)
-                                       .put("index.number_of_replicas", 0)
-                                       .put("script.inline", "on")
-                                       .build();
-        inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+        Settings settings = Settings.settingsBuilder()
+                                             .put("node.http.enabled", false)
+                                             .put("path.home", tmpDir.getAbsolutePath())
+                                             .put("index.gateway.type", "none")
+                                             .put("gateway.type", "none")
+                                             .put("index.number_of_shards", 1)
+                                             .put("index.number_of_replicas", 0)
+                                             .put("script.disable_dynamic", false)
+                                             .build();
+        inMemoryNode = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node();
         client = inMemoryNode.client();
         if (schema != null) {
             for (String msg : schema.createMappings()) {
