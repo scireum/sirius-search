@@ -581,7 +581,7 @@ public class Index {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 Settings settings = ImmutableSettings.settingsBuilder()
                                                      .put("node.http.enabled", false)
-                                                     .put("path.data", determineDataPath())
+                                                     .put("path.home", determineDataPath())
                                                      .put("index.gateway.type", "none")
                                                      .put("gateway.type", "none")
                                                      .put("index.store.type", "memory")
