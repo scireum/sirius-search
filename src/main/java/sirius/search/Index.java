@@ -31,7 +31,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.script.groovy.GroovyPlugin;
@@ -597,15 +596,15 @@ public class Index {
             if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 Settings settings = Settings.settingsBuilder()
-                                                     .put("node.http.enabled", false)
-                                                     .put("path.home", determineDataPath())
-                                                     .put("index.gateway.type", "none")
-                                                     .put("gateway.type", "none")
-                                                     .put("index.number_of_shards", 1)
-                                                     .put("index.number_of_replicas", 0)
-                                                     .put("script.disable_dynamic", false)
-                                                     .build();
-                client = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node().client();
+                                            .put("node.http.enabled", false)
+                                            .put("path.home", determineDataPath())
+                                            .put("index.gateway.type", "none")
+                                            .put("index.number_of_shards", 1)
+                                            .put("index.number_of_replicas", 0)
+                                            .put("script.disable_dynamic", false)
+                                            .build();
+                inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+                client = inMemoryNode.client();
             } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
@@ -1469,7 +1468,9 @@ public class Index {
      * @param <E>   the type of the entity
      * @return a new suggester against the database
      */
-    public static <E extends Entity> Suggest<E> suggest(Class<E> clazz) { return new Suggest<>(clazz); }
+    public static <E extends Entity> Suggest<E> suggest(Class<E> clazz) {
+        return new Suggest<>(clazz);
+    }
 
     /**
      * Installs the given ElasticSearch client
@@ -1532,15 +1533,14 @@ public class Index {
         }
 
         Settings settings = Settings.settingsBuilder()
-                                             .put("node.http.enabled", false)
-                                             .put("path.home", tmpDir.getAbsolutePath())
-                                             .put("index.gateway.type", "none")
-                                             .put("gateway.type", "none")
-                                             .put("index.number_of_shards", 1)
-                                             .put("index.number_of_replicas", 0)
-                                             .put("script.disable_dynamic", false)
-                                             .build();
-        inMemoryNode = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node();
+                                    .put("node.http.enabled", false)
+                                    .put("path.home", tmpDir.getAbsolutePath())
+                                    .put("index.gateway.type", "none")
+                                    .put("index.number_of_shards", 1)
+                                    .put("index.number_of_replicas", 0)
+                                    .put("script.inline", "on")
+                                    .build();
+        inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
         client = inMemoryNode.client();
         if (schema != null) {
             for (String msg : schema.createMappings()) {
