@@ -233,7 +233,7 @@ public class Query<E extends Entity> {
 
     /**
      * Adds an <tt>exclude</tt> constraint to the query in the id field.
-     *
+     * <p>
      * This effectively excludes all entities from the given list from the query.
      *
      * @param entities the entities to exclude
@@ -274,7 +274,7 @@ public class Query<E extends Entity> {
                 if (Index.LOG.isFINE()) {
                     Index.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
                 }
-                where((constraint));
+                where(constraint);
             } else if (forced) {
                 fail();
             }
@@ -286,8 +286,7 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -299,7 +298,7 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, *
      * boolean)}.
      *
      * @param query the query to search for
@@ -315,7 +314,7 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, *
      * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
@@ -330,7 +329,7 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, *
      * boolean)}.
      *
      * @param query the query to search for
@@ -824,8 +823,8 @@ public class Query<E extends Entity> {
 
             if (Strings.isEmpty(aggregation.getPath())) {
                 aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
-                                                                     .field(aggregation.getField())
-                                                                     .size(aggregation.getSize());
+                                                        .field(aggregation.getField())
+                                                        .size(aggregation.getSize());
             } else {
                 aggregationBuilder = AggregationBuilders.nested(aggregation.getName()).path(aggregation.getPath());
             }

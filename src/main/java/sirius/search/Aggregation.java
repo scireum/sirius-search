@@ -19,7 +19,7 @@ public class Aggregation {
     private String path;
     private int size = 50;
 
-    public Aggregation(String name){
+    public Aggregation(String name) {
         this.name = name;
     }
 
@@ -27,7 +27,7 @@ public class Aggregation {
         return subAggregations;
     }
 
-    public boolean hasSubAggregations(){
+    public boolean hasSubAggregations() {
         return !subAggregations.isEmpty();
     }
 
@@ -35,11 +35,11 @@ public class Aggregation {
         this.subAggregations = subAggregations;
     }
 
-    public void addSubAggregation(Aggregation aggregation){
+    public void addSubAggregation(Aggregation aggregation) {
         subAggregations.add(aggregation);
     }
 
-    public Aggregation on(String field){
+    public Aggregation on(String field) {
         this.field = field;
         return this;
     }
