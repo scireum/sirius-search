@@ -179,7 +179,7 @@ public class Suggest<E extends Entity> {
                         /*if ((lastMaxScore > option.getScore() * 2)) {
                             continue;
                         }*/
-                        /*TODO: pack the suggestions WITH their score into a wrapper and return these
+                        /* TODO: pack the suggestions WITH their score into a wrapper and return these
                         *       check why ES returns the same text as the input query */
                         if (option.collateMatch() && !option.getText().toString().equals(query)) {
                             Tuple<String, String> typoCorrectedPair =

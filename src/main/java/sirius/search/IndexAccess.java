@@ -344,11 +344,22 @@ public class IndexAccess {
      * Creates a new suggestion for objects of the given class
      *
      * @param clazz the class from which suggestions should be generated
-     * @param <E> the type of the entity to generated suggestions from
+     * @param <E>   the type of the entity to generated suggestions from
      * @return a new suggestion against the database
      */
     public <E extends Entity> Suggest<E> suggest(Class<E> clazz) {
         return Index.suggest(clazz);
+    }
+
+    /**
+     * Creates a new completer for objects of the given class.
+     *
+     * @param clazz the class of objects to generate completions
+     * @param <E>   the type of the entity
+     * @return a new completer against the database
+     */
+    public <E extends Entity> Complete<E> complete(Class<E> clazz) {
+        return Index.complete(clazz);
     }
 
     /**

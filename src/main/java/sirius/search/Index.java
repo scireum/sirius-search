@@ -1473,6 +1473,18 @@ public class Index {
     }
 
     /**
+     * Creates a new completer for objects of the given class.
+     *
+     * @param clazz the class of objects to generate completions
+     * @param <E>   the type of the entity
+     * @return a new completer against the database
+     */
+    public static <E extends Entity> Complete<E> complete(Class<E> clazz) {
+        return new Complete<>(clazz);
+    }
+
+
+    /**
      * Installs the given ElasticSearch client
      *
      * @param client the client to use
