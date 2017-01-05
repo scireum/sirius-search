@@ -14,6 +14,7 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -64,46 +65,39 @@ public class Complete<E extends Entity> {
     /**
      * Allows to restrict/filter completions by adding context.
      *
-     * @param name name of the context defined in the field mapping
+     * @param name   name of the context defined in the field mapping
      * @param values values that should be used to restrict/filter completions
      * @return
      */
-    public Complete<E> context(String name, List<String> values){
+    public Complete<E> context(String name, List<String> values) {
         this.contextName = name;
         this.contextValues = values;
         return this;
     }
 
     /**
-     * Executes the completion
+     * Executes available completion-options or an empty list otherwise
      *
-     * @return the generated completions
+     * @return the generated completions or an empty list
      */
-    public List<String> completeList() {
+    public List<CompletionSuggestion.Entry.Option> completeList() {
         CompletionSuggestionBuilder csb = generateCompletionBuilder();
         SuggestRequestBuilder sqb = generateRequestBuilder(csb);
         return execute(sqb);
     }
 
-    private List<String> execute(SuggestRequestBuilder sqb) {
+    private List<CompletionSuggestion.Entry.Option> execute(SuggestRequestBuilder sqb) {
         SuggestResponse response = sqb.execute().actionGet();
         CompletionSuggestion completionSuggestion = response.getSuggest().getSuggestion("completion");
         ArrayList<String> completions = new ArrayList<>();
 
         List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();
 
-        if (entryList != null) {
-            for (CompletionSuggestion.Entry entry : entryList) {
-                List<CompletionSuggestion.Entry.Option> options = entry.getOptions();
-
-                if (options != null) {
-                    for (CompletionSuggestion.Entry.Option option : options) {
-                        completions.add(option.getText().toString());
-                    }
-                }
-            }
+        if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+            return entryList.get(0).getOptions();
         }
-        return completions;
+
+        return Collections.emptyList();
     }
 
     private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionBuilder csb) {

@@ -4,11 +4,10 @@ import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
-import sirius.kernel.commons.Tuple;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class Suggest<E extends Entity> {
     private Class<E> clazz;
@@ -21,6 +20,10 @@ public class Suggest<E extends Entity> {
     private Float confidence = 1f;
     private String suggestMode = "missing";
     private String analyzer = "whitespace";
+
+    private String collateQuery;
+    private Map<String, Object> collateParams;
+    private boolean collatePrune;
 
     /**
      * Used to create a new suggestion for entities of the given class
@@ -54,14 +57,46 @@ public class Suggest<E extends Entity> {
     }
 
     /**
+     * Sets a collate query, which can be used to filter retrieved suggestions. E.g. a lookup query can be used to
+     * check whether a suggestions is present in a index field.
+     *
+     * @param collateQuery the query that should be executed per suggestion
+     */
+    public Suggest<E> collateQuery(String collateQuery) {
+        this.collateQuery = collateQuery;
+        return this;
+    }
+
+    /**
+     * Sets a map which contains parameters for the collate query.
+     *
+     * @param collateParams the parameters for the collate query
+     */
+    public Suggest<E> collateParams(Map<String, Object> collateParams) {
+        this.collateParams = collateParams;
+        return this;
+    }
+
+    /**
+     * Controls whether all suggestions should be returned by elasticsearch (but tagged with collate_match) or be
+     * directly pruned
+     *
+     * @param collatePrune controls whether pruned suggestions nevertheless be returned (tagged) or completly removed
+     */
+    public Suggest<E> collatePrune(boolean collatePrune) {
+        this.collatePrune = collatePrune;
+        return this;
+    }
+
+    /**
      * Wraps executing methods and returns a list of the generated suggestion phrases combined in tuples with the
      * original query string.
      *
      * @return the generated suggestion phrases
      */
-    public List<Tuple<String, String>> suggestList() {
-        PhraseSuggestionBuilder psb = build();
-        SuggestRequestBuilder sqb = buildSuggest(psb);
+    public List<PhraseSuggestion.Entry.Option> suggestList() {
+        PhraseSuggestionBuilder psb = generateSuggestionBuilder();
+        SuggestRequestBuilder sqb = generateRequestBuilder(psb);
         return execute(sqb);
     }
 
@@ -115,7 +150,7 @@ public class Suggest<E extends Entity> {
      *
      * @return the PhraseSuggestionBuilder
      */
-    private PhraseSuggestionBuilder build() {
+    private PhraseSuggestionBuilder generateSuggestionBuilder() {
         //should we also suggest for phrases containing numbers etc? so, also itemNumbers? atm we do
         PhraseSuggestionBuilder phraseSuggestionBuilder = new PhraseSuggestionBuilder("suggestPhrase");
         phraseSuggestionBuilder.field(field); // nötig?
@@ -124,6 +159,9 @@ public class Suggest<E extends Entity> {
         phraseSuggestionBuilder.size(limit);
         phraseSuggestionBuilder.analyzer(analyzer);
         phraseSuggestionBuilder.confidence(confidence);
+        phraseSuggestionBuilder.collateQuery(collateQuery);
+        phraseSuggestionBuilder.collateParams(collateParams);
+        phraseSuggestionBuilder.collatePrune(collatePrune);
 
         if ((query.split("\\s+").length == 1) && (query.length() < 8)) {
             phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
@@ -132,14 +170,7 @@ public class Suggest<E extends Entity> {
             phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
                     2).suggestMode(suggestMode).minWordLength(4));
         }
-
         //phraseSuggestionBuilder.smoothingModel(new PhraseSuggestionBuilder.StupidBackoff(0.5));
-        /* TODO: put this into the API */
-        HashMap<String, Object> map = new HashMap<>();
-        map.put("field_name", field);
-        phraseSuggestionBuilder.collateQuery("{\"match\": {\"{{field_name}}\": \"{{suggestion}}\"}}");
-        phraseSuggestionBuilder.collateParams(map);
-        phraseSuggestionBuilder.collatePrune(true);
 
         return phraseSuggestionBuilder;
     }
@@ -150,7 +181,7 @@ public class Suggest<E extends Entity> {
      * @param phraseSuggestionBuilder the phrase suggestion
      * @return the index suggest request builder
      */
-    private SuggestRequestBuilder buildSuggest(PhraseSuggestionBuilder phraseSuggestionBuilder) {
+    private SuggestRequestBuilder generateRequestBuilder(PhraseSuggestionBuilder phraseSuggestionBuilder) {
 
         return Index.getClient()
                     .prepareSuggest(Index.getIndexName(Index.getDescriptor(clazz).getIndex()))
@@ -163,34 +194,16 @@ public class Suggest<E extends Entity> {
      *
      * @return tuples of the query string and all suggest options
      */
-    private List<Tuple<String, String>> execute(SuggestRequestBuilder sqb) {
+    private List<PhraseSuggestion.Entry.Option> execute(SuggestRequestBuilder sqb) {
 
         SuggestResponse response = sqb.execute().actionGet();
         PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
-        ArrayList<Tuple<String, String>> suggestions = new ArrayList<>();
+        List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
 
-        if (phraseSuggestion.getEntries() != null) {
-            List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
-            for (PhraseSuggestion.Entry entry : entryList) {
-                List<PhraseSuggestion.Entry.Option> options = entry.getOptions();
-                if (!options.isEmpty()) {
-                    //float lastMaxScore = options.get(0).getScore();
-                    for (PhraseSuggestion.Entry.Option option : options) {
-                        /*if ((lastMaxScore > option.getScore() * 2)) {
-                            continue;
-                        }*/
-                        /* TODO: pack the suggestions WITH their score into a wrapper and return these
-                        *       check why ES returns the same text as the input query */
-                        if (option.collateMatch() && !option.getText().toString().equals(query)) {
-                            Tuple<String, String> typoCorrectedPair =
-                                    new Tuple<>(entry.getText().toString(), option.getText().toString());
-                            suggestions.add(typoCorrectedPair);
-                        }
-                    }
-                }
-            }
+        if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+            return entryList.get(0).getOptions();
+        } else {
+            return Collections.emptyList();
         }
-        //phraseSuggestionBuilder.clearCandidateGenerators();
-        return suggestions;
     }
 }
