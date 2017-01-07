@@ -134,23 +134,23 @@ public class CSVFilter implements Constraint {
         if (values.isEmpty()) {
             return null;
         }
-        if (!orEmpty) {
-            BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-            switch (mode) {
-                case CONTAINS_ANY:
-                    for (String val : values) {
-                        bqb.should(QueryBuilders.termQuery(field, val));
-                    }
-                    break;
-                case CONTAINS_ALL:
-                    for (String val : values) {
-                        bqb.must(QueryBuilders.termQuery(field, val));
-                    }
-                    break;
-            }
-            return bqb;
+        BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+        switch (mode) {
+            case CONTAINS_ANY:
+                for (String val : values) {
+                    bqb.should(QueryBuilders.termQuery(field, val));
+                }
+                break;
+            case CONTAINS_ALL:
+                for (String val : values) {
+                    bqb.must(QueryBuilders.termQuery(field, val));
+                }
+                break;
         }
-        return null;
+        if (orEmpty) {
+            bqb.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
+        }
+        return bqb;
     }
 
     private void collectValues() {

@@ -89,6 +89,9 @@ public class OneInField implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         if (values == null || values.isEmpty()) {
+            if (forceEmpty) {
+                return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
+            }
             return null;
         }
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
