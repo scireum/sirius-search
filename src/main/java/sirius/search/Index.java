@@ -1483,7 +1483,6 @@ public class Index {
         return new Complete<>(clazz);
     }
 
-
     /**
      * Installs the given ElasticSearch client
      *

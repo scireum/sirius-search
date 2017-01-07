@@ -286,7 +286,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, *
+     * java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -298,8 +299,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, *
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -329,8 +330,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean, *
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to

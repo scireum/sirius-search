@@ -155,8 +155,7 @@ public class CSVFilter implements Constraint {
 
     private void collectValues() {
         if (Strings.isFilled(commaSeparatedValues)) {
-            Stream<String> stream = Arrays.asList(commaSeparatedValues.split(splitter))
-                                          .stream()
+            Stream<String> stream = Arrays.stream(commaSeparatedValues.split(splitter))
                                           .filter(Objects::nonNull)
                                           .map(String::trim)
                                           .filter(Strings::isFilled);
