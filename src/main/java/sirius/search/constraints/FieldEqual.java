@@ -110,8 +110,7 @@ public class FieldEqual implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         if (Strings.isEmpty(value)) {
-            // We need a filter in that case...
-            return null;
+            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
         }
         if (!isFilter) {
             return QueryBuilders.termQuery(field, value);

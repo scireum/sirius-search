@@ -21,7 +21,6 @@ public class NoneInField implements Constraint {
 
     private final Collection<?> values;
     private final String field;
-    private boolean isFilter;
 
     /*
      * Use the #on(List, String) factory method
@@ -42,29 +41,16 @@ public class NoneInField implements Constraint {
         return new NoneInField(values, field);
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public NoneInField asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter) {
-            if (values == null || values.isEmpty()) {
-                return null;
-            }
-            BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-            for (Object value : values) {
-                boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
-            }
-            return boolQueryBuilder;
+        if (values == null || values.isEmpty()) {
+            return null;
         }
-        return null;
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (Object value : values) {
+            boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
+        }
+        return boolQueryBuilder;
     }
 
     @Override

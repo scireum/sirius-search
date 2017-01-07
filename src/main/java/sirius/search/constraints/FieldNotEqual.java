@@ -18,7 +18,6 @@ import sirius.search.Index;
 public class FieldNotEqual implements Constraint {
     private final String field;
     private Object value;
-    private boolean isFilter;
 
     /*
      * Use the #on(String, Object) factory method
@@ -34,16 +33,6 @@ public class FieldNotEqual implements Constraint {
     }
 
     /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public FieldNotEqual asFilter() {
-        isFilter = true;
-        return this;
-    }
-
-    /**
      * Creates a new constraint for the given field and value.
      *
      * @param field the field to check
@@ -56,10 +45,7 @@ public class FieldNotEqual implements Constraint {
 
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter) {
-            return Not.on(FieldEqual.on(field, value)).createQuery();
-        }
-        return null;
+        return Not.on(FieldEqual.on(field, value)).createQuery();
     }
 
     @Override
