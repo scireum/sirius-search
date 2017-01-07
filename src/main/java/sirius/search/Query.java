@@ -38,6 +38,7 @@ import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.ValueHolder;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
@@ -71,7 +72,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Represents a query against the database which are created via {@link Index#select(Class)}.
+ * Represents a query against the database which are created via {@link IndexAccess#select(Class)}.
  *
  * @param <E> the type of entities being queried
  */
@@ -111,6 +112,9 @@ public class Query<E extends Entity> {
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
     private int scrollTTL = SCROLL_TTL_SECONDS;
+
+    @Part
+    private static IndexAccess indexAccess;
 
     /**
      * Used to create a nwe query for entities of the given class
@@ -240,7 +244,7 @@ public class Query<E extends Entity> {
      * @see NoneInField
      */
     public Query<E> exclude(EntityRefList<E> entities) {
-        constraints.add(NoneInField.on(entities.getIds(), Index.ID_FIELD));
+        constraints.add(NoneInField.on(entities.getIds(), IndexAccess.ID_FIELD));
         return this;
     }
 
@@ -270,8 +274,8 @@ public class Query<E extends Entity> {
             }
             RobustQueryParser constraint = new RobustQueryParser(this.query, defaultField, tokenizer, autoexpand);
             if (!constraint.isEmpty()) {
-                if (Index.LOG.isFINE()) {
-                    Index.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
                 }
                 where(constraint);
             } else if (forced) {
@@ -285,8 +289,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, *
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -298,8 +302,7 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling
-     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -314,8 +317,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String, *
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -358,7 +361,7 @@ public class Query<E extends Entity> {
                 result.add(Collections.singletonList(token));
             }
         } catch (IOException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
 
         return result;
@@ -441,7 +444,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> index(String indexToUse) {
-        this.index = Index.getIndexName(indexToUse);
+        this.index = indexAccess.getIndexName(indexToUse);
         return this;
     }
 
@@ -472,7 +475,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     protected Query<?> autoRoute(String field, String value) {
-        EntityDescriptor descriptor = Index.getDescriptor(clazz);
+        EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         if (!descriptor.hasRouting()) {
             return this;
         }
@@ -558,13 +561,13 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addTermFacet(String field, String value, ValueComputer<String, String> translator) {
-        final Property p = Index.getDescriptor(clazz).getProperty(field);
+        final Property p = indexAccess.getDescriptor(clazz).getProperty(field);
         if (p instanceof EnumProperty && translator == null) {
             translator = (v) -> String.valueOf(((EnumProperty) p).transformFromSource(v));
         }
         termFacets.add(new Facet(p.getFieldTitle(), field, value, translator));
         if (Strings.isFilled(value)) {
-            where(FieldEqual.on(field, value).asFilter());
+            where(FieldEqual.on(field, value));
         }
 
         return this;
@@ -638,7 +641,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addDateRangeFacet(String field, String value, DateRange... ranges) {
-        final Property p = Index.getDescriptor(clazz).getProperty(field);
+        final Property p = indexAccess.getDescriptor(clazz).getProperty(field);
 
         DateFacet dateFacet = new DateFacet(p.getFieldTitle(), field, value, ranges);
         termFacets.add(dateFacet);
@@ -762,15 +765,15 @@ public class Query<E extends Entity> {
                 return null;
             }
             SearchRequestBuilder srb = buildSearch();
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
-                               Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
-                               buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
+                                     indexAccess.getIndex(clazz),
+                                     indexAccess.getDescriptor(clazz).getType(),
+                                     buildQuery());
             }
             return transformFirst(srb);
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -785,10 +788,12 @@ public class Query<E extends Entity> {
     }
 
     private SearchRequestBuilder buildSearch() {
-        EntityDescriptor ed = Index.getDescriptor(clazz);
-        SearchRequestBuilder srb = Index.getClient()
-                                        .prepareSearch(index != null ? index : Index.getIndexName(ed.getIndex()))
-                                        .setTypes(ed.getType());
+        EntityDescriptor ed = indexAccess.getDescriptor(clazz);
+        SearchRequestBuilder srb = indexAccess.getClient()
+                                              .prepareSearch(index != null ?
+                                                             index :
+                                                             indexAccess.getIndexName(ed.getIndex()))
+                                              .setTypes(ed.getType());
         srb.setVersion(true);
         if (primary) {
             srb.setPreference("_primary");
@@ -802,7 +807,7 @@ public class Query<E extends Entity> {
         applyLimit(srb);
 
         if (logQuery) {
-            Index.LOG.INFO(srb);
+            IndexAccess.LOG.INFO(srb);
         }
 
         return srb;
@@ -887,28 +892,6 @@ public class Query<E extends Entity> {
         }
     }
 
-    private void applyRouting(EntityDescriptor ed, Consumer<String> routingTaget) {
-        if (Strings.isFilled(routing)) {
-            if (!ed.hasRouting()) {
-                Exceptions.handle()
-                          .to(Index.LOG)
-                          .withSystemErrorMessage("Performing a search on %s with a routing "
-                                                  + "- but entity has no routing attribute (in @Indexed)! "
-                                                  + "This will most probably FAIL!", clazz.getName())
-                          .handle();
-            }
-            routingTaget.accept(routing);
-        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-            Exceptions.handle()
-                      .to(Index.LOG)
-                      .withSystemErrorMessage("Performing a search on %s without providing a routing. "
-                                              + "Consider providing a routing for better performance "
-                                              + "or call deliberatelyUnrouted() to signal that routing was "
-                                              + "intentionally skipped.", clazz.getName())
-                      .handle();
-        }
-    }
-
     /**
      * Executes the query and returns a list of all matching entities.
      * <p>
@@ -943,21 +926,21 @@ public class Query<E extends Entity> {
                 defaultLimitEnforced = true;
             }
             SearchRequestBuilder srb = buildSearch();
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("SEARCH: %s.%s: %s",
-                               Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
-                               buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("SEARCH: %s.%s: %s",
+                                     indexAccess.getIndex(clazz),
+                                     indexAccess.getDescriptor(clazz).getType(),
+                                     buildQuery());
             }
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
-                Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
-                               + "Please provide an explicit limit or use Query.iterate to remove this warning. "
-                               + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
+                IndexAccess.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
+                                     + "Please provide an explicit limit or use Query.iterate to remove this warning. "
+                                     + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
             }
             return resultList;
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -971,24 +954,49 @@ public class Query<E extends Entity> {
             if (forceFail) {
                 return 0;
             }
-            EntityDescriptor ed = Index.getDescriptor(clazz);
-            SearchRequestBuilder crb = Index.getClient()
-                                            .prepareSearch(index != null ? index : Index.getIndex(clazz))
-                                            .setTypes(ed.getType());
+
+            EntityDescriptor ed = indexAccess.getDescriptor(clazz);
+            SearchRequestBuilder crb = indexAccess.getClient()
+                                                  .prepareSearch(index != null ? index : indexAccess.getIndex(clazz))
+                                                  .setTypes(ed.getType());
             crb.setSize(0);
             applyRouting(ed, crb::setRouting);
-
             QueryBuilder qb = buildQuery();
             if (qb != null) {
                 crb.setQuery(qb);
             }
-
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("COUNT: %s.%s: %s", indexAccess.getIndex(clazz), ed.getType(), buildQuery());
             }
             return transformCount(crb);
         } catch (Throwable t) {
-            throw Exceptions.handle(Index.LOG, t);
+            throw Exceptions.handle(IndexAccess.LOG, t);
+        }
+    }
+
+    private void applyRouting(EntityDescriptor ed, Consumer<String> routingTarget) {
+        if (Strings.isFilled(routing)) {
+            if (!ed.hasRouting()) {
+                Exceptions.handle()
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Performing a query on %s with a routing "
+                                                  + "- but entity has no routing attribute (in @Indexed)! "
+                                                  + "This will most probably FAIL! Query: %s",
+                                                  clazz.getName(),
+                                                  this.toString())
+                          .handle();
+            }
+            routingTarget.accept(routing);
+        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
+            Exceptions.handle()
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Performing a query on %s without providing a routing. "
+                                              + "Consider providing a routing for better performance "
+                                              + "or call deliberatelyUnrouted() to signal that routing "
+                                              + "was intentionally skipped. Query: %s",
+                                              clazz.getName(),
+                                              this.toString())
+                      .handle();
         }
     }
 
@@ -1033,7 +1041,7 @@ public class Query<E extends Entity> {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
         ResultList<E> result = new ResultList<>(termFacets, aggregations, searchResponse);
-        EntityDescriptor descriptor = Index.getDescriptor(clazz);
+        EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
             E entity = clazz.newInstance();
             entity.initSourceTracing();
@@ -1042,12 +1050,12 @@ public class Query<E extends Entity> {
             descriptor.readSource(entity, hit.getSource());
             result.getResults().add(entity);
         }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "LIST: " + toString(true));
@@ -1072,14 +1080,14 @@ public class Query<E extends Entity> {
             result.initSourceTracing();
             result.setId(hit.getId());
             result.setVersion(hit.getVersion());
-            Index.getDescriptor(clazz).readSource(result, hit.getSource());
+            indexAccess.getDescriptor(clazz).readSource(result, hit.getSource());
         }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "FIRST: " + toString(true));
@@ -1096,11 +1104,11 @@ public class Query<E extends Entity> {
     protected long transformCount(SearchRequestBuilder builder) {
         Watch w = Watch.start();
         SearchResponse res = builder.execute().actionGet();
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           res.getHits().getTotalHits());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 res.getHits().getTotalHits());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "COUNT: " + toString(true));
@@ -1168,12 +1176,13 @@ public class Query<E extends Entity> {
      *
      * @param handler the handler used to process each result item
      */
+
     public void iterate(ResultHandler<? super E> handler) {
         try {
             if (forceFail) {
                 return;
             }
-            EntityDescriptor entityDescriptor = Index.getDescriptor(clazz);
+            EntityDescriptor entityDescriptor = indexAccess.getDescriptor(clazz);
             SearchResponse searchResponse = createScroll(entityDescriptor);
             try {
                 TaskContext ctx = TaskContext.get();
@@ -1182,7 +1191,6 @@ public class Query<E extends Entity> {
                 Limit lim = new Limit(start, limit);
 
                 while (true) {
-                    searchResponse = scrollFurther(entityDescriptor, searchResponse);
                     lastScroll = performScrollMonitoring(lastScroll);
 
                     for (SearchHit hit : searchResponse.getHits()) {
@@ -1208,26 +1216,31 @@ public class Query<E extends Entity> {
                                 }
                             }
                         } catch (Exception e) {
-                            Exceptions.handle().to(Index.LOG).error(e).handle();
+                            Exceptions.handle().to(IndexAccess.LOG).error(e).handle();
                         }
                     }
                     if (searchResponse.getHits().hits().length == 0) {
                         return;
                     }
+                    searchResponse = scrollFurther(entityDescriptor, searchResponse);
                 }
             } finally {
                 clearScroll(searchResponse);
             }
         } catch (Throwable t) {
-            throw Exceptions.handle(Index.LOG, t);
+            throw Exceptions.handle(IndexAccess.LOG, t);
         }
     }
 
     private void clearScroll(SearchResponse searchResponse) {
         try {
-            Index.getClient().prepareClearScroll().addScrollId(searchResponse.getScrollId()).execute().actionGet();
+            indexAccess.getClient()
+                       .prepareClearScroll()
+                       .addScrollId(searchResponse.getScrollId())
+                       .execute()
+                       .actionGet();
         } catch (Throwable e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -1241,7 +1254,7 @@ public class Query<E extends Entity> {
                                   "A scroll query against elasticserach took too long to process its data! "
                                   + "The result is probably inconsistent! Query: %s",
                                   this)
-                          .to(Index.LOG)
+                          .to(IndexAccess.LOG)
                           .handle();
             }
         }
@@ -1249,18 +1262,18 @@ public class Query<E extends Entity> {
     }
 
     private SearchResponse scrollFurther(EntityDescriptor entityDescriptor, SearchResponse searchResponse) {
-        searchResponse = Index.getClient()
-                              .prepareSearchScroll(searchResponse.getScrollId())
-                              .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL))
-                              .execute()
-                              .actionGet();
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
-                           Index.getIndex(clazz),
-                           entityDescriptor.getType(),
-                           searchResponse.getHits().hits().length,
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        searchResponse = indexAccess.getClient()
+                                    .prepareSearchScroll(searchResponse.getScrollId())
+                                    .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL))
+                                    .execute()
+                                    .actionGet();
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 entityDescriptor.getType(),
+                                 searchResponse.getHits().hits().length,
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         return searchResponse;
     }
@@ -1268,9 +1281,9 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
         if (!orderBys.isEmpty()) {
-            Index.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
-                           this,
-                           ExecutionPoint.snapshot());
+            IndexAccess.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
+                                 this,
+                                 ExecutionPoint.snapshot());
         } else {
             srb.addSort("_doc", SortOrder.ASC);
         }
@@ -1280,8 +1293,11 @@ public class Query<E extends Entity> {
         // Otherwise we limit to 10 documents per shard...
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
         srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL));
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("ITERATE: %s.%s: %s",
+                                 indexAccess.getIndex(clazz),
+                                 entityDescriptor.getType(),
+                                 buildQuery());
         }
 
         return srb.execute().actionGet();
@@ -1335,11 +1351,11 @@ public class Query<E extends Entity> {
             limit = 512;
             while (true) {
                 SearchRequestBuilder srb = buildSearch();
-                if (Index.LOG.isFINE()) {
-                    Index.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
-                                   Index.getIndex(clazz),
-                                   Index.getDescriptor(clazz).getType(),
-                                   buildQuery());
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
+                                         indexAccess.getIndex(clazz),
+                                         indexAccess.getDescriptor(clazz).getType(),
+                                         buildQuery());
                 }
                 ResultList<E> resultList = transform(srb);
                 for (E entity : resultList) {
@@ -1361,7 +1377,7 @@ public class Query<E extends Entity> {
                             }
                         }
                     } catch (Exception e) {
-                        Exceptions.handle().to(Index.LOG).error(e).handle();
+                        Exceptions.handle().to(IndexAccess.LOG).error(e).handle();
                     }
                 }
                 // Re-create entity the duplicator
@@ -1373,7 +1389,7 @@ public class Query<E extends Entity> {
                 }
             }
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -1444,13 +1460,13 @@ public class Query<E extends Entity> {
                 return;
             }
             Watch w = Watch.start();
-            EntityDescriptor ed = Index.getDescriptor(clazz);
+            EntityDescriptor ed = indexAccess.getDescriptor(clazz);
             deleteByIteration();
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -1458,7 +1474,7 @@ public class Query<E extends Entity> {
         ValueHolder<Throwable> error = ValueHolder.of(null);
         iterate(e -> {
             try {
-                Index.delete(e);
+                indexAccess.delete(e);
             } catch (Throwable ex) {
                 error.set(ex);
             }

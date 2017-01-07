@@ -1,3 +1,11 @@
+/*
+ * Made with all the love in the world
+ * by scireum in Remshalden, Germany
+ *
+ * Copyright by scireum GmbH
+ * http://www.scireum.de - info@scireum.de
+ */
+
 package sirius.search;
 
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
@@ -9,13 +17,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Provides a simple helper to utilize suggestions for field tokens as supported by ElasticSearch.
+ *
+ * @param <E> the type of entities supported by this suggester.
+ */
 public class Suggest<E extends Entity> {
+    private IndexAccess index;
     private Class<E> clazz;
     private String field = "_all";
     private String query;
-    /* maxErrors => errors for the whole query
-       maxEdit => errors per token */
-    private Float maxErrors = 2f; // config? 1 or 2 recommended
+    private Float maxErrors = 2f;
     private int limit = 5;
     private Float confidence = 1f;
     private String suggestMode = "missing";
@@ -30,7 +42,8 @@ public class Suggest<E extends Entity> {
      *
      * @param clazz the type of entities to suggest for
      */
-    protected Suggest(Class<E> clazz) {
+    protected Suggest(IndexAccess index, Class<E> clazz) {
+        this.index = index;
         this.clazz = clazz;
     }
 
@@ -39,6 +52,7 @@ public class Suggest<E extends Entity> {
      *
      * @param field the field to get the suggestions from
      * @param query the query to generate suggestions for
+     * @return the newly created suggester
      */
     public Suggest<E> on(String field, String query) {
         this.field = field;
@@ -50,6 +64,7 @@ public class Suggest<E extends Entity> {
      * Sets the max. number of suggestions to return.
      *
      * @param limit the max. number of suggestion strings to return
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> limit(int limit) {
         this.limit = limit;
@@ -61,6 +76,7 @@ public class Suggest<E extends Entity> {
      * check whether a suggestions is present in a index field.
      *
      * @param collateQuery the query that should be executed per suggestion
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> collateQuery(String collateQuery) {
         this.collateQuery = collateQuery;
@@ -71,6 +87,7 @@ public class Suggest<E extends Entity> {
      * Sets a map which contains parameters for the collate query.
      *
      * @param collateParams the parameters for the collate query
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> collateParams(Map<String, Object> collateParams) {
         this.collateParams = collateParams;
@@ -82,6 +99,7 @@ public class Suggest<E extends Entity> {
      * directly pruned
      *
      * @param collatePrune controls whether pruned suggestions nevertheless be returned (tagged) or completly removed
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> collatePrune(boolean collatePrune) {
         this.collatePrune = collatePrune;
@@ -106,6 +124,7 @@ public class Suggest<E extends Entity> {
      * Defaults to the search analyzer of the suggest field passed via 'field'.
      *
      * @param analyzer the analyzer to analyze the query with
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> analyzer(String analyzer) {
         this.analyzer = analyzer;
@@ -122,6 +141,7 @@ public class Suggest<E extends Entity> {
      * If set to 0.0 the top N candidates are returned. The default is 1.0.
      *
      * @param confidence the level of confidence
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> confidence(Float confidence) {
         this.confidence = confidence;
@@ -139,6 +159,7 @@ public class Suggest<E extends Entity> {
      * "always" = suggest any matching suggestions based on terms in the suggest text.
      *
      * @param suggestMode the suggest mode 'missing', 'popular' or 'always'
+     * @return the helper itself for fluent method calls
      */
     public Suggest<E> suggestMode(String suggestMode) {
         this.suggestMode = suggestMode;
@@ -151,9 +172,8 @@ public class Suggest<E extends Entity> {
      * @return the PhraseSuggestionBuilder
      */
     private PhraseSuggestionBuilder generateSuggestionBuilder() {
-        //should we also suggest for phrases containing numbers etc? so, also itemNumbers? atm we do
         PhraseSuggestionBuilder phraseSuggestionBuilder = new PhraseSuggestionBuilder("suggestPhrase");
-        phraseSuggestionBuilder.field(field); // nötig?
+        phraseSuggestionBuilder.field(field);
         phraseSuggestionBuilder.text(query);
         phraseSuggestionBuilder.maxErrors(maxErrors);
         phraseSuggestionBuilder.size(limit);
@@ -182,9 +202,8 @@ public class Suggest<E extends Entity> {
      * @return the index suggest request builder
      */
     private SuggestRequestBuilder generateRequestBuilder(PhraseSuggestionBuilder phraseSuggestionBuilder) {
-
-        return Index.getClient()
-                    .prepareSuggest(Index.getIndexName(Index.getDescriptor(clazz).getIndex()))
+        return index.getClient()
+                    .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
                     .addSuggestion(phraseSuggestionBuilder);
     }
 

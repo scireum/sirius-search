@@ -11,6 +11,7 @@ package sirius.search;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.search.aggregations.InternalAggregations;
 import org.elasticsearch.search.aggregations.bucket.nested.InternalNested;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -124,6 +125,11 @@ public class ResultList<T> implements Iterable<T> {
         return termFacets;
     }
 
+    /**
+     * Returns all aggregations computed by ElasticSearch.
+     *
+     * @return a map containing the computed aggregations per field
+     */
     public Map<String, List<String>> getAggregations() {
         if (aggregationsProcessed.firstCall() && response != null) {
             for (Aggregation aggregation : aggregations) {
@@ -132,10 +138,9 @@ public class ResultList<T> implements Iterable<T> {
                 if (Strings.isEmpty(aggregation.getPath())) {
                     terms = response.getAggregations().get(aggregation.getName());
                 } else {
-                    terms = ((InternalNested) response.getAggregations().get(aggregation.getName())).getAggregations()
-                                                                                                    .get(aggregation.getSubAggregations()
-                                                                                                                    .get(0)
-                                                                                                                    .getName());
+                    InternalAggregations internalAggregations =
+                            ((InternalNested) response.getAggregations().get(aggregation.getName())).getAggregations();
+                    terms = internalAggregations.get(aggregation.getSubAggregations().get(0).getName());
                 }
 
                 for (Terms.Bucket bucket : terms.getBuckets()) {

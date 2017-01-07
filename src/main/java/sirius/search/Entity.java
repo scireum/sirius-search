@@ -28,7 +28,6 @@ import sirius.web.security.UserContext;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -54,7 +53,7 @@ public abstract class Entity {
 
     /**
      * Contains the version number of the currently loaded entity. Used for optimistic locking e.g. in
-     * {@link Index#tryUpdate(Entity)}
+     * {@link IndexAccess#tryUpdate(Entity)}
      */
     @Transient
     protected long version;
@@ -77,19 +76,22 @@ public abstract class Entity {
     @Transient
     protected boolean skipForeignKeys;
 
+    @Part
+    private static IndexAccess index;
+
     /**
      * Creates and initializes a new instance.
      * <p>
      * All mapped properties will be initialized by their {@link Property} if necessary.
      */
     protected Entity() {
-        if (Index.schema != null) {
-            for (Property p : Index.getDescriptor(getClass()).getProperties()) {
+        if (index != null && index.schema != null) {
+            for (Property p : index.getDescriptor(getClass()).getProperties()) {
                 try {
                     p.init(this);
                 } catch (Throwable e) {
                     Exceptions.ignore(e);
-                    Index.LOG.WARN("Cannot initialize %s of %s", p.getName(), getClass().getSimpleName());
+                    IndexAccess.LOG.WARN("Cannot initialize %s of %s", p.getName(), getClass().getSimpleName());
                 }
             }
         }
@@ -101,7 +103,7 @@ public abstract class Entity {
      * @return determines if the entity is new (<tt>true</tt>) or if it was loaded from the database (<tt>false</tt>).
      */
     public boolean isNew() {
-        return id == null || Index.NEW.equals(id);
+        return id == null || IndexAccess.NEW.equals(id);
     }
 
     /**
@@ -141,7 +143,7 @@ public abstract class Entity {
      * @return the globally unique ID of this entity.
      */
     public String getUniqueId() {
-        return Index.getDescriptor(getClass()).getType() + "-" + id;
+        return index.getDescriptor(getClass()).getType() + "-" + id;
     }
 
     /**
@@ -191,7 +193,7 @@ public abstract class Entity {
      */
     protected void performSaveChecks() {
         HandledException error = null;
-        EntityDescriptor descriptor = Index.getDescriptor(getClass());
+        EntityDescriptor descriptor = index.getDescriptor(getClass());
         for (Property p : descriptor.getProperties()) {
 
             if (p.getField().isAnnotationPresent(RefField.class)) {
@@ -216,9 +218,9 @@ public abstract class Entity {
                                                EntityDescriptor descriptor,
                                                Property p,
                                                Object value) {
-        Query<?> qry = Index.select(getClass()).eq(p.getName(), value);
+        Query<?> qry = index.select(getClass()).eq(p.getName(), value);
         if (!isNew()) {
-            qry.notEq(Index.ID_FIELD, id);
+            qry.notEq(IndexAccess.ID_FIELD, id);
         }
         Unique unique = p.getField().getAnnotation(Unique.class);
         setupRoutingForUniquenessCheck(descriptor, qry, unique);
@@ -250,7 +252,7 @@ public abstract class Entity {
                     } else {
                         qry.deliberatelyUnrouted();
                         Exceptions.handle()
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage(
                                           "Performing a unique check on %s without any routing. This will be slow!",
                                           this.getClass().getName())
@@ -259,7 +261,7 @@ public abstract class Entity {
                 }
             } catch (Exception e) {
                 Exceptions.handle()
-                          .to(Index.LOG)
+                          .to(IndexAccess.LOG)
                           .error(e)
                           .withSystemErrorMessage("Cannot determine routing key for '%s' of type %s",
                                                   this,
@@ -308,7 +310,7 @@ public abstract class Entity {
             RefField ref = propertyToFill.getField().getAnnotation(RefField.class);
             Property sourceProperty = localEntityDescriptor.getProperty(ref.localRef());
             EntityDescriptor remoteDescriptor =
-                    Index.getDescriptor(sourceProperty.getField().getAnnotation(RefType.class).type());
+                    index.getDescriptor(sourceProperty.getField().getAnnotation(RefType.class).type());
 
             EntityRef<?> sourceReference = (EntityRef<?>) sourceProperty.getField().get(this);
             Entity sourceEntity = null;
@@ -325,7 +327,7 @@ public abstract class Entity {
                     if (routingValue == null) {
                         // No routing available or sourceReference was null -> fail
                         Exceptions.handle()
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage(
                                           "Error updating an RefField for an RefType: Property %s in class %s: "
                                           + "No routing information was available to load the referenced entity!",
@@ -347,7 +349,7 @@ public abstract class Entity {
             }
         } catch (Throwable e) {
             Exceptions.handle()
-                      .to(Index.LOG)
+                      .to(IndexAccess.LOG)
                       .error(e)
                       .withSystemErrorMessage(
                               "Error updating an RefField for an RefType: Property %s in class %s: %s (%s)",
@@ -380,7 +382,7 @@ public abstract class Entity {
      * Executes the {@link sirius.search.ForeignKey#checkDelete(Entity)} handlers on all foreign keys...
      */
     protected void executeDeleteChecksOnForeignKeys() {
-        for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
+        for (ForeignKey fk : index.getDescriptor(getClass()).remoteForeignKeys) {
             fk.checkDelete(this);
         }
     }
@@ -423,7 +425,7 @@ public abstract class Entity {
      */
     protected void executeDeleteOnForeignKeys() {
         if (!isNew()) {
-            for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
+            for (ForeignKey fk : index.getDescriptor(getClass()).remoteForeignKeys) {
                 fk.onDelete(this);
             }
         }
@@ -460,7 +462,7 @@ public abstract class Entity {
         StringBuilder sb = new StringBuilder();
         sb.append(id + " (Version: " + version + ") {");
         boolean first = true;
-        for (Property p : Index.getDescriptor(getClass()).getProperties()) {
+        for (Property p : index.getDescriptor(getClass()).getProperties()) {
             if (first) {
                 first = false;
             } else {
@@ -534,7 +536,7 @@ public abstract class Entity {
             return;
         }
         if (!isNew()) {
-            for (ForeignKey fk : Index.getDescriptor(getClass()).remoteForeignKeys) {
+            for (ForeignKey fk : index.getDescriptor(getClass()).remoteForeignKeys) {
                 fk.onSave(this);
             }
         }
@@ -573,7 +575,7 @@ public abstract class Entity {
     public Map<String, Tuple<Object, Object>> load(WebContext ctx, String... propertiesToRead) {
         Map<String, Tuple<Object, Object>> changeList = Maps.newTreeMap();
         Set<String> allowedProperties = Sets.newTreeSet(Arrays.asList(propertiesToRead));
-        for (Property p : Index.getDescriptor(getClass()).getProperties()) {
+        for (Property p : index.getDescriptor(getClass()).getProperties()) {
             if (allowedProperties.contains(p.getName())) {
                 Object oldValue = obtainModificationProtectedValue(p);
                 p.readFromRequest(this, ctx);
@@ -646,7 +648,7 @@ public abstract class Entity {
      * Enables tracking of source field (which contain the original state of the database before the entity was
      * changed.
      * <p>
-     * This will be set by @{@link Index#find(Class, String)}.
+     * This will be set by @{@link IndexAccess#find(Class, String)}.
      */
     protected void initSourceTracing() {
         source = Maps.newTreeMap();

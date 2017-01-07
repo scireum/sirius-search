@@ -11,7 +11,7 @@ package sirius.search;
 /**
  * Contains a unit of work which can be restarted.
  * <p>
- * This is used by {@link Index#retry(UnitOfWork)} to signal that the given block can be safely re-executed if
+ * This is used by {@link IndexAccess#retry(UnitOfWork)} to signal that the given block can be safely re-executed if
  * a recoverable error like an optimistic lock error occurs.
  */
 public interface UnitOfWork {

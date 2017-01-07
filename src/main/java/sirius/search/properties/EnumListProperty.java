@@ -13,7 +13,7 @@ import sirius.kernel.commons.Value;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
@@ -36,8 +36,9 @@ public class EnumListProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return List.class.equals(field.getType()) && field.isAnnotationPresent(ListType.class) &&
-                   field.getAnnotation(ListType.class).value().isEnum();
+            return List.class.equals(field.getType())
+                   && field.isAnnotationPresent(ListType.class)
+                   && field.getAnnotation(ListType.class).value().isEnum();
         }
 
         @Override
@@ -91,7 +92,7 @@ public class EnumListProperty extends Property {
         try {
             field.set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 

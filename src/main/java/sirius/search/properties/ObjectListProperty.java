@@ -9,12 +9,11 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.Transient;
 import sirius.web.http.WebContext;
@@ -85,7 +84,7 @@ public class ObjectListProperty extends Property {
                                 } catch (Throwable e) {
                                     Exceptions.handle()
                                               .error(e)
-                                              .to(Index.LOG)
+                                              .to(IndexAccess.LOG)
                                               .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
                                                                       innerField.getName(),
                                                                       toString())
@@ -98,7 +97,7 @@ public class ObjectListProperty extends Property {
                     } catch (Throwable e) {
                         Exceptions.handle()
                                   .error(e)
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
                                   .handle();
                     }
@@ -118,7 +117,8 @@ public class ObjectListProperty extends Property {
                     Map<String, String> valueMap = new HashMap<>();
                     Class<?> targetClass = field.getAnnotation(ListType.class).value();
                     for (Field innerField : targetClass.getDeclaredFields()) {
-                        if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                        if (!innerField.isAnnotationPresent(Transient.class)
+                            && !Modifier.isStatic(innerField.getModifiers())) {
                             try {
                                 innerField.setAccessible(true);
                                 Object val = innerField.get(obj);
@@ -128,7 +128,7 @@ public class ObjectListProperty extends Property {
                             } catch (Throwable e) {
                                 Exceptions.handle()
                                           .error(e)
-                                          .to(Index.LOG)
+                                          .to(IndexAccess.LOG)
                                           .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
                                                                   innerField.getName(),
                                                                   toString())

@@ -8,9 +8,10 @@
 
 package sirius.search.util;
 
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.console.Command;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 /**
  * Performs a re-index of all indices into new ones starting with the given index prefix instead of the
@@ -19,12 +20,15 @@ import sirius.search.Index;
 @Register
 public class ReIndexCommand implements Command {
 
+    @Part
+    private IndexAccess index;
+
     @Override
     public void execute(Output output, String... params) throws Exception {
         if (params.length != 1) {
             output.line("Usage: reindex <newIndexPrefix>");
         } else {
-            Index.getSchema().reIndex(params[0]);
+            index.getSchema().reIndex(params[0]);
             output.line("Operation has started!");
         }
     }

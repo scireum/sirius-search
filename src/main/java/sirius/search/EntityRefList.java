@@ -12,6 +12,7 @@ import com.google.common.cache.Cache;
 import com.google.common.collect.Lists;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 
 import javax.annotation.Nullable;
@@ -33,6 +34,9 @@ public class EntityRefList<E extends Entity> {
     private boolean valueFromCache;
     private Class<E> clazz;
     private List<String> ids = Lists.newArrayList();
+
+    @Part
+    private static IndexAccess index;
 
     /**
      * Creates a new reference.
@@ -74,31 +78,31 @@ public class EntityRefList<E extends Entity> {
      */
     public List<E> getValuesWithRouting(String routing) {
         if (!isValueLoaded() || valueFromCache) {
-            EntityDescriptor descriptor = Index.getDescriptor(clazz);
+            EntityDescriptor descriptor = index.getDescriptor(clazz);
             List<E> result = Lists.newArrayList();
             for (String id : ids) {
                 if (descriptor.hasRouting()) {
                     if (Strings.isFilled(routing)) {
-                        result.add(Index.find(routing, clazz, id));
+                        result.add(index.find(routing, clazz, id));
                     } else {
                         Exceptions.handle()
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage("Fetching an entity of type %s (%s) without routing! "
                                                           + "Using SELECT which might be slower!", clazz.getName(), id)
                                   .handle();
-                        result.add(Index.select(clazz).eq(Index.ID_FIELD, id).queryFirst());
+                        result.add(index.select(clazz).eq(IndexAccess.ID_FIELD, id).queryFirst());
                     }
                 } else {
                     if (Strings.isFilled(routing)) {
                         Exceptions.handle()
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage("Fetching an entity of type %s (%s) with routing "
                                                           + "(which is not required for this type)!",
                                                           clazz.getName(),
                                                           id)
                                   .handle();
                     }
-                    result.add(Index.find(clazz, id));
+                    result.add(index.find(clazz, id));
                 }
             }
             values = result.stream().filter(v -> v != null).collect(Collectors.toList());
@@ -145,7 +149,8 @@ public class EntityRefList<E extends Entity> {
         List<E> result = Lists.newArrayList();
         valueFromCache = false;
         for (String id : ids) {
-            Tuple<E, Boolean> tuple = Index.fetch(routing, clazz, id, localCache);
+            Tuple<E, Boolean> tuple =
+                    localCache == null ? index.fetch(routing, clazz, id) : index.fetch(routing, clazz, id, localCache);
             if (tuple.getFirst() != null) {
                 result.add(tuple.getFirst());
                 valueFromCache |= tuple.getSecond();
@@ -177,24 +182,7 @@ public class EntityRefList<E extends Entity> {
      * #addValue(Entity)} or {@link #setIds(List)} to modify this list.
      */
     public List<E> getCachedValueWithRouting(String routing) {
-        if (isValueLoaded()) {
-            if (values == null) {
-                return Collections.emptyList();
-            }
-            return values;
-        }
-
-        List<E> result = Lists.newArrayList();
-        valueFromCache = false;
-        for (String id : ids) {
-            Tuple<E, Boolean> tuple = Index.fetch(routing, clazz, id);
-            if (tuple.getFirst() != null) {
-                result.add(tuple.getFirst());
-                valueFromCache |= tuple.getSecond();
-            }
-        }
-        values = result;
-        return Collections.unmodifiableList(values);
+        return getCachedValueWithRouting(routing, null);
     }
 
     /**

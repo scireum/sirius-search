@@ -18,7 +18,6 @@ public class ValueInField implements Constraint {
 
     private final Object value;
     private final String field;
-    private boolean isFilter;
 
     /*
      * Use the #on(Object, String) factory method
@@ -39,22 +38,9 @@ public class ValueInField implements Constraint {
         return new ValueInField(value, field);
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public ValueInField asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter) {
-            return QueryBuilders.termQuery(field, value);
-        }
-        return null;
+        return QueryBuilders.termQuery(field, value);
     }
 
     @Override

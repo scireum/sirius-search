@@ -8,6 +8,7 @@
 
 package sirius.search.constraints;
 
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
@@ -24,7 +25,6 @@ public class FieldOperator implements Constraint {
     private String field;
     private Object value;
     private Bound bound;
-    private boolean isFilter;
     private boolean orEmpty = false;
 
     /*
@@ -88,25 +88,15 @@ public class FieldOperator implements Constraint {
      * @return the constraint itself for fluent method calls
      */
     public FieldOperator orEmpty() {
-        asFilter();
         this.orEmpty = true;
 
         return this;
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public FieldOperator asFilter() {
-        isFilter = true;
-        return this;
-    }
 
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter && !orEmpty && value != null) {
+        if (value != null) {
             RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(field);
             if (bound == Bound.LT) {
                 rangeQueryBuilder.lt(value);
@@ -116,6 +106,13 @@ public class FieldOperator implements Constraint {
                 rangeQueryBuilder.gte(value);
             } else if (bound == Bound.GT) {
                 rangeQueryBuilder.gt(value);
+            }
+
+            if (orEmpty) {
+                BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+                boolQuery.should(rangeQueryBuilder);
+                boolQuery.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
+                return boolQuery;
             }
 
             return rangeQueryBuilder;

@@ -12,7 +12,7 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.EntityRefList;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.RefType;
 import sirius.web.http.WebContext;
 
@@ -72,7 +72,7 @@ public class EntityListProperty extends Property {
         try {
             ((EntityRefList<?>) field.get(entity)).setIds((List<String>) transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -87,7 +87,7 @@ public class EntityListProperty extends Property {
         try {
             ((EntityRefList<?>) field.get(entity)).setIds((List<String>) value);
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 

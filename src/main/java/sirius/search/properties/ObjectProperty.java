@@ -12,7 +12,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.FastCompletion;
 import sirius.search.annotations.NestedObject;
 import sirius.search.annotations.Transient;
@@ -85,7 +85,7 @@ public class ObjectProperty extends Property {
                     } catch (Throwable e) {
                         Exceptions.handle()
                                   .error(e)
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
                                                           innerField.getName(),
                                                           toString())
@@ -125,7 +125,7 @@ public class ObjectProperty extends Property {
                         } catch (Throwable e) {
                             Exceptions.handle()
                                       .error(e)
-                                      .to(Index.LOG)
+                                      .to(IndexAccess.LOG)
                                       .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
                                                               innerField.getName(),
                                                               toString())
@@ -138,7 +138,7 @@ public class ObjectProperty extends Property {
             } catch (Throwable e) {
                 Exceptions.handle()
                           .error(e)
-                          .to(Index.LOG)
+                          .to(IndexAccess.LOG)
                           .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
                           .handle();
             }

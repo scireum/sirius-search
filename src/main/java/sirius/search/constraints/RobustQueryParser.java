@@ -17,7 +17,7 @@ import org.elasticsearch.index.query.TermQueryBuilder;
 import parsii.tokenizer.LookaheadReader;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.Query;
 
 import java.io.StringReader;
@@ -73,7 +73,7 @@ public class RobustQueryParser implements Constraint {
             LookaheadReader reader = new LookaheadReader(new StringReader(input));
             QueryBuilder main = parseQuery(reader, autoExpand);
             if (!reader.current().isEndOfInput()) {
-                Index.LOG.FINE("Unexpected character in query: " + reader.current());
+                IndexAccess.LOG.FINE("Unexpected character in query: " + reader.current());
             }
             // If we cannot compile a query from a non empty input, we probably dropped all short tokens
             // like a search for "S 8" would be completely dropped. Therefore we resort to "S8".
@@ -322,11 +322,14 @@ public class RobustQueryParser implements Constraint {
             if ("id".equals(field)) {
                 field = "_id";
             }
-
-            if (negate) {
-                qry.mustNot(QueryBuilders.termQuery(field, value));
+            if ("-".equals(value)) {
+                result.add(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
             } else {
-                result.add(QueryBuilders.termQuery(field, value));
+                if (negate) {
+                    qry.mustNot(QueryBuilders.termQuery(field, value));
+                } else {
+                    result.add(QueryBuilders.termQuery(field, value));
+                }
             }
         }
         if (negate) {

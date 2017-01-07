@@ -20,7 +20,6 @@ import sirius.kernel.commons.Strings;
 public class Prefix implements Constraint {
     private final String field;
     private String value;
-    private boolean isFilter;
 
     /*
      * Use the #on(String, Object) factory method
@@ -41,21 +40,12 @@ public class Prefix implements Constraint {
         return new Prefix(field, value);
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public Prefix asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (Strings.isFilled(value) && !isFilter) {
+        if (Strings.isFilled(value)) {
             return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256");
         }
+
         return null;
     }
 

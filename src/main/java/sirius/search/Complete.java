@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents a completion against the database which are created via {@link Index#complete(Class)}.
+ * Represents a completion against the database which are created via {@link IndexAccess#complete(Class)}.
  * <p>
  * A completion can ONLY be used on fields annotated with {@link sirius.search.annotations.NestedObject} and  {@link
  * sirius.search.annotations.FastCompletion}. This is necessary as elasticsearch internally builds a fast datastructure
@@ -28,6 +28,7 @@ import java.util.List;
  */
 public class Complete<E extends Entity> {
 
+    private IndexAccess index;
     private Class<E> clazz;
     private String field;
     private String query;
@@ -35,7 +36,8 @@ public class Complete<E extends Entity> {
     private String contextName;
     private List<String> contextValues;
 
-    protected Complete(Class<E> clazz) {
+    protected Complete(IndexAccess index, Class<E> clazz) {
+        this.index = index;
         this.clazz = clazz;
     }
 
@@ -45,6 +47,7 @@ public class Complete<E extends Entity> {
      * @param field a field that is annotated with {@link sirius.search.annotations.NestedObject} and  {@link
      *              sirius.search.annotations.FastCompletion}
      * @param query the string that should be completed
+     * @return a newly created completion helper
      */
     public Complete<E> on(String field, String query) {
         this.field = field;
@@ -56,6 +59,7 @@ public class Complete<E extends Entity> {
      * Limits the number of completions that are generated
      *
      * @param limit the maximum number of completions to generate
+     * @return the completion helper itself for fluent method calls
      */
     public Complete<E> limit(int limit) {
         this.limit = limit;
@@ -67,7 +71,7 @@ public class Complete<E extends Entity> {
      *
      * @param name   name of the context defined in the field mapping
      * @param values values that should be used to restrict/filter completions
-     * @return
+     * @return the completion helper itself for fluent method calls
      */
     public Complete<E> context(String name, List<String> values) {
         this.contextName = name;
@@ -101,8 +105,8 @@ public class Complete<E extends Entity> {
     }
 
     private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionBuilder csb) {
-        return Index.getClient()
-                    .prepareSuggest(Index.getIndexName(Index.getDescriptor(clazz).getIndex()))
+        return index.getClient()
+                    .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
                     .addSuggestion(csb);
     }
 
