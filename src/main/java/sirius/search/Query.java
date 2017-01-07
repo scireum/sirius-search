@@ -15,7 +15,6 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -1276,7 +1275,7 @@ public class Query<E extends Entity> {
             srb.addSort("_doc", SortOrder.ASC);
         }
         srb.setFrom(0);
-        srb.setSearchType(SearchType.SCAN);
+
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
         // Otherwise we limit to 10 documents per shard...
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
