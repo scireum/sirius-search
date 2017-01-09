@@ -21,8 +21,15 @@ import java.lang.annotation.Target;
 public @interface NestedObject {
     /**
      * Contains the class that should be nested
+     *
+     * @return the class used to map the nested data
      */
     Class<?> value();
 
+    /**
+     * Specifies which analyzer to use for inner fields.
+     *
+     * @return the name of the analyzer to use for inner fields
+     */
     String analyzer() default "whitespace";
 }

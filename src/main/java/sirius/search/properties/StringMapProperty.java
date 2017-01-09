@@ -98,6 +98,7 @@ public class StringMapProperty extends Property {
      * @param builder the builder used to generate JSON
      * @throws IOException in case of an io error while generating the mapping
      */
+    @Override
     public void createMapping(XContentBuilder builder) throws IOException {
         builder.startObject(getName());
         builder.field("type", getMappingType());

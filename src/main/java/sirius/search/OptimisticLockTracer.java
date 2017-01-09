@@ -13,8 +13,6 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.timer.EveryTenSeconds;
 
-import java.util.Iterator;
-
 /**
  * Removes outdated traces used to discover optimistic lock errors
  */
@@ -36,11 +34,6 @@ public class OptimisticLockTracer implements EveryTenSeconds {
 
     private void cleanOldRecordings() {
         long limit = System.currentTimeMillis() - 10_000;
-        Iterator<IndexTrace> iter = index.traces.values().iterator();
-        while (iter.hasNext()) {
-            if (iter.next().timestamp < limit) {
-                iter.remove();
-            }
-        }
+        index.traces.values().removeIf(indexTrace -> indexTrace.timestamp < limit);
     }
 }

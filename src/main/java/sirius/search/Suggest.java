@@ -40,6 +40,7 @@ public class Suggest<E extends Entity> {
     /**
      * Used to create a new suggestion for entities of the given class
      *
+     * @param index the IndexAccess instance
      * @param clazz the type of entities to suggest for
      */
     protected Suggest(IndexAccess index, Class<E> clazz) {

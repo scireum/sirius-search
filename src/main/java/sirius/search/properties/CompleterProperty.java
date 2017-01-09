@@ -26,6 +26,9 @@ public class CompleterProperty extends ObjectProperty {
     private final String contextName;
     private final String contextType;
 
+    /**
+     * Factory for generating properties based on having a {@link FastCompletion} annotation.
+     */
     @Register
     public static class Factory implements PropertyFactory {
 

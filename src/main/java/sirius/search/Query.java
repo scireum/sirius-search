@@ -547,6 +547,12 @@ public class Query<E extends Entity> {
         return this;
     }
 
+    /**
+     * Adds the given aggregration to be filled by the query
+     *
+     * @param aggregation the aggregation to fill
+     * @return the query itself for fluent method calls
+     */
     public Query<E> addAggregation(Aggregation aggregation) {
         aggregations.add(aggregation);
         return this;
@@ -824,7 +830,7 @@ public class Query<E extends Entity> {
 
     private void applyAggregations(SearchRequestBuilder srb) {
         for (Aggregation aggregation : aggregations) {
-            AggregationBuilder aggregationBuilder;
+            AggregationBuilder<?> aggregationBuilder;
 
             if (Strings.isEmpty(aggregation.getPath())) {
                 aggregationBuilder = AggregationBuilders.terms(aggregation.getName())

@@ -22,16 +22,22 @@ import java.lang.annotation.Target;
 public @interface FastCompletion {
     /**
      * Allows to store additional data for completion, e.g. an entity-id. This can be used to save additional queries.
+     *
+     * @return <tt>true</tt> if additional payloads are stored for completion, <tt>false</tt> otherwise
      */
     boolean payloads() default false;
 
     /**
      * The name for the context used to filter completions
+     *
+     * @return the name of the context used
      */
     String contextName();
 
     /**
      * The type of context. ElasticSearch provides "category" and "geo".
+     *
+     * @return the type of the context
      */
     String contextType() default "category";
 }

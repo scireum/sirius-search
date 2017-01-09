@@ -28,10 +28,25 @@ public class Fuzzy implements Constraint {
         this.value = value;
     }
 
+    /**
+     * Creates a new fuzzy query for the given field and value.
+     * <p>
+     * Use {@link #fuzziness(Fuzziness)} to specify the fuziness of the value. Otherwise {@link Fuzziness#AUTO} is used.
+     *
+     * @param field the field to search in
+     * @param value the value to filter on.
+     * @return the newly created constraint
+     */
     public static Fuzzy on(String field, String value) {
         return new Fuzzy(field, value);
     }
 
+    /**
+     * Specifies the fuzziness to use.
+     *
+     * @param value the fuzziness to use
+     * @return the contraint itself for fluent method calls
+     */
     public Fuzzy fuzziness(Fuzziness value) {
         this.fuzziness = value;
         return this;
