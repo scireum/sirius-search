@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ObjectProperty extends Property {
@@ -76,7 +77,7 @@ public class ObjectProperty extends Property {
                         innerField.setAccessible(true);
                         Object val = innerField.get(o);
                         if (val != null) {
-                            if (val instanceof Map) {
+                            if (val instanceof Map || val instanceof List) {
                                 valueMap.put(innerField.getName(), val);
                             } else {
                                 valueMap.put(innerField.getName(), NLS.toMachineString(val));
@@ -114,7 +115,7 @@ public class ObjectProperty extends Property {
                         try {
                             if (values.containsKey(innerField.getName())) {
                                 innerField.setAccessible(true);
-                                if (innerField.getType().equals(Map.class)) {
+                                if (innerField.getType().equals(Map.class) || innerField.getType().equals(List.class)) {
                                     innerField.set(obj, values.get(innerField.getName()));
                                 } else {
                                     innerField.set(obj,

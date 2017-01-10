@@ -10,8 +10,10 @@ package sirius.search;
 
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionFuzzyBuilder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +37,7 @@ public class Complete<E extends Entity> {
     private int limit = 5;
     private String contextName;
     private List<String> contextValues;
+    private Fuzziness fuzziness;
 
     protected Complete(IndexAccess index, Class<E> clazz) {
         this.index = index;
@@ -80,12 +83,23 @@ public class Complete<E extends Entity> {
     }
 
     /**
+     * Sets the fuzziness for the completer to compensate misspellings
+     *
+     * @param fuzziness defines the levenshtein distance
+     * @return the completion helper itself for fluent method calls
+     */
+    public Complete<E> fuzziness(Fuzziness fuzziness) {
+        this.fuzziness = fuzziness;
+        return this;
+    }
+
+    /**
      * Executes available completion-options or an empty list otherwise
      *
      * @return the generated completions or an empty list
      */
     public List<CompletionSuggestion.Entry.Option> completeList() {
-        CompletionSuggestionBuilder csb = generateCompletionBuilder();
+        CompletionSuggestionFuzzyBuilder csb = generateCompletionBuilder();
         SuggestRequestBuilder sqb = generateRequestBuilder(csb);
         return execute(sqb);
     }
@@ -104,18 +118,21 @@ public class Complete<E extends Entity> {
         return Collections.emptyList();
     }
 
-    private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionBuilder csb) {
+    private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionFuzzyBuilder csb) {
         return index.getClient()
                     .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
                     .addSuggestion(csb);
     }
 
-    private CompletionSuggestionBuilder generateCompletionBuilder() {
-        CompletionSuggestionBuilder csb = new CompletionSuggestionBuilder("completion");
-        csb.field(field);
-        csb.size(limit);
-        csb.text(query);
-        csb.addContextField(contextName, contextValues);
-        return csb;
+    private CompletionSuggestionFuzzyBuilder generateCompletionBuilder() {
+        CompletionSuggestionFuzzyBuilder csfb = new CompletionSuggestionFuzzyBuilder("completion");
+
+        csfb.field(field);
+        csfb.size(limit);
+        csfb.text(query);
+        csfb.addContextField(contextName, contextValues);
+        csfb.setFuzziness(fuzziness);
+
+        return csfb;
     }
 }
