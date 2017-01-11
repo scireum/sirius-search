@@ -228,10 +228,10 @@ public class DateRange {
 
     protected void applyToQuery(String field, Query<?> qry) {
         if (from != null) {
-            qry.where(FieldOperator.greater(field, from).including().orEmpty());
+            qry.where(FieldOperator.greater(field, from).including());
         }
         if (until != null) {
-            qry.where(FieldOperator.less(field, until).including().orEmpty());
+            qry.where(FieldOperator.less(field, until).including());
         }
     }
 
