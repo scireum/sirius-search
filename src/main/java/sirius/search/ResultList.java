@@ -35,7 +35,7 @@ public class ResultList<T> implements Iterable<T> {
 
     private final List<Facet> termFacets;
     private final List<Aggregation> aggregations;
-    private final Map<String, List<String>> aggregatedValues = Maps.newHashMap();
+    private final Map<String, List<Terms.Bucket>> aggregatedValues = Maps.newHashMap();
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
     private Monoflop facetsProcessed = Monoflop.create();
@@ -130,7 +130,7 @@ public class ResultList<T> implements Iterable<T> {
      *
      * @return a map containing the computed aggregations per field
      */
-    public Map<String, List<String>> getAggregations() {
+    public Map<String, List<Terms.Bucket>> getAggregations() {
         if (aggregationsProcessed.firstCall() && response != null) {
             for (Aggregation aggregation : aggregations) {
                 Terms terms;
@@ -144,23 +144,22 @@ public class ResultList<T> implements Iterable<T> {
                 }
 
                 for (Terms.Bucket bucket : terms.getBuckets()) {
-                    List<String> values = Lists.newArrayList();
-                    List<Terms.Bucket> buckets;
+                    List<Terms.Bucket> values = Lists.newArrayList();
+
                     if (Strings.isEmpty(aggregation.getPath())) {
-                        buckets = ((Terms) bucket.getAggregations()
-                                                 .get(aggregation.getSubAggregations().get(0).getName())).getBuckets();
+                        values.addAll(((Terms) bucket.getAggregations()
+                                                     .get(aggregation.getSubAggregations()
+                                                                     .get(0)
+                                                                     .getName())).getBuckets());
                     } else {
-                        buckets = ((Terms) bucket.getAggregations()
-                                                 .get(aggregation.getSubAggregations()
-                                                                 .get(0)
-                                                                 .getSubAggregations()
-                                                                 .get(0)
-                                                                 .getName())).getBuckets();
+                        values.addAll(((Terms) bucket.getAggregations()
+                                                     .get(aggregation.getSubAggregations()
+                                                                     .get(0)
+                                                                     .getSubAggregations()
+                                                                     .get(0)
+                                                                     .getName())).getBuckets());
                     }
 
-                    for (Terms.Bucket term : buckets) {
-                        values.add(term.getKeyAsString());
-                    }
                     aggregatedValues.put(bucket.getKeyAsString(), values);
                 }
             }

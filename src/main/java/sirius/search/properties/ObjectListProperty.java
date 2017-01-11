@@ -14,6 +14,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.Transient;
 import sirius.web.http.WebContext;
@@ -176,10 +177,28 @@ public class ObjectListProperty extends Property {
      */
     public void createMapping(XContentBuilder builder) throws IOException {
         builder.startObject(getName());
+
         builder.field("type", getMappingType());
         if (isIgnoreFromAll()) {
             builder.field("include_in_all", false);
         }
+
+        builder.startObject("properties");
+
+        for (Field innerField : field.getAnnotation(ListType.class).value().getDeclaredFields()) {
+            if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                builder.startObject(innerField.getName());
+                builder.field("type", "string");
+                builder.field("index",
+                              innerField.isAnnotationPresent(IndexMode.class) ?
+                              innerField.getAnnotation(IndexMode.class).indexMode() :
+                              IndexMode.MODE_NOT_ANALYZED);
+                builder.endObject();
+            }
+        }
+
+        builder.endObject();
+
         builder.endObject();
     }
 }
