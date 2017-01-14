@@ -46,14 +46,6 @@ public class Schema {
 
     private IndexAccess access;
 
-    protected Schema(IndexAccess access) {
-        this.access = access;
-        indexPrefix = Sirius.getConfig().getString("index.prefix");
-        if (!indexPrefix.endsWith("-")) {
-            indexPrefix = indexPrefix + "-";
-        }
-    }
-
     /**
      * To support multiple installations in parallel, an indexPrefix can be supplied, which is added to each index
      */
@@ -70,6 +62,15 @@ public class Schema {
      */
     protected Map<String, Class<? extends Entity>> nameTable =
             Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
+
+
+    protected Schema(IndexAccess access) {
+        this.access = access;
+        indexPrefix = Sirius.getConfig().getString("index.prefix");
+        if (!indexPrefix.endsWith("-")) {
+            indexPrefix = indexPrefix + "-";
+        }
+    }
 
     /*
      * Adds a known entity class

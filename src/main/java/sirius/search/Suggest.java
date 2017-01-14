@@ -27,10 +27,10 @@ public class Suggest<E extends Entity> {
     private Class<E> clazz;
     private String field = "_all";
     private String query;
-    private Float maxErrors = 2f;
+    private float maxErrors = 2f;
     private int limit = 5;
-    private Float confidence = 1f;
-    private String suggestMode = "missing";
+    private float confidence = 1f;
+    private SuggestMode suggestMode = SuggestMode.MISSING;
     private String analyzer = "whitespace";
 
     private String collateQuery;
@@ -144,9 +144,16 @@ public class Suggest<E extends Entity> {
      * @param confidence the level of confidence
      * @return the helper itself for fluent method calls
      */
-    public Suggest<E> confidence(Float confidence) {
+    public Suggest<E> confidence(float confidence) {
         this.confidence = confidence;
         return this;
+    }
+
+    /**
+     * Declares all supported suggestion modes.
+     */
+    public enum SuggestMode {
+        MISSING, POPULAR, ALWAYS
     }
 
     /**
@@ -162,7 +169,7 @@ public class Suggest<E extends Entity> {
      * @param suggestMode the suggest mode 'missing', 'popular' or 'always'
      * @return the helper itself for fluent method calls
      */
-    public Suggest<E> suggestMode(String suggestMode) {
+    public Suggest<E> suggestMode(SuggestMode suggestMode) {
         this.suggestMode = suggestMode;
         return this;
     }
@@ -174,22 +181,22 @@ public class Suggest<E extends Entity> {
      */
     private PhraseSuggestionBuilder generateSuggestionBuilder() {
         PhraseSuggestionBuilder phraseSuggestionBuilder = new PhraseSuggestionBuilder("suggestPhrase");
-        phraseSuggestionBuilder.field(field);
-        phraseSuggestionBuilder.text(query);
-        phraseSuggestionBuilder.maxErrors(maxErrors);
-        phraseSuggestionBuilder.size(limit);
-        phraseSuggestionBuilder.analyzer(analyzer);
-        phraseSuggestionBuilder.confidence(confidence);
-        phraseSuggestionBuilder.collateQuery(collateQuery);
-        phraseSuggestionBuilder.collateParams(collateParams);
-        phraseSuggestionBuilder.collatePrune(collatePrune);
+        phraseSuggestionBuilder.field(field)
+                               .text(query)
+                               .maxErrors(maxErrors)
+                               .size(limit)
+                               .analyzer(analyzer)
+                               .confidence(confidence)
+                               .collateQuery(collateQuery)
+                               .collateParams(collateParams)
+                               .collatePrune(collatePrune);
 
         if ((query.split("\\s+").length == 1) && (query.length() < 8)) {
             phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
-                    1).suggestMode(suggestMode).minWordLength(4));
+                    1).suggestMode(suggestMode.name().toLowerCase()).minWordLength(4));
         } else {
             phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
-                    2).suggestMode(suggestMode).minWordLength(4));
+                    2).suggestMode(suggestMode.name().toLowerCase()).minWordLength(4));
         }
         //phraseSuggestionBuilder.smoothingModel(new PhraseSuggestionBuilder.StupidBackoff(0.5));
 
@@ -210,7 +217,6 @@ public class Suggest<E extends Entity> {
 
     /**
      * Executes the suggest request and returns a list of tuples of the query string and the suggest options.
-     * <p>
      *
      * @return tuples of the query string and all suggest options
      */

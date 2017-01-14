@@ -13,8 +13,7 @@
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
-    <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)
-    </description>
+    <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)</description>
 
     <dependencies>
         <dependency>
@@ -38,7 +37,6 @@
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
             <version>4.1.0</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.elasticsearch.module</groupId>

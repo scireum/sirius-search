@@ -14,29 +14,29 @@ import sirius.kernel.di.std.Part
 class QueriesSpec extends BaseSpecification {
 
     @Part
-    private static IndexAccess idx;
+    private static IndexAccess index
 
     def "robust query can filter on fields"() {
         given:
-        ParentEntity e = new ParentEntity();
-        e.setName("Query");
+        ParentEntity e = new ParentEntity()
+        e.setName("Query")
         when:
-        e = idx.update(e);
+        e = index.update(e)
         and:
-        idx.blockThreadForUpdate();
+        index.blockThreadForUpdate()
         then:
-        idx.select(ParentEntity.class).query("id:" + e.getId()).count() == 1
+        index.select(ParentEntity.class).query("id:" + e.getId()).count() == 1
     }
 
     def "robust query can filter on empty fields"() {
         given:
-        ParentEntity e = new ParentEntity();
+        ParentEntity e = new ParentEntity()
         when:
-        e = idx.update(e);
+        e = index.update(e)
         and:
-        idx.blockThreadForUpdate();
+        index.blockThreadForUpdate()
         then:
-        idx.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
+        index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
     }
 
 

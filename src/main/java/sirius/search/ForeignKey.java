@@ -39,6 +39,9 @@ import java.util.List;
  * like the name of a parent object, which is automatically updated once it changes.
  */
 public class ForeignKey {
+
+    private static final String LANGUAGE_GROOVY = "groovy";
+
     private final RefType refType;
     private String otherType;
     private String localType;
@@ -391,7 +394,7 @@ public class ForeignKey {
             sb.append(";");
             ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return new Script(sb.toString(), ScriptService.ScriptType.INLINE, "groovy", ctx);
+        return new Script(sb.toString(), ScriptService.ScriptType.INLINE, LANGUAGE_GROOVY, ctx);
     }
 
     /**

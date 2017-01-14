@@ -79,7 +79,6 @@ public class ObjectProperty extends Property {
         if (o != null) {
             Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
-<<<<<<< HEAD
                 if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
                     try {
                         innerField.setAccessible(true);
@@ -101,9 +100,7 @@ public class ObjectProperty extends Property {
                                   .handle();
                     }
                 }
-=======
                 transformField(o, valueMap, innerField);
->>>>>>> aha/2.0
             }
         }
 
@@ -145,33 +142,7 @@ public class ObjectProperty extends Property {
             if (value instanceof Map) {
                 Map<String, String> values = (Map<String, String>) value;
                 for (Field innerField : targetClass.getDeclaredFields()) {
-<<<<<<< HEAD
-                    if (!innerField.isAnnotationPresent(Transient.class)
-                        && !Modifier.isStatic(innerField.getModifiers())) {
-                        try {
-                            if (values.containsKey(innerField.getName())) {
-                                innerField.setAccessible(true);
-                                if (innerField.getType().equals(Map.class) || innerField.getType().equals(List.class)) {
-                                    innerField.set(obj, values.get(innerField.getName()));
-                                } else {
-                                    innerField.set(obj,
-                                                   NLS.parseMachineString(innerField.getType(),
-                                                                          values.get(innerField.getName())));
-                                }
-                            }
-                        } catch (Throwable e) {
-                            Exceptions.handle()
-                                      .error(e)
-                                      .to(IndexAccess.LOG)
-                                      .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
-                                                              innerField.getName(),
-                                                              toString())
-                                      .handle();
-                        }
-                    }
-=======
                     fillField(obj, values, innerField);
->>>>>>> aha/2.0
                 }
             }
             return obj;

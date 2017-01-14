@@ -1290,9 +1290,9 @@ public class Query<E extends Entity> {
             IndexAccess.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
                                  this,
                                  ExecutionPoint.snapshot());
-        } else {
-            srb.addSort("_doc", SortOrder.ASC);
         }
+
+        srb.addSort("_doc", SortOrder.ASC);
         srb.setFrom(0);
 
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.

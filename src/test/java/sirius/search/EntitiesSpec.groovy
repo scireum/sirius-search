@@ -17,7 +17,7 @@ import sirius.kernel.health.HandledException
 class EntitiesSpec extends BaseSpecification {
 
     @Part
-    private static IndexAccess index;
+    private static IndexAccess index
 
     def "cascase delete works"() {
         given:
