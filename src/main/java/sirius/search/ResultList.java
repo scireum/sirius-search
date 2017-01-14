@@ -44,8 +44,9 @@ public class ResultList<T> implements Iterable<T> {
     /**
      * Creates a new result list
      *
-     * @param termFacets list of facets created by the query
-     * @param response   underlying search response building the result
+     * @param termFacets   list of facets created by the query
+     * @param aggregations the list of aggregations computed by the query
+     * @param response     underlying search response building the result
      */
     protected ResultList(List<Facet> termFacets, List<Aggregation> aggregations, SearchResponse response) {
         this.termFacets = termFacets;

@@ -24,10 +24,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Represents a property which contains a  POJO object. Such fields must wear a {@link
+ * NestedObject} annotation.
+ */
 public class ObjectProperty extends Property {
 
     protected final String analyzer;
 
+    /**
+     * Factory for generating properties based on having a {@link NestedObject} annotation.
+     */
     @Register
     public static class Factory implements PropertyFactory {
 
@@ -72,6 +79,7 @@ public class ObjectProperty extends Property {
         if (o != null) {
             Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
+<<<<<<< HEAD
                 if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
                     try {
                         innerField.setAccessible(true);
@@ -93,23 +101,51 @@ public class ObjectProperty extends Property {
                                   .handle();
                     }
                 }
+=======
+                transformField(o, valueMap, innerField);
+>>>>>>> aha/2.0
             }
         }
 
         return valueMap;
     }
 
+    private void transformField(Object o, Map<String, Object> valueMap, Field innerField) {
+        if (innerField.isAnnotationPresent(Transient.class) || Modifier.isStatic(innerField.getModifiers())) {
+            return;
+        }
+        try {
+            innerField.setAccessible(true);
+            Object val = innerField.get(o);
+            if (val != null) {
+                if (val instanceof Map) {
+                    valueMap.put(innerField.getName(), val);
+                } else {
+                    valueMap.put(innerField.getName(), NLS.toMachineString(val));
+                }
+            }
+        } catch (Throwable e) {
+            Exceptions.handle()
+                      .error(e)
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
+                                              innerField.getName(),
+                                              toString())
+                      .handle();
+        }
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     protected Object transformFromSource(Object value) {
-        Map<String, String> values = (Map<String, String>) value;
+        try {
+            Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
+            Object obj = targetClass.newInstance();
 
-        if (value instanceof Map) {
-            try {
-                Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
-                Object obj = targetClass.newInstance();
-
+            if (value instanceof Map) {
+                Map<String, String> values = (Map<String, String>) value;
                 for (Field innerField : targetClass.getDeclaredFields()) {
+<<<<<<< HEAD
                     if (!innerField.isAnnotationPresent(Transient.class)
                         && !Modifier.isStatic(innerField.getModifiers())) {
                         try {
@@ -133,18 +169,43 @@ public class ObjectProperty extends Property {
                                       .handle();
                         }
                     }
+=======
+                    fillField(obj, values, innerField);
+>>>>>>> aha/2.0
                 }
-
-                return obj;
-            } catch (Throwable e) {
-                Exceptions.handle()
-                          .error(e)
-                          .to(IndexAccess.LOG)
-                          .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
-                          .handle();
             }
+            return obj;
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .error(e)
+                            .to(IndexAccess.LOG)
+                            .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
+                            .handle();
+        }
+    }
+
+    private void fillField(Object obj, Map<String, String> values, Field innerField) {
+        if (innerField.isAnnotationPresent(Transient.class) || Modifier.isStatic(innerField.getModifiers())) {
+            return;
         }
 
-        return null;
+        try {
+            if (values.containsKey(innerField.getName())) {
+                innerField.setAccessible(true);
+                if (innerField.getType().equals(Map.class)) {
+                    innerField.set(obj, values.get(innerField.getName()));
+                } else {
+                    innerField.set(obj, NLS.parseMachineString(innerField.getType(), values.get(innerField.getName())));
+                }
+            }
+        } catch (Throwable e) {
+            Exceptions.handle()
+                      .error(e)
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
+                                              innerField.getName(),
+                                              toString())
+                      .handle();
+        }
     }
 }

@@ -89,10 +89,8 @@ public class FieldOperator implements Constraint {
      */
     public FieldOperator orEmpty() {
         this.orEmpty = true;
-
         return this;
     }
-
 
     @Override
     public QueryBuilder createQuery() {

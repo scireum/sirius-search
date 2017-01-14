@@ -745,14 +745,8 @@ public class IndexAccess {
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     *            <<<<<<< HEAD
-     * @throws HandledException                      if either any other exception occurs, or if all three attempts
-     *                                               fail with an optimistic lock error.
-     *                                               =======
-     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts
-     *                                               fail
-     *                                               with an optimistic lock error.
-     *                                               >>>>>>> origin/master
+     * @throws HandledException if either any other exception occurs, or if all three attempts
+     *                          fail with an optimistic lock error.
      */
     public void retry(UnitOfWork uow) {
         int retries = 3;

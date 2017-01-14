@@ -8,22 +8,8 @@
 
 package sirius.search;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.google.common.base.Charsets;
-import com.google.common.io.CharStreams;
-import org.elasticsearch.Version;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.node.Node;
-import org.elasticsearch.node.internal.InternalSettingsPreparer;
-import org.elasticsearch.plugins.Plugin;
-import org.elasticsearch.script.groovy.GroovyPlugin;
-import sirius.kernel.async.CallContext;
 import sirius.kernel.async.Future;
 import sirius.kernel.commons.Callback;
-import sirius.kernel.commons.Files;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
@@ -31,12 +17,6 @@ import sirius.kernel.health.HandledException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Central access class to the persistence layer.
