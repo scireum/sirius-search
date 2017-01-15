@@ -22,10 +22,13 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface ListType {
+
     /**
      * Contains the class of the elements kept in the list field
      *
      * @return the element class of the annotated list field
      */
     Class<?> value();
+
+    boolean nested() default false;
 }

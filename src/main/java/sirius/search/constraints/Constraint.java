@@ -8,7 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 /**
@@ -22,14 +21,6 @@ public interface Constraint {
      * @return the ElasticSearch query representing this constraint or <tt>null</tt> if it is a filter
      */
     QueryBuilder createQuery();
-
-    /**
-     * Creates an ElasticSearch filter which represents this constraint.
-     *
-     * @return an ElasticSearch filter representing this constraint or <tt>null</tt> if this constraint is realized
-     * via a query and not a filter.
-     */
-    FilterBuilder createFilter();
 
     /**
      * Creates a string representation of this constraint.

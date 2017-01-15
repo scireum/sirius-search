@@ -57,6 +57,9 @@ public class LongProperty extends Property {
                 Exceptions.ignore(e);
             }
         }
+        if (value instanceof Integer) {
+            value = Long.valueOf((Integer) value);
+        }
         if (value != null && !(value instanceof Long) && !(value instanceof Integer)) {
             value = null;
         }

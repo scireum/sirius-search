@@ -8,9 +8,8 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 
 /**
  * Represents a constraint which verifies that a given field is empty.
@@ -38,12 +37,7 @@ public class NotFilled implements Constraint {
 
     @Override
     public QueryBuilder createQuery() {
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        return FilterBuilders.missingFilter(field);
+        return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
     }
 
     @Override

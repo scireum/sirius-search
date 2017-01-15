@@ -9,14 +9,19 @@
 package sirius.search;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRange;
+import org.elasticsearch.search.aggregations.InternalAggregations;
+import org.elasticsearch.search.aggregations.bucket.nested.InternalNested;
+import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
+import sirius.kernel.commons.Strings;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Combines the result items of a query along with the collected facet filters.
@@ -29,19 +34,24 @@ import java.util.List;
 public class ResultList<T> implements Iterable<T> {
 
     private final List<Facet> termFacets;
+    private final List<Aggregation> aggregations;
+    private final Map<String, List<Terms.Bucket>> aggregatedValues = Maps.newHashMap();
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
     private Monoflop facetsProcessed = Monoflop.create();
+    private Monoflop aggregationsProcessed = Monoflop.create();
 
     /**
      * Creates a new result list
      *
-     * @param termFacets list of facets created by the query
-     * @param response   underlying search response building the result
+     * @param termFacets   list of facets created by the query
+     * @param aggregations the list of aggregations computed by the query
+     * @param response     underlying search response building the result
      */
-    protected ResultList(List<Facet> termFacets, SearchResponse response) {
+    protected ResultList(List<Facet> termFacets, List<Aggregation> aggregations, SearchResponse response) {
         this.termFacets = termFacets;
         this.response = response;
+        this.aggregations = aggregations;
     }
 
     @Override
@@ -95,22 +105,66 @@ public class ResultList<T> implements Iterable<T> {
         if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
                 if (facet instanceof DateFacet) {
-                    DateRange range = response.getAggregations().get(facet.getName());
-                    for (sirius.search.DateRange dr : ((DateFacet) facet).getRanges()) {
-                        DateRange.Bucket bucket = range.getBucketByKey(dr.getKey());
-                        if (bucket != null && bucket.getDocCount() > 0) {
-                            facet.addItem(dr.getKey(), dr.getName(), bucket.getDocCount());
+                    Range range = response.getAggregations().get(facet.getName());
+                    for (Range.Bucket bucket : range.getBuckets()) {
+                        if (bucket.getDocCount() > 0) {
+                            DateRange dateRange = ((DateFacet) facet).getRangeByName(bucket.getKeyAsString());
+                            if (dateRange != null) {
+                                facet.addItem(dateRange.getKey(), dateRange.getName(), bucket.getDocCount());
+                            }
                         }
                     }
                 } else {
                     Terms terms = response.getAggregations().get(facet.getName());
                     for (Terms.Bucket bucket : terms.getBuckets()) {
-                        String key = bucket.getKey();
+                        String key = bucket.getKeyAsString();
                         facet.addItem(key, key, bucket.getDocCount());
                     }
                 }
             }
         }
         return termFacets;
+    }
+
+    /**
+     * Returns all aggregations computed by ElasticSearch.
+     *
+     * @return a map containing the computed aggregations per field
+     */
+    public Map<String, List<Terms.Bucket>> getAggregations() {
+        if (aggregationsProcessed.firstCall() && response != null) {
+            for (Aggregation aggregation : aggregations) {
+                Terms terms;
+
+                if (Strings.isEmpty(aggregation.getPath())) {
+                    terms = response.getAggregations().get(aggregation.getName());
+                } else {
+                    InternalAggregations internalAggregations =
+                            ((InternalNested) response.getAggregations().get(aggregation.getName())).getAggregations();
+                    terms = internalAggregations.get(aggregation.getSubAggregations().get(0).getName());
+                }
+
+                for (Terms.Bucket bucket : terms.getBuckets()) {
+                    List<Terms.Bucket> values = Lists.newArrayList();
+
+                    if (Strings.isEmpty(aggregation.getPath())) {
+                        values.addAll(((Terms) bucket.getAggregations()
+                                                     .get(aggregation.getSubAggregations()
+                                                                     .get(0)
+                                                                     .getName())).getBuckets());
+                    } else {
+                        values.addAll(((Terms) bucket.getAggregations()
+                                                     .get(aggregation.getSubAggregations()
+                                                                     .get(0)
+                                                                     .getSubAggregations()
+                                                                     .get(0)
+                                                                     .getName())).getBuckets());
+                    }
+
+                    aggregatedValues.put(bucket.getKeyAsString(), values);
+                }
+            }
+        }
+        return aggregatedValues;
     }
 }

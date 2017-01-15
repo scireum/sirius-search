@@ -8,14 +8,11 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.util.Collection;
 import java.util.List;
@@ -31,7 +28,6 @@ public class OneInField implements Constraint {
     private final Collection<?> values;
     private final String field;
     private boolean orEmpty = false;
-    private boolean isFilter;
     private boolean forceEmpty = false;
 
     /*
@@ -48,7 +44,7 @@ public class OneInField implements Constraint {
         }
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }
@@ -73,7 +69,6 @@ public class OneInField implements Constraint {
      * @return the constraint itself for fluent method calls
      */
     public OneInField orEmpty() {
-        asFilter();
         orEmpty = true;
         return this;
     }
@@ -86,61 +81,27 @@ public class OneInField implements Constraint {
      * @return the constraint itself for fluent method calls
      */
     public OneInField forceEmpty() {
-        asFilter();
         orEmpty = true;
         forceEmpty = true;
         return this;
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public OneInField asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter) {
-            if (values == null || values.isEmpty()) {
-                return null;
+        if (values == null || values.isEmpty()) {
+            if (forceEmpty) {
+                return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
             }
-            BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-            for (Object value : values) {
-                boolQueryBuilder.should(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
-            }
-            return boolQueryBuilder;
+            return null;
         }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            if (values == null) {
-                return null;
-            }
-            BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
-            if (values.isEmpty()) {
-                if (forceEmpty) {
-                    boolFilterBuilder.should(FilterBuilders.missingFilter(field));
-                    return boolFilterBuilder;
-                }
-                return null;
-            }
-            for (Object value : values) {
-                boolFilterBuilder.should(FilterBuilders.termFilter(field, FieldEqual.transformFilterValue(value)));
-            }
-            if (orEmpty) {
-                boolFilterBuilder.should(FilterBuilders.missingFilter(field));
-            }
-
-            return boolFilterBuilder;
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (Object value : values) {
+            boolQueryBuilder.should(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
         }
-        return null;
+        if (orEmpty) {
+            boolQueryBuilder.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
+        }
+        return boolQueryBuilder;
     }
 
     @Override

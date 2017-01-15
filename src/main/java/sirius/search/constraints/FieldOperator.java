@@ -8,19 +8,10 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalAccessor;
 
 /**
  * Represents a relational filter which can be used to filter &lt; or &lt;=, along with &gt; or &gt;=
@@ -34,7 +25,6 @@ public class FieldOperator implements Constraint {
     private String field;
     private Object value;
     private Bound bound;
-    private boolean isFilter;
     private boolean orEmpty = false;
 
     /*
@@ -98,25 +88,13 @@ public class FieldOperator implements Constraint {
      * @return the constraint itself for fluent method calls
      */
     public FieldOperator orEmpty() {
-        asFilter();
         this.orEmpty = true;
-
-        return this;
-    }
-
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public FieldOperator asFilter() {
-        isFilter = true;
         return this;
     }
 
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter && !orEmpty && value != null) {
+        if (value != null) {
             RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery(field);
             if (bound == Bound.LT) {
                 rangeQueryBuilder.lt(value);
@@ -128,38 +106,14 @@ public class FieldOperator implements Constraint {
                 rangeQueryBuilder.gt(value);
             }
 
-            return rangeQueryBuilder;
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter && value != null) {
             if (orEmpty) {
-                BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
-                if (bound == Bound.LT) {
-                    boolFilterBuilder.should(FilterBuilders.rangeFilter(field).lt(value));
-                } else if (bound == Bound.LT_EQ) {
-                    boolFilterBuilder.should(FilterBuilders.rangeFilter(field).lte(value));
-                } else if (bound == Bound.GT_EQ) {
-                    boolFilterBuilder.should(FilterBuilders.rangeFilter(field).gte(value));
-                } else if (bound == Bound.GT) {
-                    boolFilterBuilder.should(FilterBuilders.rangeFilter(field).gt(value));
-                }
-                boolFilterBuilder.should(FilterBuilders.missingFilter(field));
-                return boolFilterBuilder;
-            } else {
-                if (bound == Bound.LT) {
-                    return FilterBuilders.rangeFilter(field).lt(value);
-                } else if (bound == Bound.LT_EQ) {
-                    return FilterBuilders.rangeFilter(field).lte(value);
-                } else if (bound == Bound.GT_EQ) {
-                    return FilterBuilders.rangeFilter(field).gte(value);
-                } else if (bound == Bound.GT) {
-                    return FilterBuilders.rangeFilter(field).gt(value);
-                }
+                BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+                boolQuery.should(rangeQueryBuilder);
+                boolQuery.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
+                return boolQuery;
             }
+
+            return rangeQueryBuilder;
         }
         return null;
     }

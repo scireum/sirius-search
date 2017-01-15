@@ -8,14 +8,12 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.commons.Strings;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -30,7 +28,6 @@ import java.time.temporal.TemporalAccessor;
 public class FieldEqual implements Constraint {
     private final String field;
     private Object value;
-    private boolean isFilter;
     private boolean ignoreNull = false;
 
     /*
@@ -39,7 +36,7 @@ public class FieldEqual implements Constraint {
     private FieldEqual(String field, Object value) {
         // In search queries the id field must be referenced via "_id" not "id..
         if (Entity.ID.equalsIgnoreCase(field)) {
-            this.field = Index.ID_FIELD;
+            this.field = IndexAccess.ID_FIELD;
         } else {
             this.field = field;
         }
@@ -99,41 +96,15 @@ public class FieldEqual implements Constraint {
         return this;
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public FieldEqual asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (Strings.isEmpty(value)) {
-            // We need a filter in that case...
-            return null;
-        }
-        if (!isFilter) {
-            return QueryBuilders.termQuery(field, value);
-        }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
         if (Strings.isEmpty(value)) {
             if (ignoreNull) {
                 return null;
             }
-            // We need a filter in that case...
-            return FilterBuilders.missingFilter(field);
+            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
         }
-        if (isFilter) {
-            return FilterBuilders.termFilter(field, value);
-        }
-        return null;
+        return QueryBuilders.termQuery(field, value);
     }
 
     @Override

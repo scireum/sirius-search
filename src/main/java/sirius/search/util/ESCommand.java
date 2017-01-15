@@ -9,14 +9,14 @@
 package sirius.search.util;
 
 import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import sirius.kernel.commons.Values;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.console.Command;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,6 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Register
 public class ESCommand implements Command {
+
+    @Part
+    private IndexAccess index;
 
     @Override
     public void execute(Output output, String... params) throws Exception {
@@ -59,7 +62,7 @@ public class ESCommand implements Command {
             output.line("Results (limited at 500):");
             output.separator();
             int rows = 0;
-            for (Entity e : Index.select(type)
+            for (Entity e : index.select(type)
                                  .deliberatelyUnrouted()
                                  .query(values.at(2).asString())
                                  .limit(500)
@@ -76,15 +79,15 @@ public class ESCommand implements Command {
     private void update(Output output, Values values) {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
-            EntityDescriptor ed = Index.getDescriptor(type);
+            EntityDescriptor ed = index.getDescriptor(type);
             AtomicInteger rows = new AtomicInteger();
             String filterText = values.at(2).asString();
             if ("-".equals(filterText)) {
                 filterText = null;
             }
-            Index.select(type).deliberatelyUnrouted().query(filterText).limit(500).iterateAll(e -> {
+            index.select(type).deliberatelyUnrouted().query(filterText).limit(500).iterateAll(e -> {
                 ed.getProperty(values.at(3).asString()).readFromSource(e, values.at(4).get());
-                Index.update(e);
+                index.update(e);
                 rows.incrementAndGet();
             });
             output.separator();
@@ -96,10 +99,10 @@ public class ESCommand implements Command {
     private void resave(Output output, Values values) {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
-            EntityDescriptor ed = Index.getDescriptor(type);
+            EntityDescriptor ed = index.getDescriptor(type);
             AtomicInteger rows = new AtomicInteger();
-            Index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterateAll(e -> {
-                Index.update(e);
+            index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterateAll(e -> {
+                index.update(e);
                 rows.incrementAndGet();
             });
             output.separator();
@@ -112,8 +115,8 @@ public class ESCommand implements Command {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
             AtomicInteger rows = new AtomicInteger();
-            Index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterateAll(e -> {
-                Index.delete(e);
+            index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterateAll(e -> {
+                index.delete(e);
                 rows.incrementAndGet();
             });
             output.apply("%s rows affected", rows.get());
@@ -123,25 +126,21 @@ public class ESCommand implements Command {
 
     private void unbalance(Output output, Values values) {
         output.line("Disabling automatic allocation.");
-
-        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
-        Settings settings =
-                ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "none").build();
-        request.transientSettings(settings);
-        Index.getClient().admin().cluster().updateSettings(request);
-
+        changeAllocationMode("none");
         output.line("Disabled automatic allocation.");
         output.blankLine();
     }
 
+    private void changeAllocationMode(String mode) {
+        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
+        Settings settings = Settings.settingsBuilder().put("cluster.routing.allocation.enable", mode).build();
+        request.transientSettings(settings);
+        index.getClient().admin().cluster().updateSettings(request);
+    }
+
     private void balance(Output output, Values values) {
         output.line("Enabling automatic allocation.");
-
-        ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
-        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.routing.allocation.enable", "all").build();
-        request.transientSettings(settings);
-        Index.getClient().admin().cluster().updateSettings(request);
-
+        changeAllocationMode("all");
         output.line("Enabled automatic allocation.");
         output.blankLine();
     }

@@ -13,21 +13,17 @@ import com.google.common.collect.Sets;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.elasticsearch.action.count.CountRequestBuilder;
-import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.action.deletebyquery.DeleteByQueryRequestBuilder;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -42,6 +38,7 @@ import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.ValueHolder;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
@@ -75,7 +72,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Represents a query against the database which are created via {@link Index#select(Class)}.
+ * Represents a query against the database which are created via {@link IndexAccess#select(Class)}.
  *
  * @param <E> the type of entities being queried
  */
@@ -100,6 +97,7 @@ public class Query<E extends Entity> {
     private List<Constraint> constraints = Lists.newArrayList();
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
+    private List<Aggregation> aggregations = Lists.newArrayList();
     private boolean randomize;
     private String randomizeField;
     private int start;
@@ -114,6 +112,9 @@ public class Query<E extends Entity> {
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
     private int scrollTTL = SCROLL_TTL_SECONDS;
+
+    @Part
+    private static IndexAccess indexAccess;
 
     /**
      * Used to create a nwe query for entities of the given class
@@ -235,7 +236,7 @@ public class Query<E extends Entity> {
 
     /**
      * Adds an <tt>exclude</tt> constraint to the query in the id field.
-     *
+     * <p>
      * This effectively excludes all entities from the given list from the query.
      *
      * @param entities the entities to exclude
@@ -243,7 +244,7 @@ public class Query<E extends Entity> {
      * @see NoneInField
      */
     public Query<E> exclude(EntityRefList<E> entities) {
-        constraints.add(NoneInField.on(entities.getIds(), Index.ID_FIELD));
+        constraints.add(NoneInField.on(entities.getIds(), IndexAccess.ID_FIELD));
         return this;
     }
 
@@ -273,10 +274,10 @@ public class Query<E extends Entity> {
             }
             RobustQueryParser constraint = new RobustQueryParser(this.query, defaultField, tokenizer, autoexpand);
             if (!constraint.isEmpty()) {
-                if (Index.LOG.isFINE()) {
-                    Index.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("Compiled '%s' into '%s'", query, constraint);
                 }
-                where((constraint));
+                where(constraint);
             } else if (forced) {
                 fail();
             }
@@ -288,8 +289,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -301,8 +302,7 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -317,8 +317,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -332,8 +332,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -361,7 +361,7 @@ public class Query<E extends Entity> {
                 result.add(Collections.singletonList(token));
             }
         } catch (IOException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
 
         return result;
@@ -444,7 +444,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> index(String indexToUse) {
-        this.index = Index.getIndexName(indexToUse);
+        this.index = indexAccess.getIndexName(indexToUse);
         return this;
     }
 
@@ -475,7 +475,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     protected Query<?> autoRoute(String field, String value) {
-        EntityDescriptor descriptor = Index.getDescriptor(clazz);
+        EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         if (!descriptor.hasRouting()) {
             return this;
         }
@@ -548,6 +548,17 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds the given aggregration to be filled by the query
+     *
+     * @param aggregation the aggregation to fill
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addAggregation(Aggregation aggregation) {
+        aggregations.add(aggregation);
+        return this;
+    }
+
+    /**
      * Adds a term facet to be filled by the query.
      *
      * @param field      the field to scan
@@ -556,13 +567,13 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addTermFacet(String field, String value, ValueComputer<String, String> translator) {
-        final Property p = Index.getDescriptor(clazz).getProperty(field);
+        final Property p = indexAccess.getDescriptor(clazz).getProperty(field);
         if (p instanceof EnumProperty && translator == null) {
             translator = (v) -> String.valueOf(((EnumProperty) p).transformFromSource(v));
         }
         termFacets.add(new Facet(p.getFieldTitle(), field, value, translator));
         if (Strings.isFilled(value)) {
-            where(FieldEqual.on(field, value).asFilter());
+            where(FieldEqual.on(field, value));
         }
 
         return this;
@@ -636,7 +647,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addDateRangeFacet(String field, String value, DateRange... ranges) {
-        final Property p = Index.getDescriptor(clazz).getProperty(field);
+        final Property p = indexAccess.getDescriptor(clazz).getProperty(field);
 
         DateFacet dateFacet = new DateFacet(p.getFieldTitle(), field, value, ranges);
         termFacets.add(dateFacet);
@@ -760,15 +771,15 @@ public class Query<E extends Entity> {
                 return null;
             }
             SearchRequestBuilder srb = buildSearch();
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
-                               Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
-                               buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
+                                     indexAccess.getIndex(clazz),
+                                     indexAccess.getDescriptor(clazz).getType(),
+                                     buildQuery());
             }
             return transformFirst(srb);
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -783,10 +794,12 @@ public class Query<E extends Entity> {
     }
 
     private SearchRequestBuilder buildSearch() {
-        EntityDescriptor ed = Index.getDescriptor(clazz);
-        SearchRequestBuilder srb = Index.getClient()
-                                        .prepareSearch(index != null ? index : Index.getIndexName(ed.getIndex()))
-                                        .setTypes(ed.getType());
+        EntityDescriptor ed = indexAccess.getDescriptor(clazz);
+        SearchRequestBuilder srb = indexAccess.getClient()
+                                              .prepareSearch(index != null ?
+                                                             index :
+                                                             indexAccess.getIndexName(ed.getIndex()))
+                                              .setTypes(ed.getType());
         srb.setVersion(true);
         if (primary) {
             srb.setPreference("_primary");
@@ -795,11 +808,12 @@ public class Query<E extends Entity> {
         applyRouting(ed, srb::setRouting);
         applyOrderBys(srb);
         applyFacets(srb);
-        applyQueriesAndFilters(srb);
+        applyAggregations(srb);
+        applyQueries(srb);
         applyLimit(srb);
 
         if (logQuery) {
-            Index.LOG.INFO(srb);
+            IndexAccess.LOG.INFO(srb);
         }
 
         return srb;
@@ -812,6 +826,38 @@ public class Query<E extends Entity> {
         if (limit != null && limit > 0) {
             srb.setSize(limit);
         }
+    }
+
+    private void applyAggregations(SearchRequestBuilder srb) {
+        for (Aggregation aggregation : aggregations) {
+            AggregationBuilder<?> aggregationBuilder;
+
+            if (Strings.isEmpty(aggregation.getPath())) {
+                aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
+                                                        .field(aggregation.getField())
+                                                        .size(aggregation.getSize());
+            } else {
+                aggregationBuilder = AggregationBuilders.nested(aggregation.getName()).path(aggregation.getPath());
+            }
+
+            for (Aggregation subAggreation : aggregation.getSubAggregations()) {
+                aggregationBuilder.subAggregation(buildSubAggregations(subAggreation));
+            }
+
+            srb.addAggregation(aggregationBuilder);
+        }
+    }
+
+    private TermsBuilder buildSubAggregations(Aggregation aggregation) {
+
+        TermsBuilder aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
+                                                             .field(aggregation.getField())
+                                                             .size(aggregation.getSize());
+        for (Aggregation subSubAggreation : aggregation.getSubAggregations()) {
+            aggregationBuilder.subAggregation(buildSubAggregations(subSubAggreation));
+        }
+
+        return aggregationBuilder;
     }
 
     private void applyFacets(SearchRequestBuilder srb) {
@@ -833,10 +879,10 @@ public class Query<E extends Entity> {
     private void applyOrderBys(SearchRequestBuilder srb) {
         if (randomize) {
             if (randomizeField != null) {
-                srb.addSort(SortBuilders.scriptSort("Math.random()*doc['" + randomizeField + "'].value", "number")
-                                        .order(SortOrder.DESC));
+                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()*doc['" + randomizeField + "'].value"),
+                                                    "number").order(SortOrder.DESC));
             } else {
-                srb.addSort(SortBuilders.scriptSort("Math.random()", "number").order(SortOrder.ASC));
+                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()"), "number").order(SortOrder.ASC));
             }
         } else {
             for (Tuple<String, Boolean> sort : orderBys) {
@@ -845,40 +891,10 @@ public class Query<E extends Entity> {
         }
     }
 
-    private void applyQueriesAndFilters(SearchRequestBuilder srb) {
+    private void applyQueries(SearchRequestBuilder srb) {
         QueryBuilder qb = buildQuery();
         if (qb != null) {
             srb.setQuery(qb);
-        }
-        FilterBuilder sb = buildFilter();
-        if (sb != null) {
-            if (qb == null && termFacets.isEmpty()) {
-                srb.setPostFilter(sb);
-            } else {
-                srb.setQuery(QueryBuilders.filteredQuery(qb == null ? QueryBuilders.matchAllQuery() : qb, sb));
-            }
-        }
-    }
-
-    private void applyRouting(EntityDescriptor ed, Consumer<String> routingTaget) {
-        if (Strings.isFilled(routing)) {
-            if (!ed.hasRouting()) {
-                Exceptions.handle()
-                          .to(Index.LOG)
-                          .withSystemErrorMessage("Performing a search on %s with a routing "
-                                                  + "- but entity has no routing attribute (in @Indexed)! "
-                                                  + "This will most probably FAIL!", clazz.getName())
-                          .handle();
-            }
-            routingTaget.accept(routing);
-        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-            Exceptions.handle()
-                      .to(Index.LOG)
-                      .withSystemErrorMessage("Performing a search on %s without providing a routing. "
-                                              + "Consider providing a routing for better performance "
-                                              + "or call deliberatelyUnrouted() to signal that routing was "
-                                              + "intentionally skipped.", clazz.getName())
-                      .handle();
         }
     }
 
@@ -908,7 +924,7 @@ public class Query<E extends Entity> {
     public ResultList<E> queryResultList() {
         try {
             if (forceFail) {
-                return new ResultList<>(Lists.newArrayList(), null);
+                return new ResultList<>(Lists.newArrayList(), Lists.newArrayList(), null);
             }
             boolean defaultLimitEnforced = false;
             if (limit == null) {
@@ -916,21 +932,21 @@ public class Query<E extends Entity> {
                 defaultLimitEnforced = true;
             }
             SearchRequestBuilder srb = buildSearch();
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("SEARCH: %s.%s: %s",
-                               Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
-                               buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("SEARCH: %s.%s: %s",
+                                     indexAccess.getIndex(clazz),
+                                     indexAccess.getDescriptor(clazz).getType(),
+                                     buildQuery());
             }
             ResultList<E> resultList = transform(srb);
             if (defaultLimitEnforced && resultList.size() == DEFAULT_LIMIT) {
-                Index.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
-                               + "Please provide an explicit limit or use Query.iterate to remove this warning. "
-                               + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
+                IndexAccess.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
+                                     + "Please provide an explicit limit or use Query.iterate to remove this warning. "
+                                     + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
             }
             return resultList;
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -944,27 +960,49 @@ public class Query<E extends Entity> {
             if (forceFail) {
                 return 0;
             }
-            EntityDescriptor ed = Index.getDescriptor(clazz);
-            CountRequestBuilder crb = Index.getClient()
-                                           .prepareCount(index != null ? index : Index.getIndex(clazz))
-                                           .setTypes(ed.getType());
 
+            EntityDescriptor ed = indexAccess.getDescriptor(clazz);
+            SearchRequestBuilder crb = indexAccess.getClient()
+                                                  .prepareSearch(index != null ? index : indexAccess.getIndex(clazz))
+                                                  .setTypes(ed.getType());
+            crb.setSize(0);
             applyRouting(ed, crb::setRouting);
-
             QueryBuilder qb = buildQuery();
             if (qb != null) {
                 crb.setQuery(qb);
             }
-            FilterBuilder sb = buildFilter();
-            if (sb != null) {
-                crb.setQuery(QueryBuilders.filteredQuery(qb, sb));
-            }
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("COUNT: %s.%s: %s", indexAccess.getIndex(clazz), ed.getType(), buildQuery());
             }
             return transformCount(crb);
         } catch (Throwable t) {
-            throw Exceptions.handle(Index.LOG, t);
+            throw Exceptions.handle(IndexAccess.LOG, t);
+        }
+    }
+
+    private void applyRouting(EntityDescriptor ed, Consumer<String> routingTarget) {
+        if (Strings.isFilled(routing)) {
+            if (!ed.hasRouting()) {
+                Exceptions.handle()
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Performing a query on %s with a routing "
+                                                  + "- but entity has no routing attribute (in @Indexed)! "
+                                                  + "This will most probably FAIL! Query: %s",
+                                                  clazz.getName(),
+                                                  this.toString())
+                          .handle();
+            }
+            routingTarget.accept(routing);
+        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
+            Exceptions.handle()
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Performing a query on %s without providing a routing. "
+                                              + "Consider providing a routing for better performance "
+                                              + "or call deliberatelyUnrouted() to signal that routing "
+                                              + "was intentionally skipped. Query: %s",
+                                              clazz.getName(),
+                                              this.toString())
+                      .handle();
         }
     }
 
@@ -998,27 +1036,6 @@ public class Query<E extends Entity> {
         }
     }
 
-    private FilterBuilder buildFilter() {
-        List<FilterBuilder> filters = new ArrayList<FilterBuilder>();
-        for (Constraint constraint : constraints) {
-            FilterBuilder sb = constraint.createFilter();
-            if (sb != null) {
-                filters.add(sb);
-            }
-        }
-        if (filters.isEmpty()) {
-            return null;
-        } else if (filters.size() == 1) {
-            return filters.get(0);
-        } else {
-            BoolFilterBuilder result = FilterBuilders.boolFilter();
-            for (FilterBuilder qb : filters) {
-                result.must(qb);
-            }
-            return result;
-        }
-    }
-
     /**
      * Internal execution of the query along with the transformation of the result for a list
      *
@@ -1029,8 +1046,8 @@ public class Query<E extends Entity> {
     protected ResultList<E> transform(SearchRequestBuilder builder) throws Exception {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
-        ResultList<E> result = new ResultList<>(termFacets, searchResponse);
-        EntityDescriptor descriptor = Index.getDescriptor(clazz);
+        ResultList<E> result = new ResultList<>(termFacets, aggregations, searchResponse);
+        EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
             E entity = clazz.newInstance();
             entity.initSourceTracing();
@@ -1039,12 +1056,12 @@ public class Query<E extends Entity> {
             descriptor.readSource(entity, hit.getSource());
             result.getResults().add(entity);
         }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "LIST: " + toString(true));
@@ -1069,14 +1086,14 @@ public class Query<E extends Entity> {
             result.initSourceTracing();
             result.setId(hit.getId());
             result.setVersion(hit.getVersion());
-            Index.getDescriptor(clazz).readSource(result, hit.getSource());
+            indexAccess.getDescriptor(clazz).readSource(result, hit.getSource());
         }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "FIRST: " + toString(true));
@@ -1090,19 +1107,19 @@ public class Query<E extends Entity> {
      * @param builder the completed query
      * @return the result of the query
      */
-    protected long transformCount(CountRequestBuilder builder) {
+    protected long transformCount(SearchRequestBuilder builder) {
         Watch w = Watch.start();
-        CountResponse res = builder.execute().actionGet();
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
-                           Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
-                           res.getCount());
+        SearchResponse res = builder.execute().actionGet();
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 res.getHits().getTotalHits());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "COUNT: " + toString(true));
         }
-        return res.getCount();
+        return res.getHits().getTotalHits();
     }
 
     /**
@@ -1118,7 +1135,7 @@ public class Query<E extends Entity> {
         int originalLimit = limit;
         limit++;
         Watch w = Watch.start();
-        ResultList<E> result = new ResultList<>(termFacets, null);
+        ResultList<E> result = new ResultList<>(termFacets, aggregations, null);
         if (!forceFail) {
             try {
                 result = queryResultList();
@@ -1165,12 +1182,13 @@ public class Query<E extends Entity> {
      *
      * @param handler the handler used to process each result item
      */
+
     public void iterate(ResultHandler<? super E> handler) {
         try {
             if (forceFail) {
                 return;
             }
-            EntityDescriptor entityDescriptor = Index.getDescriptor(clazz);
+            EntityDescriptor entityDescriptor = indexAccess.getDescriptor(clazz);
             SearchResponse searchResponse = createScroll(entityDescriptor);
             try {
                 TaskContext ctx = TaskContext.get();
@@ -1179,7 +1197,6 @@ public class Query<E extends Entity> {
                 Limit lim = new Limit(start, limit);
 
                 while (true) {
-                    searchResponse = scrollFurther(entityDescriptor, searchResponse);
                     lastScroll = performScrollMonitoring(lastScroll);
 
                     for (SearchHit hit : searchResponse.getHits()) {
@@ -1205,26 +1222,31 @@ public class Query<E extends Entity> {
                                 }
                             }
                         } catch (Exception e) {
-                            Exceptions.handle().to(Index.LOG).error(e).handle();
+                            Exceptions.handle().to(IndexAccess.LOG).error(e).handle();
                         }
                     }
                     if (searchResponse.getHits().hits().length == 0) {
                         return;
                     }
+                    searchResponse = scrollFurther(entityDescriptor, searchResponse);
                 }
             } finally {
                 clearScroll(searchResponse);
             }
         } catch (Throwable t) {
-            throw Exceptions.handle(Index.LOG, t);
+            throw Exceptions.handle(IndexAccess.LOG, t);
         }
     }
 
     private void clearScroll(SearchResponse searchResponse) {
         try {
-            Index.getClient().prepareClearScroll().addScrollId(searchResponse.getScrollId()).execute().actionGet();
+            indexAccess.getClient()
+                       .prepareClearScroll()
+                       .addScrollId(searchResponse.getScrollId())
+                       .execute()
+                       .actionGet();
         } catch (Throwable e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -1238,7 +1260,7 @@ public class Query<E extends Entity> {
                                   "A scroll query against elasticserach took too long to process its data! "
                                   + "The result is probably inconsistent! Query: %s",
                                   this)
-                          .to(Index.LOG)
+                          .to(IndexAccess.LOG)
                           .handle();
             }
         }
@@ -1246,18 +1268,18 @@ public class Query<E extends Entity> {
     }
 
     private SearchResponse scrollFurther(EntityDescriptor entityDescriptor, SearchResponse searchResponse) {
-        searchResponse = Index.getClient()
-                              .prepareSearchScroll(searchResponse.getScrollId())
-                              .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL))
-                              .execute()
-                              .actionGet();
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
-                           Index.getIndex(clazz),
-                           entityDescriptor.getType(),
-                           searchResponse.getHits().hits().length,
-                           searchResponse.getHits().totalHits(),
-                           searchResponse.getTookInMillis());
+        searchResponse = indexAccess.getClient()
+                                    .prepareSearchScroll(searchResponse.getScrollId())
+                                    .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL))
+                                    .execute()
+                                    .actionGet();
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 entityDescriptor.getType(),
+                                 searchResponse.getHits().hits().length,
+                                 searchResponse.getHits().totalHits(),
+                                 searchResponse.getTookInMillis());
         }
         return searchResponse;
     }
@@ -1265,18 +1287,23 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
         if (!orderBys.isEmpty()) {
-            Index.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
-                           this,
-                           ExecutionPoint.snapshot());
+            IndexAccess.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
+                                 this,
+                                 ExecutionPoint.snapshot());
         }
-        srb.setSearchType(SearchType.SCAN);
+
+        srb.addSort("_doc", SortOrder.ASC);
         srb.setFrom(0);
+
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
         // Otherwise we limit to 10 documents per shard...
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
         srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL));
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("ITERATE: %s.%s: %s",
+                                 indexAccess.getIndex(clazz),
+                                 entityDescriptor.getType(),
+                                 buildQuery());
         }
 
         return srb.execute().actionGet();
@@ -1330,11 +1357,11 @@ public class Query<E extends Entity> {
             limit = 512;
             while (true) {
                 SearchRequestBuilder srb = buildSearch();
-                if (Index.LOG.isFINE()) {
-                    Index.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
-                                   Index.getIndex(clazz),
-                                   Index.getDescriptor(clazz).getType(),
-                                   buildQuery());
+                if (IndexAccess.LOG.isFINE()) {
+                    IndexAccess.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
+                                         indexAccess.getIndex(clazz),
+                                         indexAccess.getDescriptor(clazz).getType(),
+                                         buildQuery());
                 }
                 ResultList<E> resultList = transform(srb);
                 for (E entity : resultList) {
@@ -1356,7 +1383,7 @@ public class Query<E extends Entity> {
                             }
                         }
                     } catch (Exception e) {
-                        Exceptions.handle().to(Index.LOG).error(e).handle();
+                        Exceptions.handle().to(IndexAccess.LOG).error(e).handle();
                     }
                 }
                 // Re-create entity the duplicator
@@ -1368,7 +1395,7 @@ public class Query<E extends Entity> {
                 }
             }
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -1439,59 +1466,21 @@ public class Query<E extends Entity> {
                 return;
             }
             Watch w = Watch.start();
-            EntityDescriptor ed = Index.getDescriptor(clazz);
-            // If there are foreign keys we cannot use delete by query...
-            if (ed.hasForeignKeys()) {
-                deleteByIteration();
-            } else {
-                deleteByQuery(ed);
-            }
+            EntityDescriptor ed = indexAccess.getDescriptor(clazz);
+            deleteByIteration();
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
         } catch (Throwable e) {
-            throw Exceptions.handle(Index.LOG, e);
+            throw Exceptions.handle(IndexAccess.LOG, e);
         }
-    }
-
-    protected void deleteByQuery(EntityDescriptor ed) {
-        DeleteByQueryRequestBuilder builder = Index.getClient()
-                                                   .prepareDeleteByQuery(index != null ? index : Index.getIndex(clazz))
-                                                   .setTypes(ed.getType());
-        if (Strings.isFilled(routing)) {
-            if (!ed.hasRouting()) {
-                throw Exceptions.handle()
-                                .to(Index.LOG)
-                                .withSystemErrorMessage("Performing a delete on %s with a routing "
-                                                        + "- but entity has no routing attribute (in @Indexed)! "
-                                                        + "This will most probably FAIL!", clazz.getName())
-                                .handle();
-            }
-            builder.setRouting(routing);
-        } else if (ed.hasRouting() && !deliberatelyUnrouted) {
-            throw Exceptions.handle()
-                            .to(Index.LOG)
-                            .withSystemErrorMessage("Performing a delete on %s without providing a routing. "
-                                                    + "Consider providing a routing for better performance "
-                                                    + "or call deliberatelyUnrouted() to signal that routing was "
-                                                    + "intentionally skipped.", clazz.getName())
-                            .handle();
-        }
-        QueryBuilder qb = buildQuery();
-        if (qb != null) {
-            builder.setQuery(qb);
-        }
-        if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("DELETE: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
-        }
-        builder.execute().actionGet();
     }
 
     protected void deleteByIteration() throws Throwable {
         ValueHolder<Throwable> error = ValueHolder.of(null);
         iterate(e -> {
             try {
-                Index.delete(e);
+                indexAccess.delete(e);
             } catch (Throwable ex) {
                 error.set(ex);
             }

@@ -8,15 +8,20 @@
 
 package sirius.search.properties;
 
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
+import sirius.search.annotations.Transient;
 import sirius.web.http.WebContext;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -68,21 +73,24 @@ public class ObjectListProperty extends Property {
                         Object obj = targetClass.newInstance();
 
                         for (Field innerField : targetClass.getDeclaredFields()) {
-                            try {
-                                if (values.containsKey(innerField.getName())) {
-                                    innerField.setAccessible(true);
-                                    innerField.set(obj,
-                                                   NLS.parseMachineString(innerField.getType(),
-                                                                          values.get(innerField.getName())));
+                            if (!innerField.isAnnotationPresent(Transient.class)
+                                && !Modifier.isStatic(innerField.getModifiers())) {
+                                try {
+                                    if (values.containsKey(innerField.getName())) {
+                                        innerField.setAccessible(true);
+                                        innerField.set(obj,
+                                                       NLS.parseMachineString(innerField.getType(),
+                                                                              values.get(innerField.getName())));
+                                    }
+                                } catch (Throwable e) {
+                                    Exceptions.handle()
+                                              .error(e)
+                                              .to(IndexAccess.LOG)
+                                              .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
+                                                                      innerField.getName(),
+                                                                      toString())
+                                              .handle();
                                 }
-                            } catch (Throwable e) {
-                                Exceptions.handle()
-                                          .error(e)
-                                          .to(Index.LOG)
-                                          .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
-                                                                  innerField.getName(),
-                                                                  toString())
-                                          .handle();
                             }
                         }
 
@@ -90,7 +98,7 @@ public class ObjectListProperty extends Property {
                     } catch (Throwable e) {
                         Exceptions.handle()
                                   .error(e)
-                                  .to(Index.LOG)
+                                  .to(IndexAccess.LOG)
                                   .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
                                   .handle();
                     }
@@ -110,20 +118,23 @@ public class ObjectListProperty extends Property {
                     Map<String, String> valueMap = new HashMap<>();
                     Class<?> targetClass = field.getAnnotation(ListType.class).value();
                     for (Field innerField : targetClass.getDeclaredFields()) {
-                        try {
-                            innerField.setAccessible(true);
-                            Object val = innerField.get(obj);
-                            if (val != null) {
-                                valueMap.put(innerField.getName(), NLS.toMachineString(val));
+                        if (!innerField.isAnnotationPresent(Transient.class)
+                            && !Modifier.isStatic(innerField.getModifiers())) {
+                            try {
+                                innerField.setAccessible(true);
+                                Object val = innerField.get(obj);
+                                if (val != null) {
+                                    valueMap.put(innerField.getName(), NLS.toMachineString(val));
+                                }
+                            } catch (Throwable e) {
+                                Exceptions.handle()
+                                          .error(e)
+                                          .to(IndexAccess.LOG)
+                                          .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
+                                                                  innerField.getName(),
+                                                                  toString())
+                                          .handle();
                             }
-                        } catch (Throwable e) {
-                            Exceptions.handle()
-                                      .error(e)
-                                      .to(Index.LOG)
-                                      .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
-                                                              innerField.getName(),
-                                                              toString())
-                                      .handle();
                         }
                     }
                     result.add(valueMap);
@@ -150,11 +161,45 @@ public class ObjectListProperty extends Property {
 
     @Override
     protected String getMappingType() {
-        return "object";
+        return field.getAnnotation(ListType.class).nested() ? "nested" : "object";
     }
 
     @Override
     public boolean acceptsSetter() {
         return false;
+    }
+
+    /**
+     * Generates the mapping used by this property
+     *
+     * @param builder the builder used to generate JSON
+     * @throws IOException in case of an io error while generating the mapping
+     */
+    @Override
+    public void createMapping(XContentBuilder builder) throws IOException {
+        builder.startObject(getName());
+
+        builder.field("type", getMappingType());
+        if (isIgnoreFromAll()) {
+            builder.field("include_in_all", false);
+        }
+
+        builder.startObject("properties");
+
+        for (Field innerField : field.getAnnotation(ListType.class).value().getDeclaredFields()) {
+            if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                builder.startObject(innerField.getName());
+                builder.field("type", "string");
+                builder.field("index",
+                              innerField.isAnnotationPresent(IndexMode.class) ?
+                              innerField.getAnnotation(IndexMode.class).indexMode() :
+                              IndexMode.MODE_NOT_ANALYZED);
+                builder.endObject();
+            }
+        }
+
+        builder.endObject();
+
+        builder.endObject();
     }
 }

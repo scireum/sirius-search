@@ -8,10 +8,7 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -24,7 +21,6 @@ public class NoneInField implements Constraint {
 
     private final Collection<?> values;
     private final String field;
-    private boolean isFilter;
 
     /*
      * Use the #on(List, String) factory method
@@ -45,45 +41,16 @@ public class NoneInField implements Constraint {
         return new NoneInField(values, field);
     }
 
-    /**
-     * Forces this constraint to be applied as filter not as query.
-     *
-     * @return the constraint itself for fluent method calls
-     */
-    public NoneInField asFilter() {
-        isFilter = true;
-        return this;
-    }
-
     @Override
     public QueryBuilder createQuery() {
-        if (!isFilter) {
-            if (values == null || values.isEmpty()) {
-                return null;
-            }
-            BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-            for (Object value : values) {
-                boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
-            }
-            return boolQueryBuilder;
+        if (values == null || values.isEmpty()) {
+            return null;
         }
-        return null;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        if (isFilter) {
-            if (values == null || values.isEmpty()) {
-                return null;
-            }
-            BoolFilterBuilder boolFilterBuilder = FilterBuilders.boolFilter();
-            for (Object value : values) {
-                boolFilterBuilder.mustNot(FilterBuilders.termFilter(field, FieldEqual.transformFilterValue(value)));
-            }
-
-            return boolFilterBuilder;
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (Object value : values) {
+            boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
         }
-        return null;
+        return boolQueryBuilder;
     }
 
     @Override

@@ -12,7 +12,7 @@ import com.google.common.collect.Lists;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
@@ -78,7 +78,7 @@ public class StringListProperty extends StringProperty {
             }
             list.addAll((List<Object>) transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 

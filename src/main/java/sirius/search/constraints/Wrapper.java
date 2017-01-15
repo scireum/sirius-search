@@ -8,7 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
 /**
@@ -38,11 +37,6 @@ public class Wrapper implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return wrapped;
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        return null;
     }
 
     @Override

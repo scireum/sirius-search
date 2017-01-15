@@ -8,6 +8,7 @@
 
 package sirius.search;
 
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
@@ -25,6 +26,9 @@ public class IdGenerator {
 
     private final ReentrantLock lock = new ReentrantLock();
 
+    @Part
+    private IndexAccess index;
+
     /**
      * Returns the next globally unique number for the given sequence.
      * <p>
@@ -40,23 +44,23 @@ public class IdGenerator {
                     int retries = 5;
                     while (retries-- > 0) {
                         try {
-                            Sequence seq = Index.find(Sequence.class, sequence);
+                            Sequence seq = index.find(Sequence.class, sequence);
                             if (seq == null) {
                                 seq = new Sequence();
                                 seq.setId(sequence);
                                 seq.setNext(1);
-                                seq = Index.tryUpdate(seq);
+                                seq = index.tryUpdate(seq);
                             }
                             int result = seq.getNext();
                             seq.setNext(result + 1);
-                            Index.tryUpdate(seq);
+                            index.tryUpdate(seq);
                             return result;
                         } catch (OptimisticLockException e) {
                             Exceptions.ignore(e);
                         }
                     }
                     throw Exceptions.handle()
-                                    .to(Index.LOG)
+                                    .to(IndexAccess.LOG)
                                     .withSystemErrorMessage(
                                             "Unable to generate a unique ID for sequence: %s after 5 attempts",
                                             sequence)
@@ -66,7 +70,7 @@ public class IdGenerator {
                 }
             } else {
                 throw Exceptions.handle()
-                                .to(Index.LOG)
+                                .to(IndexAccess.LOG)
                                 .withSystemErrorMessage(
                                         "Unable to to lock critical section of ID generator for sequence: %s",
                                         sequence)
@@ -76,7 +80,7 @@ public class IdGenerator {
             throw e;
         } catch (Throwable e) {
             throw Exceptions.handle()
-                            .to(Index.LOG)
+                            .to(IndexAccess.LOG)
                             .error(e)
                             .withSystemErrorMessage("Unable to generate a unique ID for sequence: %s - %s (%s)",
                                                     sequence)

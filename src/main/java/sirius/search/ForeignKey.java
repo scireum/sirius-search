@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptService;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Strings;
@@ -38,12 +39,18 @@ import java.util.List;
  * like the name of a parent object, which is automatically updated once it changes.
  */
 public class ForeignKey {
+
+    private static final String LANGUAGE_GROOVY = "groovy";
+
     private final RefType refType;
     private String otherType;
     private String localType;
     private Field field;
     private List<Reference> references = Lists.newArrayList();
     private Class<? extends Entity> localClass;
+
+    @Part
+    private static IndexAccess index;
 
     /**
      * Contains all metadata to take care of a {@link sirius.search.annotations.RefField}
@@ -89,17 +96,17 @@ public class ForeignKey {
          */
         public Property getRemoteProperty() {
             if (remoteProperty == null) {
-                for (Property p : Index.getDescriptor(getReferencedClass()).getProperties()) {
+                for (Property p : index.getDescriptor(getReferencedClass()).getProperties()) {
                     if (Objects.equal(remoteField, p.getName())) {
                         remoteProperty = p;
                         break;
                     }
                 }
                 if (remoteProperty == null) {
-                    Index.LOG.WARN("Unknown foreign key reference %s from %s in type %s",
-                                   remoteField,
-                                   localProperty.getName(),
-                                   field.getDeclaringClass().getSimpleName());
+                    IndexAccess.LOG.WARN("Unknown foreign key reference %s from %s in type %s",
+                                         remoteField,
+                                         localProperty.getName(),
+                                         field.getDeclaringClass().getSimpleName());
                 }
             }
             return remoteProperty;
@@ -174,7 +181,7 @@ public class ForeignKey {
      */
     public void checkDelete(final Entity entity) {
         if (refType.cascade() == Cascade.REJECT) {
-            if (Index.select(getLocalClass())
+            if (index.select(getLocalClass())
                      .eq(field.getName(), entity.getId())
                      .autoRoute(field.getName(), entity.getId())
                      .exists()) {
@@ -199,32 +206,32 @@ public class ForeignKey {
         if (refType.cascade() == Cascade.REJECT) {
             rejectDeleteIfNecessary(entity);
         } else if (refType.cascade() == Cascade.SET_NULL) {
-            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> setNull(entity));
+            tasks.executor(IndexAccess.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> setNull(entity));
         } else if (refType.cascade() == Cascade.CASCADE) {
-            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> cascadeDelete(entity));
+            tasks.executor(IndexAccess.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> cascadeDelete(entity));
         }
     }
 
     @SuppressWarnings("unchecked")
     private void cascadeDelete(Entity entity) {
         try {
-            Index.select((Class<Entity>) getLocalClass())
+            index.select((Class<Entity>) getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .iterateAll(row -> {
                      try {
-                         Index.delete(row, true);
+                         index.forceDelete(row);
                      } catch (Throwable e) {
-                         Exceptions.handle(Index.LOG, e);
+                         Exceptions.handle(IndexAccess.LOG, e);
                      }
                  });
         } catch (Throwable e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
     private void rejectDeleteIfNecessary(Entity entity) {
-        if (Index.select(getLocalClass())
+        if (index.select(getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .exists()) {
@@ -239,24 +246,24 @@ public class ForeignKey {
     @SuppressWarnings("unchecked")
     private void setNull(Entity entity) {
         try {
-            Index.select((Class<Entity>) getLocalClass())
+            index.select((Class<Entity>) getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .iterateAll(row -> {
                      try {
                          if (field.getType() == EntityRefList.class) {
-                             Index.retryUpdate(row,
+                             index.retryUpdate(row,
                                                child -> ((EntityRefList<?>) field.get(child)).getIds()
                                                                                              .remove(entity.getId()));
                          } else {
                              updateReferencedFields(null, row, true);
                          }
                      } catch (Throwable e) {
-                         Exceptions.handle(Index.LOG, e);
+                         Exceptions.handle(IndexAccess.LOG, e);
                      }
                  });
         } catch (Throwable e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -285,14 +292,14 @@ public class ForeignKey {
             }
         }
         if (referenceChanged) {
-            tasks.executor(Index.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> updateReferencedFields(entity));
+            tasks.executor(IndexAccess.ASYNC_CATEGORY_INDEX_INTEGRITY).fork(() -> updateReferencedFields(entity));
         }
     }
 
     @SuppressWarnings("unchecked")
     private void updateReferencedFields(Entity entity) {
         try {
-            Index.select((Class<Entity>) getLocalClass())
+            index.select((Class<Entity>) getLocalClass())
                  .eq(getName(), entity.getId())
                  .autoRoute(field.getName(), entity.getId())
                  .iterate(row -> {
@@ -300,7 +307,7 @@ public class ForeignKey {
                      return true;
                  });
         } catch (Throwable e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -310,54 +317,65 @@ public class ForeignKey {
      */
     private void updateReferencedFields(Entity parent, Entity child, boolean updateParent) {
         try {
-            UpdateRequestBuilder urb = Index.getClient()
-                                            .prepareUpdate()
-                                            .setIndex(Index.getIndex(getLocalClass()))
-                                            .setType(getLocalType())
-                                            .setRetryOnConflict(3)
-                                            .setId(child.getId());
-            EntityDescriptor descriptor = Index.getDescriptor(getLocalClass());
-            if (descriptor.hasRouting()) {
-                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
-                if (Strings.isEmpty(routingKey)) {
-                    Index.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
-                                   child.getClass().getName(),
-                                   child.getId());
-                } else {
-                    urb.setRouting(String.valueOf(routingKey));
-                }
-            }
-            StringBuilder sb = computeUpdateScript(parent, updateParent, urb);
-            urb.setScript(sb.toString(), ScriptService.ScriptType.INLINE);
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("UPDATE: %s.%s: %s", Index.getIndex(getLocalClass()), getLocalType(), sb.toString());
-            }
+            UpdateRequestBuilder urb = buildUpdateRequestForReferencedFields(parent, child, updateParent);
             urb.execute().actionGet();
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("UPDATE: %s.%s: SUCCEEDED", Index.getIndex(getLocalClass()), getLocalType());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("UPDATE: %s.%s: SUCCEEDED", index.getIndex(getLocalClass()), getLocalType());
             }
-            Index.traceChange(child);
+            index.traceChange(child);
         } catch (VersionConflictEngineException t) {
             // Ran out of retries -> report as warning
-            Index.LOG.WARN("UPDATE: %s.%s: FAILED DUE TO CONCURRENT UPDATE: %s",
-                           Index.getIndex(getLocalClass()),
-                           getLocalType(),
-                           t.getMessage());
-            Index.reportClash(child);
+            IndexAccess.LOG.WARN("UPDATE: %s.%s: FAILED DUE TO CONCURRENT UPDATE: %s",
+                                 index.getIndex(getLocalClass()),
+                                 getLocalType(),
+                                 t.getMessage());
+            index.reportClash(child);
         } catch (DocumentMissingException t) {
             Exceptions.ignore(t);
         } catch (Throwable t) {
-            if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("UPDATE: %s.%s: FAILED: %s",
-                               Index.getIndex(getLocalClass()),
-                               getLocalType(),
-                               t.getMessage());
+            if (IndexAccess.LOG.isFINE()) {
+                IndexAccess.LOG.FINE("UPDATE: %s.%s: FAILED: %s",
+                                     index.getIndex(getLocalClass()),
+                                     getLocalType(),
+                                     t.getMessage());
             }
-            throw Exceptions.handle(Index.LOG, t);
+            throw Exceptions.handle(IndexAccess.LOG, t);
         }
     }
 
-    private StringBuilder computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+    private UpdateRequestBuilder buildUpdateRequestForReferencedFields(Entity parent,
+                                                                       Entity child,
+                                                                       boolean updateParent) {
+        UpdateRequestBuilder urb = index.getClient()
+                                        .prepareUpdate()
+                                        .setIndex(index.getIndex(getLocalClass()))
+                                        .setType(getLocalType())
+                                        .setRetryOnConflict(3)
+                                        .setId(child.getId());
+        EntityDescriptor descriptor = index.getDescriptor(getLocalClass());
+        if (descriptor.hasRouting()) {
+            Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(child);
+            if (Strings.isEmpty(routingKey)) {
+                IndexAccess.LOG.WARN("Updating an entity of type %s (%s) without routing information!",
+                                     child.getClass().getName(),
+                                     child.getId());
+            } else {
+                urb.setRouting(String.valueOf(routingKey));
+            }
+        }
+        Script script = computeUpdateScript(parent, updateParent, urb);
+        urb.setScript(script);
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("UPDATE: %s.%s: %s",
+                                 index.getIndex(getLocalClass()),
+                                 getLocalType(),
+                                 script.toString());
+        }
+        return urb;
+    }
+
+    private Script computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+        sirius.kernel.commons.Context ctx = sirius.kernel.commons.Context.create();
         StringBuilder sb = new StringBuilder();
         for (Reference ref : references) {
             sb.append("ctx._source.");
@@ -365,8 +383,8 @@ public class ForeignKey {
             sb.append("=");
             sb.append(ref.getLocalProperty().getName());
             sb.append(";");
-            urb.addScriptParam(ref.getLocalProperty().getName(),
-                               parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
+            ctx.put(ref.getLocalProperty().getName(),
+                    parent == null ? null : ref.getRemoteProperty().writeToSource(parent));
         }
         if (updateParent) {
             sb.append("ctx._source.");
@@ -374,9 +392,9 @@ public class ForeignKey {
             sb.append("=");
             sb.append(getName());
             sb.append(";");
-            urb.addScriptParam(getName(), parent != null ? parent.getId() : null);
+            ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return sb;
+        return new Script(sb.toString(), ScriptService.ScriptType.INLINE, LANGUAGE_GROOVY, ctx);
     }
 
     /**
@@ -386,7 +404,7 @@ public class ForeignKey {
      */
     public String getLocalType() {
         if (localType == null) {
-            localType = Index.getDescriptor(getLocalClass()).getType();
+            localType = index.getDescriptor(getLocalClass()).getType();
         }
         return localType;
     }
@@ -398,7 +416,7 @@ public class ForeignKey {
      */
     public String getOtherType() {
         if (otherType == null) {
-            otherType = Index.getDescriptor(getReferencedClass()).getType();
+            otherType = index.getDescriptor(getReferencedClass()).getType();
         }
         return otherType;
     }

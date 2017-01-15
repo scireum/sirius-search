@@ -14,12 +14,13 @@ import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.console.Command;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,17 +32,21 @@ import java.util.Map;
  */
 @Register
 public class ShowMappingCommand implements Command {
+
+    @Part
+    private IndexAccess index;
+
     @Override
     public void execute(Output output, String... params) throws Exception {
         String filter = Value.indexOf(0, params).asString().toLowerCase();
-        for (String name : Index.getSchema().getTypeNames()) {
+        for (String name : index.getSchema().getTypeNames()) {
             if (Strings.isEmpty(filter) || name.toLowerCase().contains(filter)) {
-                Class<? extends Entity> type = Index.getType(name);
-                EntityDescriptor ed = Index.getDescriptor(type);
-                GetMappingsResponse res = Index.getClient()
+                Class<? extends Entity> type = index.getType(name);
+                EntityDescriptor ed = index.getDescriptor(type);
+                GetMappingsResponse res = index.getClient()
                                                .admin()
                                                .indices()
-                                               .prepareGetMappings(Index.getIndexPrefix() + ed.getIndex())
+                                               .prepareGetMappings(index.getIndexName(ed.getIndex()))
                                                .setTypes(ed.getType())
                                                .execute()
                                                .actionGet();

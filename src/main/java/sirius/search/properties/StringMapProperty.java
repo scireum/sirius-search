@@ -8,13 +8,15 @@
 
 package sirius.search.properties;
 
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
-import sirius.search.Index;
+import sirius.search.IndexAccess;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,7 +68,7 @@ public class StringMapProperty extends Property {
         try {
             field.set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
-            Exceptions.handle(Index.LOG, e);
+            Exceptions.handle(IndexAccess.LOG, e);
         }
     }
 
@@ -88,5 +90,21 @@ public class StringMapProperty extends Property {
     @Override
     public boolean acceptsSetter() {
         return false;
+    }
+
+    /**
+     * Generates the mapping used by this property
+     *
+     * @param builder the builder used to generate JSON
+     * @throws IOException in case of an io error while generating the mapping
+     */
+    @Override
+    public void createMapping(XContentBuilder builder) throws IOException {
+        builder.startObject(getName());
+        builder.field("type", getMappingType());
+        if (isIgnoreFromAll()) {
+            builder.field("include_in_all", false);
+        }
+        builder.endObject();
     }
 }

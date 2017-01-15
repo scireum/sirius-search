@@ -8,7 +8,6 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import sirius.kernel.nls.NLS;
@@ -40,11 +39,6 @@ public class QueryString implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return QueryBuilders.queryStringQuery(NLS.toMachineString(value));
-    }
-
-    @Override
-    public FilterBuilder createFilter() {
-        return null;
     }
 
     @Override

@@ -8,21 +8,549 @@
 
 package sirius.search;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.io.CharStreams;
+import org.elasticsearch.Version;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.delete.DeleteRequestBuilder;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.engine.VersionConflictEngineException;
+import org.elasticsearch.node.Node;
+import org.elasticsearch.node.internal.InternalSettingsPreparer;
+import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.script.groovy.GroovyPlugin;
+import sirius.kernel.Sirius;
+import sirius.kernel.async.Barrier;
+import sirius.kernel.async.CallContext;
+import sirius.kernel.async.ExecutionPoint;
+import sirius.kernel.async.Future;
+import sirius.kernel.async.Operation;
+import sirius.kernel.async.Tasks;
+import sirius.kernel.cache.Cache;
+import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Files;
+import sirius.kernel.commons.Monoflop;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
+import sirius.kernel.commons.Wait;
+import sirius.kernel.commons.Watch;
+import sirius.kernel.di.std.ConfigValue;
+import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.Average;
+import sirius.kernel.health.Counter;
+import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.kernel.health.Log;
+import sirius.web.templates.Resource;
+import sirius.web.templates.Resources;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
- * Provides a wrapper for {@link Index} which can be injected using a {@link sirius.kernel.di.std.Part} annotation.
+ * Central access class to the persistence layer.
  * <p>
- * Using this wrapper instead of the static methods permits to mock the index access.
+ * Provides CRUD access to the underlying ElasticSearch cluster.
  */
 @Register(classes = IndexAccess.class)
 public class IndexAccess {
+
+    /**
+     * Contains the default ID used by new entities
+     */
+    public static final String NEW = "new";
+
+    /**
+     * Contains the name of the ID field
+     */
+    public static final String ID_FIELD = "_id";
+
+    /**
+     * Async executor category for integrity check tasks
+     */
+    public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
+
+    /**
+     * Contains the database schema as expected by the java model
+     */
+    protected Schema schema;
+
+    /**
+     * Logger used by this framework
+     */
+    public static final Log LOG = Log.get("index");
+
+    /**
+     * Contains the ElasticSearch client
+     */
+    protected Client client;
+    /**
+     * Contains the ES-Node if started using {@link #generateEmptyInMemoryInstance()}
+     */
+    protected Node inMemoryNode;
+
+    /**
+     * Determines if the framework is already completely initialized
+     */
+    protected volatile boolean ready;
+
+    /**
+     * Contains a future which can be waited for
+     */
+    private Future readyFuture = new Future();
+
+    /**
+     * Internal timer which is used to delay some actions. This is necessary, as ES takes up to one second to make a
+     * write visible to the next read
+     */
+    protected Timer delayLineTimer;
+
+    /**
+     * Can be used to cache frequently used entities.
+     */
+    private Cache<String, Object> globalCache = CacheManager.createCache("entity-cache");
+
+    /**
+     * Used when optimistic lock tracing is enabled to record all changes
+     */
+    protected Map<String, IndexTrace> traces = Maps.newConcurrentMap();
+
+    /**
+     * Determines if optimistic lock errors should be traced
+     */
+    @ConfigValue("index.traceOptimisticLockErrors")
+    protected boolean traceOptimisticLockErrors;
+
+    /*
+     * Average query duration for statistical measures
+     */
+    protected Average queryDuration = new Average();
+    /*
+     * Counts how many threads used blockThreadForUpdate
+     */
+    protected Counter blocks = new Counter();
+    /*
+     * Counts how many delays where used
+     */
+    protected Counter delays = new Counter();
+    /*
+     * Counts how many optimistic lock errors occurred
+     */
+    protected Counter optimisticLockErrors = new Counter();
+
+    /**
+     * Can be used as routing value for one of the fetch methods to signal that no routing value is available
+     * and a lookup by select is deliberately called.
+     */
+    public static final String FETCH_DELIBERATELY_UNROUTED = "_DELIBERATELY_UNROUTED";
+
+    @Part
+    protected Tasks tasks;
+
+    /**
+     * Returns the underlying ElasticSearch client
+     *
+     * @return the client used by this class
+     */
+    public Client getClient() {
+        return client;
+    }
+
+    private static class ConfigurableNode extends Node {
+        ConfigurableNode(Settings settings, Collection<Class<? extends Plugin>> classpathPlugins) {
+            super(InternalSettingsPreparer.prepareEnvironment(settings, null), Version.CURRENT, classpathPlugins);
+        }
+    }
+
+    /**
+     * Generates a pure unclustered in memory instance of elasticsearch (most probably for testing purposes).
+     */
+    public void generateEmptyInMemoryInstance() {
+        if (inMemoryNode != null) {
+            ready = false;
+            client.close();
+            inMemoryNode.close();
+        }
+
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"), CallContext.getNodeName() + "_in_memory_es");
+        tmpDir.mkdirs();
+        try {
+            Files.removeChildren(tmpDir.toPath());
+        } catch (IOException e) {
+            Exceptions.handle(LOG, e);
+        }
+
+        Settings settings = Settings.settingsBuilder()
+                                    .put("node.http.enabled", false)
+                                    .put("path.home", tmpDir.getAbsolutePath())
+                                    .put("index.gateway.type", "none")
+                                    .put("index.number_of_shards", 1)
+                                    .put("index.number_of_replicas", 0)
+                                    .put("script.inline", "on")
+                                    .build();
+        inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+        client = inMemoryNode.client();
+        if (schema != null) {
+            for (String msg : schema.createMappings()) {
+                LOG.FINE(msg);
+            }
+        }
+        ready = true;
+    }
+
+    @Part
+    private Resources resources;
+
+    /**
+     * Loads a test dataset from the classpath. The given file should contains an array of JSON objects.
+     * <p>
+     * Each object must contain a property named <tt>_type</tt> which determines the target entity as well as
+     * <tt>_id</tt> which determiens its ID.
+     *
+     * @param dataset the resource to load into the in memory elasticsearch.
+     */
+    @SuppressWarnings("unchecked")
+    public void loadDataset(String dataset) {
+        try {
+            if (inMemoryNode == null) {
+                throw Exceptions.createHandled()
+                                .withSystemErrorMessage("Cannot load datasets when not running as 'in-memory'")
+                                .handle();
+            }
+            LOG.INFO("Loading dataset: %s", dataset);
+            Resource res = resources.resolve(dataset)
+                                    .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
+            String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
+            JSONArray json = JSON.parseArray(contents);
+            for (JSONObject obj : (List<JSONObject>) (Object) json) {
+                try {
+                    String type = obj.getString("_type");
+                    Class<? extends Entity> entityClass = getType(type);
+                    EntityDescriptor descriptor = getDescriptor(entityClass);
+                    Entity entity = entityClass.newInstance();
+                    entity.setId(obj.getString("_id"));
+                    descriptor.readSource(entity, obj);
+                    update(entity);
+                } catch (Throwable e) {
+                    throw new IllegalArgumentException("Cannot load: " + obj, e);
+                }
+            }
+            blockThreadForUpdate();
+        } catch (IOException e) {
+            throw Exceptions.handle(e);
+        }
+    }
+
+    /**
+     * Provides access to the expected schema / mappings.
+     *
+     * @return the expected schema of the object model
+     */
+    public Schema getSchema() {
+        return schema;
+    }
+
+    /**
+     * Checks if the given index exists.
+     *
+     * @param name the name of the index. The index prefix of the current system will be added automatically
+     * @return <tt>true</tt> if the given index exists, <tt>false</tt> otherwise
+     */
+    public boolean existsIndex(String name) {
+        String index = schema.getIndexName(name);
+        try {
+            IndicesExistsResponse res =
+                    getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+            return res.isExists();
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to check existence of index: %s - %s (%s)", index)
+                            .handle();
+        }
+    }
+
+    /**
+     * Ensures that the given manually created index exists.
+     *
+     * @param name the name of the index. The index prefix of the current system will be added automatically
+     */
+    public void ensureIndexExists(String name) {
+        try {
+            IndicesExistsResponse res = getClient().admin()
+                                                   .indices()
+                                                   .prepareExists(schema.getIndexName(name))
+                                                   .execute()
+                                                   .get(10, TimeUnit.SECONDS);
+            if (!res.isExists()) {
+                CreateIndexResponse createResponse = getClient().admin()
+                                                                .indices()
+                                                                .prepareCreate(schema.getIndexName(name))
+                                                                .execute()
+                                                                .get(10, TimeUnit.SECONDS);
+                if (!createResponse.isAcknowledged()) {
+                    throw Exceptions.handle()
+                                    .to(LOG)
+                                    .withSystemErrorMessage("Cannot create index: %s", schema.getIndexName(name))
+                                    .handle();
+                } else {
+                    blockThreadForUpdate();
+                }
+            }
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Cannot create index: %s - %s (%s)", schema.getIndexName(name))
+                            .handle();
+        }
+    }
+
+    /**
+     * Completely wipes the given index.
+     *
+     * @param name the name of the index. The index prefix of the current system will be added automatically
+     */
+    public void deleteIndex(String name) {
+        try {
+            DeleteIndexResponse res = getClient().admin()
+                                                 .indices()
+                                                 .prepareDelete(schema.getIndexName(name))
+                                                 .execute()
+                                                 .get(10, TimeUnit.SECONDS);
+            if (!res.isAcknowledged()) {
+                throw Exceptions.handle()
+                                .to(LOG)
+                                .withSystemErrorMessage("Cannot delete index: %s", schema.getIndexName(name))
+                                .handle();
+            }
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Cannot delete index: %s - %s (%s)", schema.getIndexName(name))
+                            .handle();
+        }
+    }
+
+    /**
+     * Writes the given mapping to the given index.
+     *
+     * @param index the full name of the index.
+     *              Note: The index prefix of the current system will NOT be added automatically
+     * @param type  the entity class which mapping should be written to the given index.
+     * @param <E>   the generic of <tt>type</tt>
+     */
+    public <E extends Entity> void addMapping(String index, Class<E> type) {
+        try {
+            EntityDescriptor desc = schema.getDescriptor(type);
+            getClient().admin()
+                       .indices()
+                       .preparePutMapping(index)
+                       .setType(desc.getType())
+                       .setSource(desc.createMapping())
+                       .execute()
+                       .get(10, TimeUnit.SECONDS);
+        } catch (Throwable ex) {
+            while (ex.getCause() != null && ex.getCause() != ex) {
+                ex = ex.getCause();
+            }
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(ex)
+                            .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
+                                                    type.getSimpleName(),
+                                                    index)
+                            .handle();
+        }
+    }
+
+    /**
+     * Returns the descriptor for the given class.
+     *
+     * @param clazz the class which descriptor is request
+     * @return the descriptor for the given class
+     */
+    public EntityDescriptor getDescriptor(Class<? extends Entity> clazz) {
+        if (!ready) {
+            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
+        }
+        return schema.getDescriptor(clazz);
+    }
+
+    /**
+     * Returns the class for the given type name.
+     *
+     * @param name the name of the type which class is requested
+     * @return the class which is associated with the given type
+     */
+    public Class<? extends Entity> getType(String name) {
+        if (!ready) {
+            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
+        }
+        return schema.getType(name);
+    }
+
+    /**
+     * Qualifies the given index name with the prefix.
+     *
+     * @param index the index name to qualify
+     * @return the qualified name of the given index name
+     */
+    public String getIndexName(String index) {
+        if (!ready) {
+            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
+        }
+        return schema.getIndexName(index);
+    }
+
+    /**
+     * Returns the name of the index associated with the given class.
+     *
+     * @param clazz the entity type which index is requested
+     * @param <E>   the type of the entity to get the index for
+     * @return the index name associated with the given class
+     */
+    public <E extends Entity> String getIndex(Class<E> clazz) {
+        if (!ready) {
+            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
+        }
+        return schema.getIndex(clazz);
+    }
+
+    protected void startup() {
+        Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
+
+        schema = new Schema(this);
+        schema.load();
+
+        Operation.cover("index", () -> "IndexLifecycle.updateMappings", Duration.ofSeconds(30), this::updateMappings);
+
+        ready = true;
+        readyFuture.success();
+
+        delayLineTimer = new Timer("index-delay");
+        delayLineTimer.schedule(new DelayLineHandler(), 1000, 1000);
+    }
+
+    /**
+     * Implementation of the timer which handles delayed actions.
+     */
+    protected static class DelayLineHandler extends TimerTask {
+
+        @Override
+        public void run() {
+            try {
+                synchronized (oneSecondDelayLine) {
+                    Iterator<WaitingBlock> iter = oneSecondDelayLine.iterator();
+                    while (iter.hasNext()) {
+                        WaitingBlock next = iter.next();
+                        if (next.isRunnable()) {
+                            next.execute();
+                            iter.remove();
+                        } else {
+                            return;
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                Exceptions.handle(LOG, e);
+            }
+        }
+    }
+
+    private void updateMappings() {
+        boolean updateSchema =
+                Sirius.getConfig().getBoolean("index.updateSchema") || "in-memory".equalsIgnoreCase(Sirius.getConfig()
+                                                                                                          .getString(
+                                                                                                                  "index.type"));
+
+        if (updateSchema) {
+            for (String msg : schema.createMappings()) {
+                IndexAccess.LOG.INFO(msg);
+            }
+        }
+    }
+
+    @ConfigValue("index.host")
+    private String hostAddress;
+
+    @ConfigValue("index.cluster")
+    private String clusterName;
+
+    @ConfigValue("index.port")
+    private int port;
+
+    private void startClient() {
+        if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            LOG.INFO("Starting Embedded Elasticsearch...");
+            Settings settings = Settings.settingsBuilder()
+                                        .put("node.http.enabled", false)
+                                        .put("path.home", determineDataPath())
+                                        .put("index.gateway.type", "none")
+                                        .put("index.number_of_shards", 1)
+                                        .put("index.number_of_replicas", 0)
+                                        .put("script.disable_dynamic", false)
+                                        .build();
+            inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+            client = inMemoryNode.client();
+        } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            LOG.INFO("Starting In-Memory Elasticsearch...");
+            generateEmptyInMemoryInstance();
+        } else {
+            LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
+            Settings settings = Settings.settingsBuilder().put("cluster.name", clusterName).build();
+            TransportClient transportClient = TransportClient.builder().settings(settings).build();
+            try {
+                transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
+                                                                                   port));
+            } catch (UnknownHostException e) {
+                Exceptions.handle(LOG, e);
+            }
+            client = transportClient;
+        }
+    }
+
+    private String determineDataPath() {
+        if (Sirius.getConfig().hasPath("index.path")) {
+            return Sirius.getConfig().getString("index.path");
+        } else {
+            File homeDir = new File(new File("data"), "index");
+            homeDir.mkdirs();
+            return homeDir.getAbsolutePath();
+        }
+    }
 
     /**
      * Fetches the entity of given type with the given id.
@@ -37,12 +565,47 @@ public class IndexAccess {
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
+    @SuppressWarnings("unchecked")
     @Nonnull
     public <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                       @Nonnull Class<E> type,
                                                       @Nullable String id,
                                                       @Nonnull com.google.common.cache.Cache<String, Object> cache) {
-        return Index.fetch(routing, type, id, cache);
+        if (Strings.isEmpty(id)) {
+            return Tuple.create(null, false);
+        }
+        EntityDescriptor descriptor = getDescriptor(type);
+
+        E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
+        if (value != null) {
+            return Tuple.create(value, true);
+        }
+        value = fetchFromIndex(routing, type, id, descriptor);
+        if (value != null) {
+            cache.put(descriptor.getType() + "-" + id, value);
+        }
+        return Tuple.create(value, false);
+    }
+
+    private <E extends Entity> E fetchFromIndex(@Nullable String routing,
+                                                @Nonnull Class<E> type,
+                                                @Nullable String id,
+                                                EntityDescriptor descriptor) {
+        E value;
+        if (descriptor.hasRouting()) {
+            if (Strings.isFilled(routing) && !FETCH_DELIBERATELY_UNROUTED.equals(routing)) {
+                value = find(routing, type, id);
+            } else {
+                if (FETCH_DELIBERATELY_UNROUTED.equals(routing)) {
+                    value = select(type).deliberatelyUnrouted().eq(ID_FIELD, id).queryFirst();
+                } else {
+                    value = select(type).eq(ID_FIELD, id).queryFirst();
+                }
+            }
+        } else {
+            value = find(type, id);
+        }
+        return value;
     }
 
     /**
@@ -62,7 +625,7 @@ public class IndexAccess {
                                                @Nonnull Class<E> type,
                                                @Nullable String id,
                                                @Nonnull com.google.common.cache.Cache<String, Object> cache) {
-        return Index.fetch(routing, type, id, cache).getFirst();
+        return fetch(routing, type, id, cache).getFirst();
     }
 
     /**
@@ -77,11 +640,24 @@ public class IndexAccess {
      * @return a tuple containing the resolved entity (or <tt>null</tt> if not found) and a flag which indicates if the
      * value was loaded from cache (<tt>true</tt>) or not.
      */
+    @SuppressWarnings("unchecked")
     @Nonnull
     public <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                       @Nonnull Class<E> type,
                                                       @Nullable String id) {
-        return Index.fetch(routing, type, id);
+        if (Strings.isEmpty(id)) {
+            return Tuple.create(null, false);
+        }
+        EntityDescriptor descriptor = getDescriptor(type);
+
+        E value = (E) globalCache.get(descriptor.getType() + "-" + id);
+        if (value != null) {
+            return Tuple.create(value, true);
+        }
+        value = fetchFromIndex(routing, type, id, descriptor);
+
+        globalCache.put(descriptor.getType() + "-" + id, value);
+        return Tuple.create(value, false);
     }
 
     /**
@@ -97,8 +673,45 @@ public class IndexAccess {
      */
     @Nullable
     public <E extends Entity> E fetchFromCache(@Nullable String routing, @Nonnull Class<E> type, @Nullable String id) {
-        return Index.fetch(routing, type, id).getFirst();
+        return fetch(routing, type, id).getFirst();
     }
+
+    /**
+     * Used to delay an action for at least one second
+     */
+    private class WaitingBlock {
+        private long waitline;
+        private Runnable cmd;
+        private CallContext context;
+
+        WaitingBlock(Runnable cmd) {
+            this.cmd = cmd;
+            this.waitline = System.currentTimeMillis() + 1000;
+            this.context = CallContext.getCurrent();
+        }
+
+        /**
+         * Determines if the action was delayed long enough
+         *
+         * @return <tt>true</tt> if the action was delayed long enough, <tt>false</tt> otherwise
+         */
+        public boolean isRunnable() {
+            return System.currentTimeMillis() > waitline;
+        }
+
+        /**
+         * Executes the action in its own executor
+         */
+        public void execute() {
+            CallContext.setCurrent(context);
+            tasks.executor("index-delay").fork(cmd);
+        }
+    }
+
+    /**
+     * Queue of actions which need to be delayed one second
+     */
+    protected static final List<WaitingBlock> oneSecondDelayLine = Lists.newArrayList();
 
     /**
      * Adds an action to the delay line, which ensures that it is at least delayed for one second
@@ -106,7 +719,15 @@ public class IndexAccess {
      * @param cmd to command to be delayed
      */
     public void callAfterUpdate(final Runnable cmd) {
-        Index.callAfterUpdate(cmd);
+        synchronized (oneSecondDelayLine) {
+            if (oneSecondDelayLine.size() < 100) {
+                delays.inc();
+                oneSecondDelayLine.add(new WaitingBlock(cmd));
+                return;
+            }
+        }
+        blockThreadForUpdate();
+        cmd.run();
     }
 
     /**
@@ -116,19 +737,77 @@ public class IndexAccess {
      * is absolutely necessary.
      */
     public void blockThreadForUpdate() {
-        Index.blockThreadForUpdate();
+        blocks.inc();
+        Wait.seconds(1);
     }
 
     /**
      * Handles the given unit of work while restarting it if an optimistic lock error occurs.
      *
      * @param uow the unit of work to handle.
-     * @throws sirius.kernel.health.HandledException if either any other exception occurs, or if all three attempts
-     *                                               fail
-     *                                               with an optimistic lock error.
+     * @throws HandledException if either any other exception occurs, or if all three attempts
+     *                          fail with an optimistic lock error.
      */
     public void retry(UnitOfWork uow) {
-        Index.retry(uow);
+        int retries = 3;
+        while (retries > 0) {
+            retries--;
+            try {
+                uow.execute();
+                return;
+            } catch (OptimisticLockException e) {
+                LOG.FINE(e);
+                if (Sirius.isDev()) {
+                    LOG.INFO("Retrying due to optimistic lock: %s", e);
+                }
+                if (retries <= 0) {
+                    throw Exceptions.handle()
+                                    .withSystemErrorMessage(
+                                            "Failed to update an entity after re-trying a unit of work several times: %s (%s)")
+                                    .error(e)
+                                    .to(LOG)
+                                    .handle();
+                }
+                // Wait 0, 500ms, 1000ms
+                Wait.millis((2 - retries) * 500);
+                // Wait 0..500ms in 50% of all calls...
+                Wait.randomMillis(-500, 500);
+            } catch (HandledException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw Exceptions.handle()
+                                .withSystemErrorMessage(
+                                        "An unexpected exception occurred while executing a unit of work: %s (%s)")
+                                .error(e)
+                                .to(LOG)
+                                .handle();
+            }
+        }
+    }
+
+    /**
+     * Tries to apply the given changes and to save the resulting entity.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @param <E>             the type of the entity to update
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
+        Monoflop mf = Monoflop.create();
+        retry(() -> {
+            E entityToUpdate = entity;
+            if (mf.successiveCall()) {
+                entityToUpdate = refreshIfPossible(entity);
+            }
+
+            preSaveModifier.invoke(entityToUpdate);
+            tryUpdate(entityToUpdate);
+        });
     }
 
     /**
@@ -139,7 +818,12 @@ public class IndexAccess {
      * @return the stored entity (with a filled ID etc.)
      */
     public <E extends Entity> E create(E entity) {
-        return Index.create(entity);
+        try {
+            return update(entity, false, true);
+        } catch (OptimisticLockException e) {
+            // Should never happen - but who knows...
+            throw Exceptions.handle(LOG, e);
+        }
     }
 
     /**
@@ -151,28 +835,12 @@ public class IndexAccess {
      * @param entity the entity to save
      * @param <E>    the type of the entity to update
      * @return the saved entity
-     * @throws sirius.search.OptimisticLockException if the entity was modified in the database and those changes where
-     *                                               not reflected
-     *                                               by the entity to be saved
+     * @throws OptimisticLockException if the entity was modified in the database and those changes where
+     *                                 not reflected
+     *                                 by the entity to be saved
      */
     public <E extends Entity> E tryUpdate(E entity) throws OptimisticLockException {
-        return Index.tryUpdate(entity);
-    }
-
-    /**
-     * Tries to apply the given changes and to save the resulting entity.
-     * <p>
-     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
-     * the entity is refreshed and the modifications are re-executed along with another update.
-     *
-     * @param entity          the entity to update
-     * @param preSaveModifier the changes to perform on the entity
-     * @param <E>             the type of entities to update
-     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
-     *                          lock error.
-     */
-    public <E extends Entity> void retryUpdate(E entity, Callback<E> preSaveModifier) {
-        Index.retryUpdate(entity, preSaveModifier);
+        return update(entity, true, false);
     }
 
     /**
@@ -186,7 +854,79 @@ public class IndexAccess {
      * @return the updated entity
      */
     public <E extends Entity> E update(E entity) {
-        return Index.update(entity);
+        try {
+            return update(entity, true, false);
+        } catch (OptimisticLockException e) {
+            reportClash(entity);
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
+                                                    entity.toDebugString(),
+                                                    entity.getId())
+                            .handle();
+        }
+    }
+
+    protected <E extends Entity> void reportClash(E entity) {
+        if (!traceOptimisticLockErrors) {
+            return;
+        }
+        IndexTrace offendingTrace = traces.get(entity.getClass().getName() + "-" + entity.getId());
+        if (offendingTrace != null) {
+            StringBuilder msg = new StringBuilder("Detected optimistic locking error:\n");
+            msg.append("Current Thread: ");
+            msg.append(Thread.currentThread().getName());
+            msg.append("\n");
+            for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+                msg.append(e.getClassName())
+                   .append(".")
+                   .append(e.getMethodName())
+                   .append(" (")
+                   .append(e.getFileName())
+                   .append(":")
+                   .append(e.getLineNumber())
+                   .append(")\n");
+            }
+            msg.append("\n");
+            for (Tuple<String, String> t : CallContext.getCurrent().getMDC()) {
+                msg.append(t.getFirst()).append(": ").append(t.getSecond()).append("\n");
+            }
+            msg.append("\n");
+            msg.append("Offending Thread: ");
+            msg.append(offendingTrace.threadName);
+            msg.append("\n");
+            for (StackTraceElement e : offendingTrace.stackTrace) {
+                msg.append(e.getClassName())
+                   .append(".")
+                   .append(e.getMethodName())
+                   .append(" (")
+                   .append(e.getFileName())
+                   .append(":")
+                   .append(e.getLineNumber())
+                   .append(")\n");
+            }
+            msg.append("\n");
+            for (Tuple<String, String> t : offendingTrace.mdc) {
+                msg.append(t.getFirst()).append(": ").append(t.getSecond()).append("\n");
+            }
+            msg.append("\n");
+            LOG.SEVERE(msg.toString());
+        }
+    }
+
+    protected <E extends Entity> void traceChange(E entity) {
+        if (!traceOptimisticLockErrors) {
+            return;
+        }
+        IndexTrace trace = new IndexTrace();
+        trace.threadName = Thread.currentThread().getName();
+        trace.id = entity.getId();
+        trace.type = entity.getClass().getName();
+        trace.timestamp = System.currentTimeMillis();
+        trace.mdc = CallContext.getCurrent().getMDC();
+        trace.stackTrace = Thread.currentThread().getStackTrace();
+        traces.put(trace.type + "-" + trace.id, trace);
     }
 
     /**
@@ -200,7 +940,112 @@ public class IndexAccess {
      * @return the updated entity
      */
     public <E extends Entity> E override(E entity) {
-        return Index.override(entity);
+        try {
+            return update(entity, false, false);
+        } catch (OptimisticLockException e) {
+            // Should never happen as version checking is disabled....
+            throw Exceptions.handle(LOG, e);
+        }
+    }
+
+    /**
+     * Internal save method used by {@link #create(Entity)}, {@link #tryUpdate(Entity)}, {@link #update(Entity)}
+     * and {@link #override(Entity)}
+     *
+     * @param entity              the entity to save
+     * @param performVersionCheck determines if change tracking will be enabled
+     * @param forceCreate         determines if a new entity should be created
+     * @param <E>                 the type of the entity to update
+     * @return the saved entity
+     * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
+     */
+    protected <E extends Entity> E update(final E entity, final boolean performVersionCheck, final boolean forceCreate)
+            throws OptimisticLockException {
+        try {
+            final Map<String, Object> source = Maps.newTreeMap();
+            entity.beforeSave();
+            EntityDescriptor descriptor = getDescriptor(entity.getClass());
+            descriptor.writeTo(entity, source);
+
+            if (LOG.isFINE()) {
+                LOG.FINE("SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
+                         forceCreate,
+                         performVersionCheck,
+                         schema.getIndex(entity),
+                         descriptor.getType(),
+                         Strings.join(source));
+            }
+
+            String id = entity.getId();
+            if (NEW.equals(id)) {
+                id = null;
+            }
+            if (Strings.isEmpty(id)) {
+                id = entity.computePossibleId();
+            }
+
+            IndexRequestBuilder irb = getClient().prepareIndex(schema.getIndex(entity), descriptor.getType(), id)
+                                                 .setCreate(forceCreate)
+                                                 .setSource(source);
+            if (!entity.isNew() && performVersionCheck) {
+                irb.setVersion(entity.getVersion());
+            }
+
+            applyRouting("Updating", entity, descriptor, irb::setRouting);
+
+            return executeUpdate(entity, descriptor, irb);
+        } catch (VersionConflictEngineException e) {
+            if (LOG.isFINE()) {
+                LOG.FINE("Version conflict on updating: %s", entity);
+            }
+            optimisticLockErrors.inc();
+            throw new OptimisticLockException(e, entity);
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to update '%s' (%s): %s (%s)",
+                                                    entity.toDebugString(),
+                                                    entity.getId())
+                            .handle();
+        }
+    }
+
+    private <E extends Entity> void applyRouting(String action,
+                                                 E entity,
+                                                 EntityDescriptor descriptor,
+                                                 Consumer<String> routingTarget) {
+        if (descriptor.hasRouting()) {
+            Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
+            if (Strings.isEmpty(routingKey)) {
+                LOG.WARN("%s an entity of type %s (%s) without routing information! Location: %s",
+                         action,
+                         entity.getClass().getName(),
+                         entity.getId(),
+                         ExecutionPoint.snapshot());
+            } else {
+                routingTarget.accept(String.valueOf(routingKey));
+            }
+        }
+    }
+
+    private <E extends Entity> E executeUpdate(E entity, EntityDescriptor descriptor, IndexRequestBuilder irb) {
+        Watch w = Watch.start();
+        IndexResponse indexResponse = irb.execute().actionGet();
+        if (LOG.isFINE()) {
+            LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
+                     schema.getIndex(entity),
+                     descriptor.getType(),
+                     indexResponse.getId(),
+                     indexResponse.getVersion());
+        }
+        entity.id = indexResponse.getId();
+        entity.version = indexResponse.getVersion();
+        entity.afterSave();
+        queryDuration.addValue(w.elapsedMillis());
+        w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
+        traceChange(entity);
+        return entity;
     }
 
     /**
@@ -212,7 +1057,7 @@ public class IndexAccess {
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public <E extends Entity> E find(final Class<E> clazz, String id) {
-        return Index.find(null, null, clazz, id);
+        return find(null, null, clazz, id);
     }
 
     /**
@@ -225,7 +1070,7 @@ public class IndexAccess {
      * @return the entity of the given class with the given id or <tt>null</tt> if no such entity exists
      */
     public <E extends Entity> E find(String routing, final Class<E> clazz, String id) {
-        return Index.find(null, routing, clazz, id);
+        return find(null, routing, clazz, id);
     }
 
     /**
@@ -243,7 +1088,82 @@ public class IndexAccess {
                                      @Nullable String routing,
                                      @Nonnull final Class<E> clazz,
                                      String id) {
-        return Index.find(index, routing, clazz, id);
+        try {
+            if (Strings.isEmpty(id)) {
+                return null;
+            }
+            if (NEW.equals(id)) {
+                E e = clazz.newInstance();
+                e.setId(NEW);
+                return e;
+            }
+            if (index == null) {
+                index = schema.getIndex(clazz);
+            } else {
+                index = schema.getIndexName(index);
+            }
+            EntityDescriptor descriptor = getDescriptor(clazz);
+            if (LOG.isFINE()) {
+                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getType(), id);
+            }
+            Watch w = Watch.start();
+            try {
+                verifyRoutingForFind(routing, clazz, id, descriptor);
+                GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
+                                             .setPreference("_primary")
+                                             .setRouting(routing)
+                                             .execute()
+                                             .actionGet();
+                if (!res.isExists()) {
+                    if (LOG.isFINE()) {
+                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
+                    }
+                    return null;
+                } else {
+                    E entity = clazz.newInstance();
+                    entity.initSourceTracing();
+                    entity.setId(res.getId());
+                    entity.setVersion(res.getVersion());
+                    descriptor.readSource(entity, res.getSource());
+                    if (LOG.isFINE()) {
+                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
+                    }
+                    return entity;
+                }
+            } finally {
+                queryDuration.addValue(w.elapsedMillis());
+                w.submitMicroTiming("ES", "UPDATE " + clazz.getName());
+            }
+        } catch (Throwable t) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(t)
+                            .withSystemErrorMessage("Failed to find '%s' (%s): %s (%s)", id, clazz.getName())
+                            .handle();
+        }
+    }
+
+    private <E extends Entity> void verifyRoutingForFind(@Nullable String routing,
+                                                         @Nonnull Class<E> clazz,
+                                                         String id,
+                                                         EntityDescriptor descriptor) {
+        if (descriptor.hasRouting() && routing == null) {
+            Exceptions.handle()
+                      .to(LOG)
+                      .withSystemErrorMessage(
+                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
+                              + "This will most probably FAIL!",
+                              clazz.getName(),
+                              id)
+                      .handle();
+        } else if (!descriptor.hasRouting() && routing != null) {
+            Exceptions.handle()
+                      .to(LOG)
+                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing "
+                                              + "- but entity has no routing attribute (in @Indexed)! "
+                                              + "This will most probably FAIL!", clazz.getName(), id)
+                      .handle();
+        }
     }
 
     /**
@@ -261,7 +1181,20 @@ public class IndexAccess {
     @SuppressWarnings("unchecked")
     @Nullable
     public <T extends Entity> T refreshOrNull(@Nullable T entity) {
-        return Index.refreshOrNull(entity);
+        if (entity == null) {
+            return null;
+        }
+        if (entity.isNew()) {
+            return entity;
+        }
+        Class<T> type = (Class<T>) entity.getClass();
+        EntityDescriptor descriptor = getDescriptor(type);
+        if (descriptor.hasRouting()) {
+            Object routing = descriptor.getProperty(descriptor.getRouting()).writeToSource(entity);
+            return find(routing == null ? null : routing.toString(), type, entity.getId());
+        } else {
+            return find(type, entity.getId());
+        }
     }
 
     /**
@@ -277,7 +1210,18 @@ public class IndexAccess {
      */
     @Nullable
     public <T extends Entity> T refreshOrFail(@Nullable T entity) {
-        return Index.refreshOrFail(entity);
+        T freshEntity = refreshOrNull(entity);
+        if (entity != null && freshEntity == null) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .withSystemErrorMessage("Failed to refresh the entity '%s' of type %s with id '%s'",
+                                                    entity,
+                                                    entity.getClass().getSimpleName(),
+                                                    entity.getId())
+                            .handle();
+        } else {
+            return freshEntity;
+        }
     }
 
     /**
@@ -292,7 +1236,12 @@ public class IndexAccess {
      */
     @Nullable
     public <T extends Entity> T refreshIfPossible(@Nullable T entity) {
-        return Index.refreshIfPossible(entity);
+        T freshEntity = refreshOrNull(entity);
+        if (freshEntity == null) {
+            return entity;
+        } else {
+            return freshEntity;
+        }
     }
 
     /**
@@ -300,10 +1249,10 @@ public class IndexAccess {
      *
      * @param entity the entity to delete
      * @param <E>    the type of the entity to delete
-     * @throws sirius.search.OptimisticLockException if the entity was modified since the last read
+     * @throws OptimisticLockException if the entity was modified since the last read
      */
     public <E extends Entity> void tryDelete(E entity) throws OptimisticLockException {
-        Index.tryDelete(entity);
+        delete(entity, false);
     }
 
     /**
@@ -315,7 +1264,17 @@ public class IndexAccess {
      * @param <E>    the type of the entity to delete
      */
     public <E extends Entity> void delete(E entity) {
-        Index.delete(entity);
+        try {
+            delete(entity, false);
+        } catch (OptimisticLockException e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
+                                                    entity.toDebugString(),
+                                                    entity.getId())
+                            .handle();
+        }
     }
 
     /**
@@ -326,7 +1285,73 @@ public class IndexAccess {
      * @param <E>    the type of the entity to delete
      */
     public <E extends Entity> void forceDelete(E entity) {
-        Index.forceDelete(entity);
+        try {
+            delete(entity, true);
+        } catch (OptimisticLockException e) {
+            // Should never happen as version checking is disabled....
+            throw Exceptions.handle(LOG, e);
+        }
+    }
+
+    /**
+     * Handles all kinds of deletes
+     *
+     * @param entity the entity to delete
+     * @param force  determines whether optimistic locking is suppressed (<tt>true</tt>) or not
+     * @param <E>    the type of the entity to delete
+     * @throws OptimisticLockException if the entity was changed since the last read
+     */
+    protected <E extends Entity> void delete(final E entity, final boolean force) throws OptimisticLockException {
+        try {
+            if (entity.isNew()) {
+                return;
+            }
+            EntityDescriptor descriptor = getDescriptor(entity.getClass());
+            if (LOG.isFINE()) {
+                LOG.FINE("DELETE[FORCE: %b]: %s.%s: %s",
+                         force,
+                         schema.getIndex(entity.getClass()),
+                         descriptor.getType(),
+                         entity.getId());
+            }
+            entity.beforeDelete();
+            Watch w = Watch.start();
+            DeleteRequestBuilder drb =
+                    getClient().prepareDelete(schema.getIndex(entity), descriptor.getType(), entity.getId());
+            if (!force) {
+                drb.setVersion(entity.getVersion());
+            }
+
+            applyRouting("Deleting", entity, descriptor, drb::setRouting);
+
+            drb.execute().actionGet();
+            entity.deleted = true;
+            queryDuration.addValue(w.elapsedMillis());
+            w.submitMicroTiming("ES", "DELETE " + entity.getClass().getName());
+            entity.afterDelete();
+            if (LOG.isFINE()) {
+                LOG.FINE("DELETE: %s.%s: %s SUCCESS",
+                         schema.getIndex(entity.getClass()),
+                         descriptor.getType(),
+                         entity.getId());
+            }
+            traceChange(entity);
+        } catch (VersionConflictEngineException e) {
+            if (LOG.isFINE()) {
+                LOG.FINE("Version conflict on updating: %s", entity);
+            }
+            reportClash(entity);
+            optimisticLockErrors.inc();
+            throw new OptimisticLockException(e, entity);
+        } catch (Throwable e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage("Failed to delete '%s' (%s): %s (%s)",
+                                                    entity.toDebugString(),
+                                                    entity.getId())
+                            .handle();
+        }
     }
 
     /**
@@ -337,7 +1362,29 @@ public class IndexAccess {
      * @return a new query against the database
      */
     public <E extends Entity> Query<E> select(Class<E> clazz) {
-        return Index.select(clazz);
+        return new Query<>(clazz);
+    }
+
+    /**
+     * Creates a new suggester for objects of the given class.
+     *
+     * @param clazz the class of objects to suggest for/from
+     * @param <E>   the type of the entity
+     * @return a new suggester against the database
+     */
+    public <E extends Entity> Suggest<E> suggest(Class<E> clazz) {
+        return new Suggest<>(this, clazz);
+    }
+
+    /**
+     * Creates a new completer for objects of the given class.
+     *
+     * @param clazz the class of objects to generate completions
+     * @param <E>   the type of the entity
+     * @return a new completer against the database
+     */
+    public <E extends Entity> Complete<E> complete(Class<E> clazz) {
+        return new Complete<>(this, clazz);
     }
 
     /**
@@ -346,6 +1393,30 @@ public class IndexAccess {
      * @return <tt>true</tt> if the framework is completely initialized, <tt>false</tt> otherwise
      */
     public boolean isReady() {
-        return Index.isReady();
+        return ready;
+    }
+
+    /**
+     * Returns the readiness state of the index as {@link Future}.
+     *
+     * @return a future which is fullfilled once the index is ready
+     */
+    public Future ready() {
+        return readyFuture;
+    }
+
+    /**
+     * Blocks the calling thread until the index is ready.
+     */
+    public void waitForReady() {
+        if (!isReady()) {
+            try {
+                Barrier b = Barrier.create();
+                b.add(readyFuture);
+                b.await();
+            } catch (InterruptedException e) {
+                Exceptions.handle(e);
+            }
+        }
     }
 }
