@@ -65,7 +65,7 @@ public class Aggregation {
     }
 
     /**
-     * Returns all sub aggregations,
+     * Returns all sub aggregations.
      *
      * @return a list of all sub aggregations
      */
@@ -74,7 +74,7 @@ public class Aggregation {
     }
 
     /**
-     * Determiens if there are sub aggregations.
+     * Determines if there are sub aggregations.
      *
      * @return <tt>true</tt> if there are sub aggregations, <tt>false</tt> otherwise
      */
