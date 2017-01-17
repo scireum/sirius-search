@@ -6,40 +6,24 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.aggregation;
 
-import com.google.common.collect.Lists;
-
-import java.util.List;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 
 /**
  * An aggregation can be seen as a unit-of-work that builds analytic information over a set of documents. The context of
  * the execution defines what this document set is (e.g. a top-level aggregation executes within the context of the
  * executed query/filters of the search request).
  */
-public class Aggregation {
+public abstract class Aggregation {
 
-    private List<Aggregation> subAggregations = Lists.newArrayList();
-    private String field;
-    private String name;
-    private String path;
-    private int size = 50;
+    protected String field;
+    protected String name;
+    protected String path;
+    protected int size = 50;
 
-    private Aggregation(String name) {
+    protected Aggregation(String name) {
         this.name = name;
-    }
-
-    /**
-     * Sets the field and name used for the aggregation.
-     *
-     * @param field the used field
-     * @param name  name of the aggregation
-     * @return a newly created aggregation helper
-     */
-    public static Aggregation on(String field, String name) {
-        Aggregation aggregation = new Aggregation(name);
-        aggregation.field = field;
-        return aggregation;
     }
 
     /**
@@ -61,35 +45,6 @@ public class Aggregation {
      */
     public Aggregation path(String path) {
         this.path = path;
-        return this;
-    }
-
-    /**
-     * Returns all sub aggregations.
-     *
-     * @return a list of all sub aggregations
-     */
-    public List<Aggregation> getSubAggregations() {
-        return subAggregations;
-    }
-
-    /**
-     * Determines if there are sub aggregations.
-     *
-     * @return <tt>true</tt> if there are sub aggregations, <tt>false</tt> otherwise
-     */
-    public boolean hasSubAggregations() {
-        return !subAggregations.isEmpty();
-    }
-
-    /**
-     * Adds a sub-aggregation for this aggregation
-     *
-     * @param aggregation the sub-aggreagtion that should be added
-     * @return the aggregation helper itself used for fluent mehtod calls
-     */
-    public Aggregation addSubAggregation(Aggregation aggregation) {
-        subAggregations.add(aggregation);
         return this;
     }
 
@@ -161,4 +116,11 @@ public class Aggregation {
         this.path = path;
         return this;
     }
+
+    /**
+     * Constructs the builder for the specific aggregation
+     *
+     * @return the aggregationbuilder
+     */
+    public abstract AbstractAggregationBuilder getBuilder();
 }

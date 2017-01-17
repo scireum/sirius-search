@@ -14,6 +14,8 @@ import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.search.suggestion.Complete;
+import sirius.search.suggestion.Suggest;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

@@ -6,12 +6,14 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.suggestion;
 
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
+import sirius.search.Entity;
+import sirius.search.IndexAccess;
 
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +45,7 @@ public class Suggest<E extends Entity> {
      * @param index the IndexAccess instance
      * @param clazz the type of entities to suggest for
      */
-    protected Suggest(IndexAccess index, Class<E> clazz) {
+    public Suggest(IndexAccess index, Class<E> clazz) {
         this.index = index;
         this.clazz = clazz;
     }
