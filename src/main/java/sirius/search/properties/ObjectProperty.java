@@ -142,7 +142,7 @@ public class ObjectProperty extends Property {
         try {
             if (values.containsKey(innerField.getName())) {
                 innerField.setAccessible(true);
-                if (innerField.getType().equals(Map.class)) {
+                if (innerField.getType().equals(Map.class) || innerField.getType().equals(List.class)) {
                     innerField.set(obj, values.get(innerField.getName()));
                 } else {
                     innerField.set(obj, NLS.parseMachineString(innerField.getType(), values.get(innerField.getName())));
