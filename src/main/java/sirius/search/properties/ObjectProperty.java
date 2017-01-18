@@ -40,7 +40,7 @@ public class ObjectProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return field.isAnnotationPresent(NestedObject.class) && !field.isAnnotationPresent(FastCompletion.class);
+            return field.isAnnotationPresent(NestedObject.class);
         }
 
         @Override
@@ -79,27 +79,6 @@ public class ObjectProperty extends Property {
         if (o != null) {
             Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
-                if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
-                    try {
-                        innerField.setAccessible(true);
-                        Object val = innerField.get(o);
-                        if (val != null) {
-                            if (val instanceof Map || val instanceof List) {
-                                valueMap.put(innerField.getName(), val);
-                            } else {
-                                valueMap.put(innerField.getName(), NLS.toMachineString(val));
-                            }
-                        }
-                    } catch (Throwable e) {
-                        Exceptions.handle()
-                                  .error(e)
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
-                                                          innerField.getName(),
-                                                          toString())
-                                  .handle();
-                    }
-                }
                 transformField(o, valueMap, innerField);
             }
         }
@@ -115,7 +94,7 @@ public class ObjectProperty extends Property {
             innerField.setAccessible(true);
             Object val = innerField.get(o);
             if (val != null) {
-                if (val instanceof Map) {
+                if (val instanceof Map || val instanceof List) {
                     valueMap.put(innerField.getName(), val);
                 } else {
                     valueMap.put(innerField.getName(), NLS.toMachineString(val));
@@ -163,7 +142,7 @@ public class ObjectProperty extends Property {
         try {
             if (values.containsKey(innerField.getName())) {
                 innerField.setAccessible(true);
-                if (innerField.getType().equals(Map.class)) {
+                if (innerField.getType().equals(Map.class) || innerField.getType().equals(List.class)) {
                     innerField.set(obj, values.get(innerField.getName()));
                 } else {
                     innerField.set(obj, NLS.parseMachineString(innerField.getType(), values.get(innerField.getName())));

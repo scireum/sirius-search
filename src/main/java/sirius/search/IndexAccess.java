@@ -56,6 +56,8 @@ import sirius.kernel.health.Counter;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
 import sirius.kernel.health.Log;
+import sirius.search.suggestion.Complete;
+import sirius.search.suggestion.Suggest;
 import sirius.web.templates.Resource;
 import sirius.web.templates.Resources;
 

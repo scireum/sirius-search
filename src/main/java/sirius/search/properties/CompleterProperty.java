@@ -13,6 +13,7 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.search.annotations.FastCompletion;
 import sirius.search.annotations.NestedObject;
+import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -34,7 +35,7 @@ public class CompleterProperty extends ObjectProperty {
 
         @Override
         public boolean accepts(Field field) {
-            return field.isAnnotationPresent(NestedObject.class) && field.isAnnotationPresent(FastCompletion.class);
+            return field.getType().equals(AutoCompletion.class);
         }
 
         @Override
@@ -50,9 +51,15 @@ public class CompleterProperty extends ObjectProperty {
      */
     private CompleterProperty(Field field) {
         super(field);
-        payloads = field.getAnnotation(FastCompletion.class).payloads();
-        contextName = field.getAnnotation(FastCompletion.class).contextName();
-        contextType = field.getAnnotation(FastCompletion.class).contextType();
+        payloads = field.isAnnotationPresent(FastCompletion.class) ?
+                   field.getAnnotation(FastCompletion.class).payloads() :
+                   false;
+        contextName = field.isAnnotationPresent(FastCompletion.class) ?
+                      field.getAnnotation(FastCompletion.class).contextName() :
+                      "";
+        contextType = field.isAnnotationPresent(FastCompletion.class) ?
+                      field.getAnnotation(FastCompletion.class).contextType() :
+                      "";
     }
 
     @Override

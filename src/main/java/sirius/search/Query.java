@@ -20,6 +20,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
@@ -42,6 +43,8 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
+import sirius.search.aggregation.Aggregation;
+import sirius.search.aggregation.bucket.BucketAggregation;
 import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
@@ -830,31 +833,25 @@ public class Query<E extends Entity> {
 
     private void applyAggregations(SearchRequestBuilder srb) {
         for (Aggregation aggregation : aggregations) {
-            AggregationBuilder<?> aggregationBuilder;
+            AbstractAggregationBuilder aggregationBuilder = aggregation.getBuilder();
 
-            if (Strings.isEmpty(aggregation.getPath())) {
-                aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
-                                                        .field(aggregation.getField())
-                                                        .size(aggregation.getSize());
-            } else {
-                aggregationBuilder = AggregationBuilders.nested(aggregation.getName()).path(aggregation.getPath());
-            }
-
-            for (Aggregation subAggreation : aggregation.getSubAggregations()) {
-                aggregationBuilder.subAggregation(buildSubAggregations(subAggreation));
+            if (aggregation instanceof BucketAggregation) {
+                for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
+                    ((AggregationBuilder<?>) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+                }
             }
 
             srb.addAggregation(aggregationBuilder);
         }
     }
 
-    private TermsBuilder buildSubAggregations(Aggregation aggregation) {
+    private AbstractAggregationBuilder buildSubAggregations(Aggregation aggregation) {
+        AbstractAggregationBuilder aggregationBuilder = aggregation.getBuilder();
 
-        TermsBuilder aggregationBuilder = AggregationBuilders.terms(aggregation.getName())
-                                                             .field(aggregation.getField())
-                                                             .size(aggregation.getSize());
-        for (Aggregation subSubAggreation : aggregation.getSubAggregations()) {
-            aggregationBuilder.subAggregation(buildSubAggregations(subSubAggreation));
+        if (aggregation instanceof BucketAggregation) {
+            for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
+                ((AggregationBuilder<?>) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+            }
         }
 
         return aggregationBuilder;

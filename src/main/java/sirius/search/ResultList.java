@@ -17,6 +17,8 @@ import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
+import sirius.search.aggregation.Aggregation;
+import sirius.search.aggregation.bucket.BucketAggregation;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
@@ -24,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Combines the result items of a query along with the collected facet filters.
+ * Combines the result items of a query along with the collected facet filters and aggregations.
  * <p>
  * Instances of this class are created by {@link sirius.search.Query#queryResultList()} as a result of a database
  * query.
@@ -35,11 +37,9 @@ public class ResultList<T> implements Iterable<T> {
 
     private final List<Facet> termFacets;
     private final List<Aggregation> aggregations;
-    private final Map<String, List<Terms.Bucket>> aggregatedValues = Maps.newHashMap();
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
     private Monoflop facetsProcessed = Monoflop.create();
-    private Monoflop aggregationsProcessed = Monoflop.create();
 
     /**
      * Creates a new result list
@@ -127,44 +127,11 @@ public class ResultList<T> implements Iterable<T> {
     }
 
     /**
-     * Returns all aggregations computed by ElasticSearch.
+     * Returns all computed aggregations as a map
      *
      * @return a map containing the computed aggregations per field
      */
-    public Map<String, List<Terms.Bucket>> getAggregations() {
-        if (aggregationsProcessed.firstCall() && response != null) {
-            for (Aggregation aggregation : aggregations) {
-                Terms terms;
-
-                if (Strings.isEmpty(aggregation.getPath())) {
-                    terms = response.getAggregations().get(aggregation.getName());
-                } else {
-                    InternalAggregations internalAggregations =
-                            ((InternalNested) response.getAggregations().get(aggregation.getName())).getAggregations();
-                    terms = internalAggregations.get(aggregation.getSubAggregations().get(0).getName());
-                }
-
-                for (Terms.Bucket bucket : terms.getBuckets()) {
-                    List<Terms.Bucket> values = Lists.newArrayList();
-
-                    if (Strings.isEmpty(aggregation.getPath())) {
-                        values.addAll(((Terms) bucket.getAggregations()
-                                                     .get(aggregation.getSubAggregations()
-                                                                     .get(0)
-                                                                     .getName())).getBuckets());
-                    } else {
-                        values.addAll(((Terms) bucket.getAggregations()
-                                                     .get(aggregation.getSubAggregations()
-                                                                     .get(0)
-                                                                     .getSubAggregations()
-                                                                     .get(0)
-                                                                     .getName())).getBuckets());
-                    }
-
-                    aggregatedValues.put(bucket.getKeyAsString(), values);
-                }
-            }
-        }
-        return aggregatedValues;
+    public Map<String, org.elasticsearch.search.aggregations.Aggregation> getAggregations() {
+        return response.getAggregations().asMap();
     }
 }
