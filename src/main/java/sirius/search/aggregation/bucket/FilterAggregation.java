@@ -39,7 +39,7 @@ public class FilterAggregation extends BucketAggregation {
     /**
      * Sets the value which is used for filtering
      *
-     * @param value
+     * @param value the used filter value
      * @return the filter-aggregation helper itself for fluent method calls
      */
     public FilterAggregation withValue(String value) {
@@ -57,7 +57,7 @@ public class FilterAggregation extends BucketAggregation {
     /**
      * Constructs the builder
      *
-     * @return the max-builder
+     * @return the filter-builder
      */
     public FilterAggregationBuilder getBuilder() {
         return AggregationBuilders.filter(getName()).filter(QueryBuilders.termQuery(getField(), getValue()));
