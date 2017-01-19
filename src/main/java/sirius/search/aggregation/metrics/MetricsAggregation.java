@@ -1,4 +1,3 @@
-
 /*
  * Made with all the love in the world
  * by scireum in Remshalden, Germany
@@ -19,5 +18,4 @@ public abstract class MetricsAggregation extends Aggregation {
     protected MetricsAggregation(String name) {
         super(name);
     }
-
 }

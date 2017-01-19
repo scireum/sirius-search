@@ -6,13 +6,15 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.suggestion;
 
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionFuzzyBuilder;
+import sirius.search.Entity;
+import sirius.search.IndexAccess;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +40,7 @@ public class Complete<E extends Entity> {
     private List<String> contextValues;
     private Fuzziness fuzziness;
 
-    protected Complete(IndexAccess index, Class<E> clazz) {
+    public Complete(IndexAccess index, Class<E> clazz) {
         this.index = index;
         this.clazz = clazz;
     }
