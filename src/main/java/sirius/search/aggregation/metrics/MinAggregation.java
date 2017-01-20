@@ -38,6 +38,7 @@ public class MinAggregation extends MetricsAggregation {
      *
      * @return the min-builder
      */
+    @Override
     public MinBuilder getBuilder() {
         return AggregationBuilders.min(getName()).field(getField());
     }

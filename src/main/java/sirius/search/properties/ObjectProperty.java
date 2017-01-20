@@ -13,7 +13,6 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.IndexAccess;
-import sirius.search.annotations.FastCompletion;
 import sirius.search.annotations.NestedObject;
 import sirius.search.annotations.Transient;
 

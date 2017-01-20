@@ -13,7 +13,7 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
 
 /**
- * Represents an aggregation used to filter for a specific value
+ * Represents an aggregation used to filter for a specific value.
  */
 public class FilterAggregation extends BucketAggregation {
 
@@ -24,7 +24,7 @@ public class FilterAggregation extends BucketAggregation {
     }
 
     /**
-     * Used to generate a filter-aggregation with the given name and on the provided field
+     * Used to generate a filter-aggregation with the given name and on the provided field.
      *
      * @param field the field to be used
      * @param name  the name of the aggregation
@@ -37,7 +37,7 @@ public class FilterAggregation extends BucketAggregation {
     }
 
     /**
-     * Sets the value which is used for filtering
+     * Sets the value which is used for filtering.
      *
      * @param value the used filter value
      * @return the filter-aggregation helper itself for fluent method calls
@@ -48,6 +48,8 @@ public class FilterAggregation extends BucketAggregation {
     }
 
     /**
+     * Returns the filter value.
+     *
      * @return the filter value
      */
     public String getValue() {
@@ -55,10 +57,11 @@ public class FilterAggregation extends BucketAggregation {
     }
 
     /**
-     * Constructs the builder
+     * Constructs the builder.
      *
-     * @return the filter-builder
+     * @return the filter builder
      */
+    @Override
     public FilterAggregationBuilder getBuilder() {
         return AggregationBuilders.filter(getName()).filter(QueryBuilders.termQuery(getField(), getValue()));
     }
