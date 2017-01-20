@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents an aggregation used to filter for a specific value
+ * Represents an aggregation used to filter for a specific value.
  */
 public class Filter extends BucketAggregation {
 
@@ -28,7 +28,7 @@ public class Filter extends BucketAggregation {
     }
 
     /**
-     * Used to generate a filter-aggregation with the given name and on the provided field
+     * Used to generate a filter-aggregation with the given name and on the provided field.
      *
      * @param field the field to be used
      * @param name  the name of the aggregation
@@ -41,7 +41,7 @@ public class Filter extends BucketAggregation {
     }
 
     /**
-     * Sets the value which is used for filtering
+     * Sets the value which is used for filtering.
      *
      * @param value the used filter value
      * @return the filter-aggregation helper itself for fluent method calls
@@ -53,7 +53,7 @@ public class Filter extends BucketAggregation {
     }
 
     /**
-     * Sets the values which are used for filtering
+     * Sets the values which are used for filtering.
      *
      * @param values the used filter values
      * @return the filter-aggregation helper itself for fluent method calls
@@ -64,6 +64,8 @@ public class Filter extends BucketAggregation {
     }
 
     /**
+     * Returns the filter value.
+     *
      * @return the filter values
      */
     public List<String> getValue() {
@@ -71,18 +73,18 @@ public class Filter extends BucketAggregation {
     }
 
     /**
-     * Constructs the builder
+     * Constructs the builder.
      *
-     * @return the filter-builder
+     * @return the filter builder
      */
     public FilterAggregationBuilder getBuilder() {
         return AggregationBuilders.filter(getName()).filter(getQueryBuilder());
     }
 
     /**
-     * Constructs the query builder
+     * Constructs the query builder.
      *
-     * @return the query-builder
+     * @return the query builder
      */
     public BoolQueryBuilder getQueryBuilder() {
         BoolQueryBuilder filterQuery = QueryBuilders.boolQuery();

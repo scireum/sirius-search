@@ -40,6 +40,12 @@ public class Complete<E extends Entity> {
     private List<String> contextValues;
     private Fuzziness fuzziness;
 
+    /**
+     * Creates a new completion for the given index access and entity type.
+     *
+     * @param index the instance of <tt>IndexAccess</tt> being used
+     * @param clazz the entity type to operate on
+     */
     public Complete(IndexAccess index, Class<E> clazz) {
         this.index = index;
         this.clazz = clazz;

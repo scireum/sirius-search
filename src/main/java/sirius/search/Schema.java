@@ -63,7 +63,6 @@ public class Schema {
     protected Map<String, Class<? extends Entity>> nameTable =
             Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
 
-
     protected Schema(IndexAccess access) {
         this.access = access;
         indexPrefix = Sirius.getConfig().getString("index.prefix");

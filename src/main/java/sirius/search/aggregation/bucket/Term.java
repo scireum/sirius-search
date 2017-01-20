@@ -38,6 +38,7 @@ public class Term extends BucketAggregation {
      *
      * @return the termbuilder
      */
+    @Override
     public TermsBuilder getBuilder() {
         return AggregationBuilders.terms(getName()).field(getField()).size(getSize());
     }

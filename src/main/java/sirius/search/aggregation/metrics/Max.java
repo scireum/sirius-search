@@ -38,6 +38,7 @@ public class Max extends MetricsAggregation {
      *
      * @return the max-builder
      */
+    @Override
     public MaxBuilder getBuilder() {
         return AggregationBuilders.max(getName()).field(getField());
     }

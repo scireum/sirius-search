@@ -9,16 +9,11 @@
 package sirius.search;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.aggregations.InternalAggregations;
-import org.elasticsearch.search.aggregations.bucket.nested.InternalNested;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
-import sirius.kernel.commons.Strings;
 import sirius.search.aggregation.Aggregation;
-import sirius.search.aggregation.bucket.BucketAggregation;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
