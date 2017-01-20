@@ -76,12 +76,21 @@ public class Filter extends BucketAggregation {
      * @return the filter-builder
      */
     public FilterAggregationBuilder getBuilder() {
+        return AggregationBuilders.filter(getName()).filter(getQueryBuilder());
+    }
+
+    /**
+     * Constructs the query builder
+     *
+     * @return the query-builder
+     */
+    public BoolQueryBuilder getQueryBuilder() {
         BoolQueryBuilder filterQuery = QueryBuilders.boolQuery();
 
         for (String filter : filters) {
             filterQuery.should(QueryBuilders.termQuery(getField(), filter));
         }
 
-        return AggregationBuilders.filter(getName()).filter(filterQuery);
+        return filterQuery;
     }
 }
