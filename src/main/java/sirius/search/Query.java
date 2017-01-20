@@ -24,7 +24,6 @@ import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -91,7 +90,7 @@ public class Query<E extends Entity> {
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
-    private static final String DEFAULT_FIELD = "_all";
+    public static final String DEFAULT_FIELD = "_all";
 
     @ConfigValue("index.termFacetLimit")
     private static int termFacetLimit;
@@ -299,7 +298,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> query(String query) {
-        return query(query, DEFAULT_FIELD, this::defaultTokenizer, false, false);
+        return query(query, DEFAULT_FIELD, Query::defaultTokenizer, false, false);
     }
 
     /**
@@ -312,7 +311,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> query(String query, String field) {
-        return query(query, field, this::defaultTokenizer, false, false);
+        return query(query, field, Query::defaultTokenizer, false, false);
     }
 
     /**
@@ -327,7 +326,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> expandedQuery(String query) {
-        return query(query, DEFAULT_FIELD, this::defaultTokenizer, true, false);
+        return query(query, DEFAULT_FIELD, Query::defaultTokenizer, true, false);
     }
 
     /**
@@ -343,7 +342,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> expandedQuery(String query, String field) {
-        return query(query, field, this::defaultTokenizer, true, false);
+        return query(query, field, Query::defaultTokenizer, true, false);
     }
 
     /**
@@ -352,7 +351,7 @@ public class Query<E extends Entity> {
      * @param input the value to tokenize
      * @return a list of token based on the given input
      */
-    private Iterable<List<String>> defaultTokenizer(String input) {
+    public static Iterable<List<String>> defaultTokenizer(String input) {
         List<List<String>> result = Lists.newArrayList();
         StandardAnalyzer std = new StandardAnalyzer();
         try {
