@@ -12,7 +12,6 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.search.annotations.FastCompletion;
-import sirius.search.annotations.NestedObject;
 import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
