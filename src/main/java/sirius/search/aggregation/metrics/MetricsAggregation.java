@@ -18,5 +18,4 @@ public abstract class MetricsAggregation extends Aggregation {
     protected MetricsAggregation(String name) {
         super(name);
     }
-
 }

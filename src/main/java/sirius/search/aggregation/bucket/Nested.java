@@ -14,9 +14,9 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 /**
  * An Aggregation that is needed for nested objects
  */
-public class NestedAggregation extends BucketAggregation {
+public class Nested extends BucketAggregation {
 
-    protected NestedAggregation(String name) {
+    protected Nested(String name) {
         super(name);
     }
 
@@ -27,8 +27,8 @@ public class NestedAggregation extends BucketAggregation {
      * @param name the name of the aggregation
      * @return a newly created nested-aggregation helper
      */
-    public static NestedAggregation on(String name, String path) {
-        NestedAggregation nested = new NestedAggregation(name);
+    public static Nested on(String name, String path) {
+        Nested nested = new Nested(name);
         nested.path = path;
         return nested;
     }

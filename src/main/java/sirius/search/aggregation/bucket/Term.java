@@ -14,9 +14,9 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 /**
  * Represents an aggregation using terms
  */
-public class TermAggregation extends BucketAggregation {
+public class Term extends BucketAggregation {
 
-    private TermAggregation(String name) {
+    private Term(String name) {
         super(name);
     }
 
@@ -27,8 +27,8 @@ public class TermAggregation extends BucketAggregation {
      * @param name  the name of this aggregation
      * @return a newly created termaggregation helper
      */
-    public static TermAggregation on(String field, String name) {
-        TermAggregation aggregation = new TermAggregation(name);
+    public static Term on(String field, String name) {
+        Term aggregation = new Term(name);
         aggregation.field = field;
         return aggregation;
     }

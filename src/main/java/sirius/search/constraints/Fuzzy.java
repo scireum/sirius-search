@@ -59,6 +59,6 @@ public class Fuzzy implements Constraint {
 
     @Override
     public String toString(boolean skipConstraintValues) {
-        return field + " LIKE '" + (skipConstraintValues ? "?" : value) + "'";
+        return field + " LIKE (Fuzzy=" + fuzziness + ") '" + (skipConstraintValues ? "?" : value) + "'";
     }
 }

@@ -14,9 +14,9 @@ import org.elasticsearch.search.aggregations.metrics.min.MinBuilder;
 /**
  * Represents an aggregation that determines the minimal value of a field
  */
-public class MinAggregation extends MetricsAggregation {
+public class Min extends MetricsAggregation {
 
-    private MinAggregation(String name) {
+    private Min(String name) {
         super(name);
     }
 
@@ -27,8 +27,8 @@ public class MinAggregation extends MetricsAggregation {
      * @param name  the name of the aggregation
      * @return the min-aggregation helper itself for fluent method calls
      */
-    public static MinAggregation on(String field, String name) {
-        MinAggregation aggregation = new MinAggregation(name);
+    public static Min on(String field, String name) {
+        Min aggregation = new Min(name);
         aggregation.field = field;
         return aggregation;
     }

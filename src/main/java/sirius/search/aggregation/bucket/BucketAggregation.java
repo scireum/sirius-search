@@ -46,9 +46,9 @@ public abstract class BucketAggregation extends Aggregation {
      * Adds a sub-aggregation for this aggregation
      *
      * @param aggregation the sub-aggreagtion that should be added
-     * @return the aggregation helper itself used for fluent mehtod calls
+     * @return the bucketaggregation helper itself used for fluent mehtod calls
      */
-    public Aggregation addSubAggregation(Aggregation aggregation) {
+    public BucketAggregation addSubAggregation(Aggregation aggregation) {
         subAggregations.add(aggregation);
         return this;
     }

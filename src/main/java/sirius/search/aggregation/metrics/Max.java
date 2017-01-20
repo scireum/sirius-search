@@ -14,9 +14,9 @@ import org.elasticsearch.search.aggregations.metrics.max.MaxBuilder;
 /**
  * Represents an aggregation that determines the maximum value of a field
  */
-public class MaxAggregation extends MetricsAggregation {
+public class Max extends MetricsAggregation {
 
-    private MaxAggregation(String name) {
+    private Max(String name) {
         super(name);
     }
 
@@ -27,8 +27,8 @@ public class MaxAggregation extends MetricsAggregation {
      * @param name  the name of the aggregation
      * @return the max-aggregation helper itself for fluent method calls
      */
-    public static MaxAggregation on(String field, String name) {
-        MaxAggregation aggregation = new MaxAggregation(name);
+    public static Max on(String field, String name) {
+        Max aggregation = new Max(name);
         aggregation.field = field;
         return aggregation;
     }
