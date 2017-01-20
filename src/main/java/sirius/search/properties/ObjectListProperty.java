@@ -14,6 +14,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
+import sirius.search.Schema;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.Transient;
@@ -189,9 +190,10 @@ public class ObjectListProperty extends Property {
         for (Field innerField : field.getAnnotation(ListType.class).value().getDeclaredFields()) {
             if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
                 builder.startObject(innerField.getName());
-                builder.field("type", "string");
+                builder.field("type", innerField.getType().equals(Long.class) ? "long" : "string");
                 builder.field("index",
-                              innerField.isAnnotationPresent(IndexMode.class) ?
+                              innerField.isAnnotationPresent(IndexMode.class) && innerField.getType()
+                                                                                           .equals(String.class) ?
                               innerField.getAnnotation(IndexMode.class).indexMode() :
                               IndexMode.MODE_NOT_ANALYZED);
                 builder.endObject();
