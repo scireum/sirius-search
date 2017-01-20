@@ -14,7 +14,6 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
-import sirius.search.Schema;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.Transient;
