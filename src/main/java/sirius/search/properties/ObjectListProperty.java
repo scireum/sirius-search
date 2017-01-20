@@ -189,11 +189,23 @@ public class ObjectListProperty extends Property {
         for (Field innerField : field.getAnnotation(ListType.class).value().getDeclaredFields()) {
             if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
                 builder.startObject(innerField.getName());
-                builder.field("type", "string");
-                builder.field("index",
-                              innerField.isAnnotationPresent(IndexMode.class) ?
-                              innerField.getAnnotation(IndexMode.class).indexMode() :
-                              IndexMode.MODE_NOT_ANALYZED);
+                
+                if (innerField.getType().equals(Long.class)) {
+                    builder.field("type", "long");
+                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
+                } else if (innerField.getType().equals(String.class)) {
+                    builder.field("type", "string");
+                    builder.field("index",
+                                  innerField.isAnnotationPresent(IndexMode.class) ?
+                                  innerField.getAnnotation(IndexMode.class).indexMode() :
+                                  IndexMode.MODE_NOT_ANALYZED);
+                } else {
+                    throw Exceptions.handle()
+                                    .to(IndexAccess.LOG)
+                                    .withSystemErrorMessage("Unsupported field type - long and string allowed")
+                                    .handle();
+                }
+
                 builder.endObject();
             }
         }
