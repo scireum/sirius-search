@@ -825,7 +825,7 @@ public class Query<E extends Entity> {
         if (start > 0) {
             srb.setFrom(start);
         }
-        if (limit != null && limit > 0) {
+        if (limit != null && limit >= 0) {
             srb.setSize(limit);
         }
     }
