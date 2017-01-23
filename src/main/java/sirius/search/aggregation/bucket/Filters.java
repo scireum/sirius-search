@@ -29,6 +29,7 @@ public class Filters extends BucketAggregation {
      * Sets the filters that should be combined using must-clauses
      *
      * @param filters the filters that should be combined
+     * @return a newly created filters aggregation helper
      */
     public static Filters of(Filter... filters) {
         Filters multipleFilters = new Filters("");
