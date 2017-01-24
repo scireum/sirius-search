@@ -359,10 +359,15 @@ public class RobustQueryParser implements Constraint {
         if (tokens.size() == 1) {
             return QueryBuilders.termQuery(field, tokens.get(0));
         } else {
-            SpanNearQueryBuilder builder = QueryBuilders.spanNearQuery();
-            builder.slop(3);
+            Monoflop monoflop = Monoflop.create();
+            SpanNearQueryBuilder builder = null;
+
             for (String token : tokens) {
-                builder.clause(QueryBuilders.spanTermQuery(field, token));
+                if (monoflop.firstCall()) {
+                    builder = QueryBuilders.spanNearQuery(QueryBuilders.spanTermQuery(field, token), 3);
+                } else {
+                    builder.addClause(QueryBuilders.spanTermQuery(field, token));
+                }
             }
             return builder;
         }

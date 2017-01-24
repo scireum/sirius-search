@@ -62,7 +62,7 @@ public class ShowMappingCommand implements Command {
                         while (iter.hasNext()) {
                             String property = iter.next();
                             MappingMetaData md = c.get(property);
-                            output.line("routing: " + md.routing().path());
+                            output.line("routing: " + md.routing().toString());
                             for (Map.Entry<String, Object> e : md.getSourceAsMap().entrySet()) {
                                 if (e.getValue() instanceof Map) {
                                     output.line(e.getKey());

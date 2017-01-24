@@ -8,17 +8,20 @@
 
 package sirius.search.suggestion;
 
-import org.elasticsearch.action.suggest.SuggestRequestBuilder;
-import org.elasticsearch.action.suggest.SuggestResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.search.suggest.SuggestBuilder;
+import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionFuzzyBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a completion against the database which are created via {@link IndexAccess#complete(Class)}.
@@ -36,8 +39,7 @@ public class Complete<E extends Entity> {
     private String field;
     private String query;
     private int limit = 5;
-    private String contextName;
-    private List<String> contextValues;
+    private Map<String, List<? extends ToXContent>> contexts;
     private Fuzziness fuzziness;
 
     /**
@@ -79,13 +81,11 @@ public class Complete<E extends Entity> {
     /**
      * Allows to restrict/filter completions by adding context.
      *
-     * @param name   name of the context defined in the field mapping
-     * @param values values that should be used to restrict/filter completions
+     * @param contexts the contexts that should be applied
      * @return the completion helper itself for fluent method calls
      */
-    public Complete<E> context(String name, List<String> values) {
-        this.contextName = name;
-        this.contextValues = values;
+    public Complete<E> contexts(Map<String, List<? extends ToXContent>> contexts) {
+        this.contexts = contexts;
         return this;
     }
 
@@ -106,13 +106,13 @@ public class Complete<E extends Entity> {
      * @return the generated completions or an empty list
      */
     public List<CompletionSuggestion.Entry.Option> completeList() {
-        CompletionSuggestionFuzzyBuilder csb = generateCompletionBuilder();
-        SuggestRequestBuilder sqb = generateRequestBuilder(csb);
+        SuggestBuilder csb = generateCompletionBuilder();
+        SearchRequestBuilder sqb = generateRequestBuilder(csb);
         return execute(sqb);
     }
 
-    private List<CompletionSuggestion.Entry.Option> execute(SuggestRequestBuilder sqb) {
-        SuggestResponse response = sqb.execute().actionGet();
+    private List<CompletionSuggestion.Entry.Option> execute(SearchRequestBuilder sqb) {
+        SearchResponse response = sqb.execute().actionGet();
         CompletionSuggestion completionSuggestion = response.getSuggest().getSuggestion("completion");
         ArrayList<String> completions = new ArrayList<>();
 
@@ -125,21 +125,17 @@ public class Complete<E extends Entity> {
         return Collections.emptyList();
     }
 
-    private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionFuzzyBuilder csb) {
+    private SearchRequestBuilder generateRequestBuilder(SuggestBuilder builder) {
         return index.getClient()
-                    .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
-                    .addSuggestion(csb);
+                    .prepareSearch(index.getIndexName(index.getDescriptor(clazz).getIndex()))
+                    .suggest(builder);
     }
 
-    private CompletionSuggestionFuzzyBuilder generateCompletionBuilder() {
-        CompletionSuggestionFuzzyBuilder csfb = new CompletionSuggestionFuzzyBuilder("completion");
-
-        csfb.field(field);
-        csfb.size(limit);
-        csfb.text(query);
-        csfb.addContextField(contextName, contextValues);
-        csfb.setFuzziness(fuzziness);
-
-        return csfb;
+    private SuggestBuilder generateCompletionBuilder() {
+        return new SuggestBuilder().addSuggestion("completion",
+                                                  SuggestBuilders.completionSuggestion(field)
+                                                                 .size(limit)
+                                                                 .prefix(query, fuzziness)
+                                                                 .contexts(contexts));
     }
 }

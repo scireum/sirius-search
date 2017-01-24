@@ -8,8 +8,8 @@
 
 package sirius.search.aggregation.bucket;
 
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.nested.NestedAggregationBuilder;
 
 /**
  * An Aggregation that is needed for nested objects
@@ -34,7 +34,7 @@ public class Nested extends BucketAggregation {
     }
 
     @Override
-    public AbstractAggregationBuilder getBuilder() {
-        return AggregationBuilders.nested(getName()).path(getPath());
+    public NestedAggregationBuilder getBuilder() {
+        return AggregationBuilders.nested(getName(), getPath());
     }
 }

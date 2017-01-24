@@ -122,5 +122,5 @@ public abstract class Aggregation {
      *
      * @return the aggregationbuilder
      */
-    public abstract AbstractAggregationBuilder getBuilder();
+    public abstract AbstractAggregationBuilder<?> getBuilder();
 }

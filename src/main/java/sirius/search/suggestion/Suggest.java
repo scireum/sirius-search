@@ -8,8 +8,10 @@
 
 package sirius.search.suggestion;
 
-import org.elasticsearch.action.suggest.SuggestRequestBuilder;
-import org.elasticsearch.action.suggest.SuggestResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.search.suggest.SuggestBuilder;
+import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
 import sirius.search.Entity;
@@ -116,8 +118,8 @@ public class Suggest<E extends Entity> {
      * @return the generated suggestion phrases
      */
     public List<PhraseSuggestion.Entry.Option> suggestList() {
-        PhraseSuggestionBuilder psb = generateSuggestionBuilder();
-        SuggestRequestBuilder sqb = generateRequestBuilder(psb);
+        SuggestBuilder psb = generateSuggestionBuilder();
+        SearchRequestBuilder sqb = generateRequestBuilder(psb);
         return execute(sqb);
     }
 
@@ -181,28 +183,18 @@ public class Suggest<E extends Entity> {
      *
      * @return the PhraseSuggestionBuilder
      */
-    private PhraseSuggestionBuilder generateSuggestionBuilder() {
-        PhraseSuggestionBuilder phraseSuggestionBuilder = new PhraseSuggestionBuilder("suggestPhrase");
-        phraseSuggestionBuilder.field(field)
-                               .text(query)
-                               .maxErrors(maxErrors)
-                               .size(limit)
-                               .analyzer(analyzer)
-                               .confidence(confidence)
-                               .collateQuery(collateQuery)
-                               .collateParams(collateParams)
-                               .collatePrune(collatePrune);
+    private SuggestBuilder generateSuggestionBuilder() {
+        PhraseSuggestionBuilder builder = SuggestBuilders.phraseSuggestion(field)
+                                                         .text(query)
+                                                         .maxErrors(maxErrors)
+                                                         .size(limit)
+                                                         .analyzer(analyzer)
+                                                         .confidence(confidence)
+                                                         .collateQuery(collateQuery)
+                                                         .collateParams(collateParams)
+                                                         .collatePrune(collatePrune);
 
-        if ((query.split("\\s+").length == 1) && (query.length() < 8)) {
-            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
-                    1).suggestMode(suggestMode.name().toLowerCase()).minWordLength(4));
-        } else {
-            phraseSuggestionBuilder.addCandidateGenerator(new PhraseSuggestionBuilder.DirectCandidateGenerator(field).maxEdits(
-                    2).suggestMode(suggestMode.name().toLowerCase()).minWordLength(4));
-        }
-        //phraseSuggestionBuilder.smoothingModel(new PhraseSuggestionBuilder.StupidBackoff(0.5));
-
-        return phraseSuggestionBuilder;
+        return new SuggestBuilder().addSuggestion("suggestPhrase", builder);
     }
 
     /**
@@ -211,10 +203,10 @@ public class Suggest<E extends Entity> {
      * @param phraseSuggestionBuilder the phrase suggestion
      * @return the index suggest request builder
      */
-    private SuggestRequestBuilder generateRequestBuilder(PhraseSuggestionBuilder phraseSuggestionBuilder) {
+    private SearchRequestBuilder generateRequestBuilder(SuggestBuilder phraseSuggestionBuilder) {
         return index.getClient()
-                    .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
-                    .addSuggestion(phraseSuggestionBuilder);
+                    .prepareSearch(index.getIndexName(index.getDescriptor(clazz).getIndex()))
+                    .suggest(phraseSuggestionBuilder);
     }
 
     /**
@@ -222,9 +214,9 @@ public class Suggest<E extends Entity> {
      *
      * @return tuples of the query string and all suggest options
      */
-    private List<PhraseSuggestion.Entry.Option> execute(SuggestRequestBuilder sqb) {
+    private List<PhraseSuggestion.Entry.Option> execute(SearchRequestBuilder sqb) {
 
-        SuggestResponse response = sqb.execute().actionGet();
+        SearchResponse response = sqb.execute().actionGet();
         PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
         List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
 

@@ -15,7 +15,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.CharStreams;
-import org.elasticsearch.Version;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
@@ -29,9 +28,11 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.node.NodeValidationException;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.script.groovy.GroovyPlugin;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
 import sirius.kernel.async.CallContext;
@@ -190,7 +191,7 @@ public class IndexAccess {
 
     private static class ConfigurableNode extends Node {
         ConfigurableNode(Settings settings, Collection<Class<? extends Plugin>> classpathPlugins) {
-            super(InternalSettingsPreparer.prepareEnvironment(settings, null), Version.CURRENT, classpathPlugins);
+            super(InternalSettingsPreparer.prepareEnvironment(settings, null), classpathPlugins);
         }
     }
 
@@ -201,7 +202,11 @@ public class IndexAccess {
         if (inMemoryNode != null) {
             ready = false;
             client.close();
-            inMemoryNode.close();
+            try {
+                inMemoryNode.close();
+            } catch (IOException e) {
+                Exceptions.handle(LOG, e);
+            }
         }
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"), CallContext.getNodeName() + "_in_memory_es");
@@ -212,7 +217,7 @@ public class IndexAccess {
             Exceptions.handle(LOG, e);
         }
 
-        Settings settings = Settings.settingsBuilder()
+        Settings settings = Settings.builder()
                                     .put("node.http.enabled", false)
                                     .put("path.home", tmpDir.getAbsolutePath())
                                     .put("index.gateway.type", "none")
@@ -220,7 +225,12 @@ public class IndexAccess {
                                     .put("index.number_of_replicas", 0)
                                     .put("script.inline", "on")
                                     .build();
-        inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+        try {
+            inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+        } catch (NodeValidationException e) {
+            Exceptions.handle(LOG, e);
+        }
+
         client = inMemoryNode.client();
         if (schema != null) {
             for (String msg : schema.createMappings()) {
@@ -517,7 +527,7 @@ public class IndexAccess {
     private void startClient() {
         if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
             LOG.INFO("Starting Embedded Elasticsearch...");
-            Settings settings = Settings.settingsBuilder()
+            Settings settings = Settings.builder()
                                         .put("node.http.enabled", false)
                                         .put("path.home", determineDataPath())
                                         .put("index.gateway.type", "none")
@@ -526,15 +536,19 @@ public class IndexAccess {
                                         .put("script.inline", "on")
                                         .put("script.indexed", "on")
                                         .build();
-            inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+            try {
+                inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
+            } catch (NodeValidationException e) {
+                Exceptions.handle(LOG, e);
+            }
             client = inMemoryNode.client();
         } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
             LOG.INFO("Starting In-Memory Elasticsearch...");
             generateEmptyInMemoryInstance();
         } else {
             LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
-            Settings settings = Settings.settingsBuilder().put("cluster.name", clusterName).build();
-            TransportClient transportClient = TransportClient.builder().settings(settings).build();
+            Settings settings = Settings.builder().put("cluster.name", clusterName).build();
+            TransportClient transportClient = new PreBuiltTransportClient(settings);
             try {
                 transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
                                                                                    port));

@@ -50,6 +50,6 @@ public class Filters extends BucketAggregation {
             filtersQuery.must(filter.getQueryBuilder());
         }
 
-        return AggregationBuilders.filter(getName()).filter(filtersQuery);
+        return AggregationBuilders.filter(getName(), filtersQuery);
     }
 }

@@ -9,7 +9,7 @@
 package sirius.search.aggregation.bucket;
 
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
 /**
  * Represents an aggregation using terms
@@ -39,7 +39,7 @@ public class Term extends BucketAggregation {
      * @return the termbuilder
      */
     @Override
-    public TermsBuilder getBuilder() {
+    public TermsAggregationBuilder getBuilder() {
         return AggregationBuilders.terms(getName()).field(getField()).size(getSize());
     }
 }
