@@ -13,6 +13,11 @@ import sirius.kernel.Sirius;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
+import sirius.kernel.health.Exceptions;
+
+import java.io.IOException;
+
+import static sirius.search.IndexAccess.LOG;
 
 /**
  * Starts and stops the elasticsearch client.
@@ -31,7 +36,7 @@ public class IndexLifecycle implements Lifecycle {
     @Override
     public void started() {
         if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
-            IndexAccess.LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
+            LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
             return;
         }
 
@@ -51,9 +56,6 @@ public class IndexLifecycle implements Lifecycle {
         // other stopping lifecycles access until the very end...
         index.ready = false;
         index.client.close();
-        if (index.inMemoryNode != null) {
-            index.inMemoryNode.close();
-        }
     }
 
     @Override

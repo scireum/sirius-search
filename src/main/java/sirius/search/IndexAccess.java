@@ -28,10 +28,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeValidationException;
 import org.elasticsearch.node.internal.InternalSettingsPreparer;
 import org.elasticsearch.plugins.Plugin;
-import org.elasticsearch.script.groovy.GroovyPlugin;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
@@ -43,7 +41,6 @@ import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Callback;
-import sirius.kernel.commons.Files;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
@@ -71,7 +68,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -117,10 +113,6 @@ public class IndexAccess {
      * Contains the ElasticSearch client
      */
     protected Client client;
-    /**
-     * Contains the ES-Node if started using {@link #generateEmptyInMemoryInstance()}
-     */
-    protected Node inMemoryNode;
 
     /**
      * Determines if the framework is already completely initialized
@@ -195,51 +187,6 @@ public class IndexAccess {
         }
     }
 
-    /**
-     * Generates a pure unclustered in memory instance of elasticsearch (most probably for testing purposes).
-     */
-    public void generateEmptyInMemoryInstance() {
-        if (inMemoryNode != null) {
-            ready = false;
-            client.close();
-            try {
-                inMemoryNode.close();
-            } catch (IOException e) {
-                Exceptions.handle(LOG, e);
-            }
-        }
-
-        File tmpDir = new File(System.getProperty("java.io.tmpdir"), CallContext.getNodeName() + "_in_memory_es");
-        tmpDir.mkdirs();
-        try {
-            Files.removeChildren(tmpDir.toPath());
-        } catch (IOException e) {
-            Exceptions.handle(LOG, e);
-        }
-
-        Settings settings = Settings.builder()
-                                    .put("node.http.enabled", false)
-                                    .put("path.home", tmpDir.getAbsolutePath())
-                                    .put("index.gateway.type", "none")
-                                    .put("index.number_of_shards", 1)
-                                    .put("index.number_of_replicas", 0)
-                                    .put("script.inline", "on")
-                                    .build();
-        try {
-            inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
-        } catch (NodeValidationException e) {
-            Exceptions.handle(LOG, e);
-        }
-
-        client = inMemoryNode.client();
-        if (schema != null) {
-            for (String msg : schema.createMappings()) {
-                LOG.FINE(msg);
-            }
-        }
-        ready = true;
-    }
-
     @Part
     private Resources resources;
 
@@ -254,11 +201,6 @@ public class IndexAccess {
     @SuppressWarnings("unchecked")
     public void loadDataset(String dataset) {
         try {
-            if (inMemoryNode == null) {
-                throw Exceptions.createHandled()
-                                .withSystemErrorMessage("Cannot load datasets when not running as 'in-memory'")
-                                .handle();
-            }
             LOG.INFO("Loading dataset: %s", dataset);
             Resource res = resources.resolve(dataset)
                                     .orElseThrow(() -> new IllegalArgumentException("Unknown dataset: " + dataset));
@@ -525,38 +467,17 @@ public class IndexAccess {
     private int port;
 
     private void startClient() {
-        if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
-            LOG.INFO("Starting Embedded Elasticsearch...");
-            Settings settings = Settings.builder()
-                                        .put("node.http.enabled", false)
-                                        .put("path.home", determineDataPath())
-                                        .put("index.gateway.type", "none")
-                                        .put("index.number_of_shards", 1)
-                                        .put("index.number_of_replicas", 0)
-                                        .put("script.inline", "on")
-                                        .put("script.indexed", "on")
-                                        .build();
-            try {
-                inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
-            } catch (NodeValidationException e) {
-                Exceptions.handle(LOG, e);
-            }
-            client = inMemoryNode.client();
-        } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
-            LOG.INFO("Starting In-Memory Elasticsearch...");
-            generateEmptyInMemoryInstance();
-        } else {
-            LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
-            Settings settings = Settings.builder().put("cluster.name", clusterName).build();
-            TransportClient transportClient = new PreBuiltTransportClient(settings);
-            try {
-                transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
-                                                                                   port));
-            } catch (UnknownHostException e) {
-                Exceptions.handle(LOG, e);
-            }
-            client = transportClient;
+
+        LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
+        Settings settings = Settings.builder().put("cluster.name", clusterName).build();
+        TransportClient transportClient = new PreBuiltTransportClient(settings);
+        try {
+            transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
+                                                                               port));
+        } catch (UnknownHostException e) {
+            Exceptions.handle(LOG, e);
         }
+        client = transportClient;
     }
 
     private String determineDataPath() {
