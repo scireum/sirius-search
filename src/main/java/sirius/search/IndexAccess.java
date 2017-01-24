@@ -523,7 +523,6 @@ public class IndexAccess {
                                         .put("index.gateway.type", "none")
                                         .put("index.number_of_shards", 1)
                                         .put("index.number_of_replicas", 0)
-                                        .put("script.disable_dynamic", false)
                                         .build();
             inMemoryNode = new ConfigurableNode(settings, Collections.singletonList(GroovyPlugin.class)).start();
             client = inMemoryNode.client();
