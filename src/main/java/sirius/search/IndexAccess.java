@@ -181,12 +181,6 @@ public class IndexAccess {
         return client;
     }
 
-    private static class ConfigurableNode extends Node {
-        ConfigurableNode(Settings settings, Collection<Class<? extends Plugin>> classpathPlugins) {
-            super(InternalSettingsPreparer.prepareEnvironment(settings, null), classpathPlugins);
-        }
-    }
-
     @Part
     private Resources resources;
 
