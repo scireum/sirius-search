@@ -395,7 +395,7 @@ public class ForeignKey {
             sb.append(";");
             ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return new Script(ScriptType.INLINE, sb.toString(), LANGUAGE_GROOVY, ctx);
+        return new Script(ScriptType.INLINE, LANGUAGE_GROOVY, sb.toString(), ctx);
     }
 
     /**
