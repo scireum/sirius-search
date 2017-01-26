@@ -15,6 +15,8 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -40,7 +42,7 @@ public class Complete<E extends Entity> {
     private String query;
     private int limit = 5;
     private Map<String, List<? extends ToXContent>> contexts;
-    private Fuzziness fuzziness;
+    private Fuzziness fuzziness = Fuzziness.AUTO;
 
     /**
      * Creates a new completion for the given index access and entity type.
@@ -132,10 +134,13 @@ public class Complete<E extends Entity> {
     }
 
     private SuggestBuilder generateCompletionBuilder() {
-        return new SuggestBuilder().addSuggestion("completion",
-                                                  SuggestBuilders.completionSuggestion(field)
-                                                                 .size(limit)
-                                                                 .prefix(query, fuzziness)
-                                                                 .contexts(contexts));
+        CompletionSuggestionBuilder builder =
+                SuggestBuilders.completionSuggestion(field).size(limit).prefix(query, fuzziness);
+
+        if (contexts != null) {
+            builder.contexts(contexts);
+        }
+
+        return new SuggestBuilder().addSuggestion("completion", builder);
     }
 }

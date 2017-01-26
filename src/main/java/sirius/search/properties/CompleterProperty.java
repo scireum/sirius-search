@@ -21,8 +21,6 @@ import java.lang.reflect.Field;
  * Generates a field for fast completion using the es-completion-suggester
  */
 public class CompleterProperty extends ObjectProperty {
-
-    private final boolean payloads;
     private final String contextName;
     private final String contextType;
 
@@ -50,9 +48,6 @@ public class CompleterProperty extends ObjectProperty {
      */
     private CompleterProperty(Field field) {
         super(field);
-        payloads = field.isAnnotationPresent(FastCompletion.class) ?
-                   field.getAnnotation(FastCompletion.class).payloads() :
-                   false;
         contextName = field.isAnnotationPresent(FastCompletion.class) ?
                       field.getAnnotation(FastCompletion.class).contextName() :
                       "";
@@ -66,14 +61,14 @@ public class CompleterProperty extends ObjectProperty {
         builder.startObject(getName());
         builder.field("type", getMappingType());
         builder.field("analyzer", analyzer);
-        builder.field("payloads", payloads);
 
         if (Strings.isFilled(contextName)) {
-            builder.startObject("context");
-            builder.startObject(contextName);
+            builder.startArray("contexts");
+            builder.startObject();
+            builder.field("name", contextName);
             builder.field("type", contextType);
             builder.endObject();
-            builder.endObject();
+            builder.endArray();
         }
         builder.endObject();
     }

@@ -23,22 +23,10 @@ public class AutoCompletion {
     private List<String> input;
 
     /**
-     * The term that should be returned, if one of the terms in input can be completed
-     */
-    public static final String OUTPUT = "output";
-    private String output;
-
-    /**
      * Used to filter, e.g. a catalog-id
      */
     public static final String CONTEXT = "context";
-    private Map<String, List<String>> context;
-
-    /**
-     * Additional data can be stored to prevent further queries, e.g. an item-id
-     */
-    public static final String PAYLOAD = "payload";
-    private Map<String, List<String>> payload;
+    private Map<String, List<String>> contexts;
 
     /**
      * Used for ranking
@@ -54,28 +42,12 @@ public class AutoCompletion {
         this.input = input;
     }
 
-    public String getOutput() {
-        return output;
-    }
-
-    public void setOutput(String output) {
-        this.output = output;
-    }
-
     public Map<String, List<String>> getContext() {
-        return context;
+        return contexts;
     }
 
-    public void setContext(Map<String, List<String>> context) {
-        this.context = context;
-    }
-
-    public Map<String, List<String>> getPayload() {
-        return payload;
-    }
-
-    public void setPayload(Map<String, List<String>> payload) {
-        this.payload = payload;
+    public void setContext(Map<String, List<String>> contexts) {
+        this.contexts = contexts;
     }
 
     public String getWeight() {
