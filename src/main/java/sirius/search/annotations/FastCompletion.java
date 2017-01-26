@@ -25,7 +25,7 @@ public @interface FastCompletion {
      *
      * @return the name of the context used
      */
-    String contextName();
+    String contextName() default "";
 
     /**
      * The type of context. ElasticSearch provides "category" and "geo".
