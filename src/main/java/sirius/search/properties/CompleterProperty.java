@@ -12,6 +12,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.search.annotations.FastCompletion;
+import sirius.search.annotations.IndexMode;
 import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
@@ -21,6 +22,8 @@ import java.lang.reflect.Field;
  * Generates a field for fast completion using the es-completion-suggester
  */
 public class CompleterProperty extends ObjectProperty {
+
+    private final String analyzer;
     private final String contextName;
     private final String contextType;
 
@@ -54,6 +57,9 @@ public class CompleterProperty extends ObjectProperty {
         contextType = field.isAnnotationPresent(FastCompletion.class) ?
                       field.getAnnotation(FastCompletion.class).contextType() :
                       "";
+        analyzer = field.isAnnotationPresent(IndexMode.class) ?
+                   field.getAnnotation(IndexMode.class).analyzer() :
+                   "whitespace";
     }
 
     @Override

@@ -13,6 +13,7 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.IndexAccess;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.NestedObject;
 import sirius.search.annotations.Transient;
 
@@ -28,8 +29,6 @@ import java.util.Map;
  * NestedObject} annotation.
  */
 public class ObjectProperty extends Property {
-
-    protected final String analyzer;
 
     /**
      * Factory for generating properties based on having a {@link NestedObject} annotation.
@@ -55,7 +54,6 @@ public class ObjectProperty extends Property {
      */
     public ObjectProperty(Field field) {
         super(field);
-        analyzer = field.getAnnotation(NestedObject.class).analyzer();
     }
 
     @Override
@@ -67,7 +65,6 @@ public class ObjectProperty extends Property {
     public void createMapping(XContentBuilder builder) throws IOException {
         builder.startObject(getName());
         builder.field("type", getMappingType());
-        builder.field("analyzer", analyzer);
         builder.endObject();
     }
 
