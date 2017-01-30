@@ -19,12 +19,12 @@
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>6.0.2</version>
+            <version>6.1.1</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>4.0</version>
+            <version>4.0.1</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
