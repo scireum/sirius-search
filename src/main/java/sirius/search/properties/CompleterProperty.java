@@ -11,7 +11,6 @@ package sirius.search.properties;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
-import sirius.search.Index;
 import sirius.search.annotations.FastCompletion;
 import sirius.search.annotations.IndexMode;
 import sirius.search.suggestion.AutoCompletion;
