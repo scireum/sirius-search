@@ -11,7 +11,9 @@ package sirius.search.properties;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
+import sirius.search.Index;
 import sirius.search.annotations.FastCompletion;
+import sirius.search.annotations.IndexMode;
 import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
@@ -25,6 +27,7 @@ public class CompleterProperty extends ObjectProperty {
     private final boolean payloads;
     private final String contextName;
     private final String contextType;
+    private final String analyzer;
 
     /**
      * Factory for generating properties based on having a {@link FastCompletion} annotation.
@@ -59,6 +62,9 @@ public class CompleterProperty extends ObjectProperty {
         contextType = field.isAnnotationPresent(FastCompletion.class) ?
                       field.getAnnotation(FastCompletion.class).contextType() :
                       "";
+        analyzer = field.isAnnotationPresent(IndexMode.class) ?
+                   field.getAnnotation(IndexMode.class).analyzer() :
+                   "whitespace";
     }
 
     @Override
