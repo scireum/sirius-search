@@ -29,8 +29,6 @@ import java.util.Map;
  */
 public class ObjectProperty extends Property {
 
-    protected final String analyzer;
-
     /**
      * Factory for generating properties based on having a {@link NestedObject} annotation.
      */
@@ -55,7 +53,6 @@ public class ObjectProperty extends Property {
      */
     public ObjectProperty(Field field) {
         super(field);
-        analyzer = field.getAnnotation(NestedObject.class).analyzer();
     }
 
     @Override
@@ -67,7 +64,6 @@ public class ObjectProperty extends Property {
     public void createMapping(XContentBuilder builder) throws IOException {
         builder.startObject(getName());
         builder.field("type", getMappingType());
-        builder.field("analyzer", analyzer);
         builder.endObject();
     }
 
