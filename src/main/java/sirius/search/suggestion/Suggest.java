@@ -218,12 +218,15 @@ public class Suggest<E extends Entity> {
 
         SearchResponse response = sqb.execute().actionGet();
         PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
-        List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
 
-        if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
-            return entryList.get(0).getOptions();
-        } else {
-            return Collections.emptyList();
+        if (phraseSuggestion != null) {
+            List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
+
+            if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+                return entryList.get(0).getOptions();
+            }
         }
+
+        return Collections.emptyList();
     }
 }
