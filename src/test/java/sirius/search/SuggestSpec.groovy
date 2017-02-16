@@ -37,7 +37,7 @@ class SuggestSpec extends BaseSpecification{
 
         then:
 
-        index.complete(AutoCompletionPropertyEntity.class).on(AutoCompletionPropertyEntity.COMPLETE, "Test").contexts(qryMap)
+        index.complete(AutoCompletionPropertyEntity.class).on(AutoCompletionPropertyEntity.COMPLETE).prefix("Test").contexts(qryMap)
                 .completeList().get(0).getText().toString() == "Teststring"
     }
 }

@@ -43,6 +43,7 @@ public class Complete<E extends Entity> {
     private int limit = 5;
     private Map<String, List<? extends ToXContent>> contexts;
     private Fuzziness fuzziness = Fuzziness.AUTO;
+    private boolean isRegexQuery = false;
 
     /**
      * Creates a new completion for the given index access and entity type.
@@ -56,16 +57,36 @@ public class Complete<E extends Entity> {
     }
 
     /**
-     * Sets the query that should be completed and the field that should be used
+     * Defines the field which is used for completion
      *
-     * @param field a field that is annotated with {@link sirius.search.annotations.NestedObject} and  {@link
-     *              sirius.search.annotations.FastCompletion}
-     * @param query the string that should be completed
+     * @param field a field of type {@link AutoCompletion}
      * @return a newly created completion helper
      */
-    public Complete<E> on(String field, String query) {
+    public Complete<E> on(String field) {
         this.field = field;
-        this.query = query;
+        return this;
+    }
+
+    /**
+     * Sets a regex as completion query.
+     *
+     * @param regex the query regex
+     * @return the completion helper itself for fluent method calls
+     */
+    public Complete<E> regex(String regex) {
+        this.query = regex;
+        this.isRegexQuery = true;
+        return this;
+    }
+
+    /**
+     * Sets the query to a prefix that must be matched.
+     *
+     * @param prefix the query prefix
+     * @return the completion helper itself for fluent method calls
+     */
+    public Complete<E> prefix(String prefix) {
+        this.query = prefix;
         return this;
     }
 
@@ -118,12 +139,13 @@ public class Complete<E extends Entity> {
         CompletionSuggestion completionSuggestion = response.getSuggest().getSuggestion("completion");
         ArrayList<String> completions = new ArrayList<>();
 
-        List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();
+        if (completionSuggestion != null) {
+            List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();
 
-        if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
-            return entryList.get(0).getOptions();
+            if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+                return entryList.get(0).getOptions();
+            }
         }
-
         return Collections.emptyList();
     }
 
@@ -134,8 +156,13 @@ public class Complete<E extends Entity> {
     }
 
     private SuggestBuilder generateCompletionBuilder() {
-        CompletionSuggestionBuilder builder =
-                SuggestBuilders.completionSuggestion(field).size(limit).prefix(query, fuzziness);
+        CompletionSuggestionBuilder builder = SuggestBuilders.completionSuggestion(field).size(limit);
+
+        if (isRegexQuery) {
+            builder.regex(query);
+        } else {
+            builder.prefix(query, fuzziness);
+        }
 
         if (contexts != null) {
             builder.contexts(contexts);
