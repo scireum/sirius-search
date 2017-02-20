@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Negates the given constraint.
@@ -45,6 +46,13 @@ public class Not implements Constraint {
         BoolQueryBuilder qb = QueryBuilders.boolQuery();
         qb.mustNot(innerQuery);
         return qb;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        // currently not easy to implement. QueryBuilders.spanNotquery(include, exclude) needs the exclude AND
+        // the include, which is a parent constraint and not accessible from this point.
+        throw new UnsupportedOperationException();
     }
 
     @Override

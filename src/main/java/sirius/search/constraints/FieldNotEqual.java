@@ -9,6 +9,7 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.SpanTermQueryBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -46,6 +47,12 @@ public class FieldNotEqual implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return Not.on(FieldEqual.on(field, value)).createQuery();
+    }
+
+    @Override
+    public SpanTermQueryBuilder createSpanQuery() {
+        // currently not easy to implement. see Not.java
+        throw new UnsupportedOperationException();
     }
 
     @Override

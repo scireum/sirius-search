@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanTermQueryBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Value;
 import sirius.search.Entity;
@@ -151,6 +152,11 @@ public class CSVFilter implements Constraint {
             bqb.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
         }
         return bqb;
+    }
+
+    @Override
+    public SpanTermQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     private void collectValues() {

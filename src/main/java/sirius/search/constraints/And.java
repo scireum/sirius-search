@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanTermQueryBuilder;
 
 /**
  * Represents a set of constraints of which every one must be fulfilled.
@@ -50,6 +51,11 @@ public class And implements Constraint {
         }
 
         return result;
+    }
+
+    @Override
+    public SpanTermQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException("And-constraint not supported for span-queries. Use NearSpan and define a slop value.");
     }
 
     @Override

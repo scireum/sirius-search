@@ -8,9 +8,8 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
+import sirius.kernel.commons.Monoflop;
 
 /**
  * Represents a set of constraints of which at least once must be fulfilled.
@@ -50,6 +49,22 @@ public class Or implements Constraint {
         }
 
         return result;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        Monoflop mflop = Monoflop.create();
+        SpanOrQueryBuilder builder = null;
+
+        for (Constraint constraint : constraints) {
+            if (mflop.firstCall()) {
+                builder = QueryBuilders.spanOrQuery(constraint.createSpanQuery());
+            } else {
+                builder.addClause(constraint.createSpanQuery());
+            }
+        }
+
+        return builder;
     }
 
     @Override

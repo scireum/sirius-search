@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint which wraps constraints that should be applied to a nested field
@@ -54,6 +55,11 @@ public class NestedField implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return QueryBuilders.nestedQuery(path, constraint.createQuery(), scoreMode);
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

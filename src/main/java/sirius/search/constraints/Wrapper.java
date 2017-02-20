@@ -9,6 +9,7 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint which wraps a given {@link org.elasticsearch.index.query.QueryBuilder}
@@ -37,6 +38,11 @@ public class Wrapper implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return wrapped;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

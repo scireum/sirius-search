@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -102,6 +103,11 @@ public class OneInField implements Constraint {
             boolQueryBuilder.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
         }
         return boolQueryBuilder;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -9,6 +9,7 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Defines a constraint which can be added to a {@link sirius.search.Query} to determine the result set.
@@ -21,6 +22,13 @@ public interface Constraint {
      * @return the ElasticSearch query representing this constraint or <tt>null</tt> if it is a filter
      */
     QueryBuilder createQuery();
+
+    /**
+     * Creates an ElasticSearch span query for more fine grained word distance constraints.
+     *
+     * @return the ElasticSearch span query representing this constraint
+     */
+    SpanQueryBuilder createSpanQuery();
 
     /**
      * Creates a string representation of this constraint.

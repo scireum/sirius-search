@@ -10,6 +10,7 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanTermQueryBuilder;
 
 /**
  * Represents a constraint which checks that the given field is not empty
@@ -38,6 +39,11 @@ public class Filled implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return QueryBuilders.existsQuery(field);
+    }
+
+    @Override
+    public SpanTermQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

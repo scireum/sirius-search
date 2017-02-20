@@ -10,6 +10,7 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint which verifies that the given list field contains at least the given value.
@@ -41,6 +42,11 @@ public class ValueInField implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return QueryBuilders.termQuery(field, value);
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

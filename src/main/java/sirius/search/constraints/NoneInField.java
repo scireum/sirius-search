@@ -11,6 +11,7 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 import java.util.Collection;
 
@@ -51,6 +52,11 @@ public class NoneInField implements Constraint {
             boolQueryBuilder.mustNot(QueryBuilders.termQuery(field, FieldEqual.transformFilterValue(value)));
         }
         return boolQueryBuilder;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

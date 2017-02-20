@@ -9,11 +9,7 @@
 package sirius.search.constraints;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.SpanNearQueryBuilder;
-import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.index.query.*;
 import parsii.tokenizer.LookaheadReader;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
@@ -84,6 +80,11 @@ public class RobustQueryParser implements Constraint {
             finishedQuery = main;
         }
         return finishedQuery;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
