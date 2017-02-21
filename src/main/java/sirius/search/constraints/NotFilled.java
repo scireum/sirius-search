@@ -10,7 +10,7 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.SpanQueryBuilder;
+
 
 /**
  * Represents a constraint which verifies that a given field is empty.

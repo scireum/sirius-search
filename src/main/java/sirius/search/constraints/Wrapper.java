@@ -9,7 +9,6 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint which wraps a given {@link org.elasticsearch.index.query.QueryBuilder}

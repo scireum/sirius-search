@@ -11,7 +11,6 @@ package sirius.search.constraints;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.SpanTermQueryBuilder;
 
 /**
  * Represents a set of constraints of which every one must be fulfilled.

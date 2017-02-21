@@ -9,7 +9,6 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.SpanTermQueryBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 

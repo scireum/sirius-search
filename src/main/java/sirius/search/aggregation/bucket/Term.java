@@ -11,7 +11,6 @@ package sirius.search.aggregation.bucket;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import sirius.kernel.commons.Strings;
 
 /**
  * Represents an aggregation using terms

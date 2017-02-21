@@ -11,7 +11,6 @@ package sirius.search.constraints;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint which wraps constraints that should be applied to a nested field
