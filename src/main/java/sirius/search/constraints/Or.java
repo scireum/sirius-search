@@ -8,14 +8,13 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
+import sirius.kernel.commons.Monoflop;
 
 /**
  * Represents a set of constraints of which at least once must be fulfilled.
  */
-public class Or implements Constraint {
+public class Or implements Constraint, SpanConstraint {
 
     private Constraint[] constraints;
 
@@ -50,6 +49,28 @@ public class Or implements Constraint {
         }
 
         return result;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        Monoflop mflop = Monoflop.create();
+        SpanOrQueryBuilder builder = null;
+
+        for (Constraint constraint : constraints) {
+            if (constraint instanceof SpanConstraint) {
+                SpanConstraint spanConstraint = (SpanConstraint) constraint;
+                if (mflop.firstCall()) {
+                    builder = QueryBuilders.spanOrQuery(spanConstraint.createSpanQuery());
+                } else {
+                    builder.addClause(spanConstraint.createSpanQuery());
+                }
+            } else {
+                throw new UnsupportedOperationException(
+                        "Or-Constraint contains a non span constraint, which is not allowed!");
+            }
+        }
+
+        return builder;
     }
 
     @Override

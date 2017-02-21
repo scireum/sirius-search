@@ -8,8 +8,10 @@
 
 package sirius.search.constraints;
 
+import org.elasticsearch.index.query.PrefixQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 import sirius.kernel.commons.Strings;
 
 /**
@@ -17,7 +19,7 @@ import sirius.kernel.commons.Strings;
  * <p>
  * To prevent funny OutOfMemoryErrors the number of tokens being expanded is 256.
  */
-public class Prefix implements Constraint {
+public class Prefix implements Constraint, SpanConstraint{
     private final String field;
     private String value;
 
@@ -46,6 +48,14 @@ public class Prefix implements Constraint {
             return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256");
         }
 
+        return null;
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        if (createQuery() != null) {
+            return QueryBuilders.spanMultiTermQueryBuilder((PrefixQueryBuilder) createQuery());
+        }
         return null;
     }
 

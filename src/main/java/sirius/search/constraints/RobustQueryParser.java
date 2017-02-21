@@ -9,11 +9,7 @@
 package sirius.search.constraints;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.SpanNearQueryBuilder;
-import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.index.query.*;
 import parsii.tokenizer.LookaheadReader;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
@@ -359,10 +355,15 @@ public class RobustQueryParser implements Constraint {
         if (tokens.size() == 1) {
             return QueryBuilders.termQuery(field, tokens.get(0));
         } else {
-            SpanNearQueryBuilder builder = QueryBuilders.spanNearQuery();
-            builder.slop(3);
+            Monoflop monoflop = Monoflop.create();
+            SpanNearQueryBuilder builder = null;
+
             for (String token : tokens) {
-                builder.clause(QueryBuilders.spanTermQuery(field, token));
+                if (monoflop.firstCall()) {
+                    builder = QueryBuilders.spanNearQuery(QueryBuilders.spanTermQuery(field, token), 3);
+                } else {
+                    builder.addClause(QueryBuilders.spanTermQuery(field, token));
+                }
             }
             return builder;
         }

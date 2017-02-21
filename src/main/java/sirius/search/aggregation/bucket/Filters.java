@@ -31,8 +31,8 @@ public class Filters extends BucketAggregation {
      * @param filters the filters that should be combined
      * @return a newly created filters aggregation helper
      */
-    public static Filters of(Filter... filters) {
-        Filters multipleFilters = new Filters("");
+    public static Filters of(String name, Filter... filters) {
+        Filters multipleFilters = new Filters(name);
         multipleFilters.filters = filters;
         return multipleFilters;
     }
@@ -50,6 +50,6 @@ public class Filters extends BucketAggregation {
             filtersQuery.must(filter.getQueryBuilder());
         }
 
-        return AggregationBuilders.filter(getName()).filter(filtersQuery);
+        return AggregationBuilders.filter(getName(), filtersQuery);
     }
 }

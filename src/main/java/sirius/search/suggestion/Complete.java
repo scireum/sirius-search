@@ -8,17 +8,21 @@
 
 package sirius.search.suggestion;
 
-import org.elasticsearch.action.suggest.SuggestRequestBuilder;
-import org.elasticsearch.action.suggest.SuggestResponse;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.unit.Fuzziness;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.search.suggest.SuggestBuilder;
+import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionFuzzyBuilder;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a completion against the database which are created via {@link IndexAccess#complete(Class)}.
@@ -36,9 +40,9 @@ public class Complete<E extends Entity> {
     private String field;
     private String query;
     private int limit = 5;
-    private String contextName;
-    private List<String> contextValues;
-    private Fuzziness fuzziness;
+    private Map<String, List<? extends ToXContent>> contexts;
+    private Fuzziness fuzziness = Fuzziness.AUTO;
+    private boolean isRegexQuery = false;
 
     /**
      * Creates a new completion for the given index access and entity type.
@@ -52,16 +56,36 @@ public class Complete<E extends Entity> {
     }
 
     /**
-     * Sets the query that should be completed and the field that should be used
+     * Defines the field which is used for completion
      *
-     * @param field a field that is annotated with {@link sirius.search.annotations.NestedObject} and  {@link
-     *              sirius.search.annotations.FastCompletion}
-     * @param query the string that should be completed
+     * @param field a field of type {@link AutoCompletion}
      * @return a newly created completion helper
      */
-    public Complete<E> on(String field, String query) {
+    public Complete<E> on(String field) {
         this.field = field;
-        this.query = query;
+        return this;
+    }
+
+    /**
+     * Sets a regex as completion query.
+     *
+     * @param regex the query regex
+     * @return the completion helper itself for fluent method calls
+     */
+    public Complete<E> regex(String regex) {
+        this.query = regex;
+        this.isRegexQuery = true;
+        return this;
+    }
+
+    /**
+     * Sets the query to a prefix that must be matched.
+     *
+     * @param prefix the query prefix
+     * @return the completion helper itself for fluent method calls
+     */
+    public Complete<E> prefix(String prefix) {
+        this.query = prefix;
         return this;
     }
 
@@ -79,13 +103,11 @@ public class Complete<E extends Entity> {
     /**
      * Allows to restrict/filter completions by adding context.
      *
-     * @param name   name of the context defined in the field mapping
-     * @param values values that should be used to restrict/filter completions
+     * @param contexts the contexts that should be applied
      * @return the completion helper itself for fluent method calls
      */
-    public Complete<E> context(String name, List<String> values) {
-        this.contextName = name;
-        this.contextValues = values;
+    public Complete<E> contexts(Map<String, List<? extends ToXContent>> contexts) {
+        this.contexts = contexts;
         return this;
     }
 
@@ -106,40 +128,45 @@ public class Complete<E extends Entity> {
      * @return the generated completions or an empty list
      */
     public List<CompletionSuggestion.Entry.Option> completeList() {
-        CompletionSuggestionFuzzyBuilder csb = generateCompletionBuilder();
-        SuggestRequestBuilder sqb = generateRequestBuilder(csb);
+        SuggestBuilder csb = generateCompletionBuilder();
+        SearchRequestBuilder sqb = generateRequestBuilder(csb);
         return execute(sqb);
     }
 
-    private List<CompletionSuggestion.Entry.Option> execute(SuggestRequestBuilder sqb) {
-        SuggestResponse response = sqb.execute().actionGet();
+    private List<CompletionSuggestion.Entry.Option> execute(SearchRequestBuilder sqb) {
+        SearchResponse response = sqb.execute().actionGet();
         CompletionSuggestion completionSuggestion = response.getSuggest().getSuggestion("completion");
         ArrayList<String> completions = new ArrayList<>();
 
-        List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();
+        if (completionSuggestion != null) {
+            List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();
 
-        if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
-            return entryList.get(0).getOptions();
+            if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+                return entryList.get(0).getOptions();
+            }
         }
-
         return Collections.emptyList();
     }
 
-    private SuggestRequestBuilder generateRequestBuilder(CompletionSuggestionFuzzyBuilder csb) {
+    private SearchRequestBuilder generateRequestBuilder(SuggestBuilder builder) {
         return index.getClient()
-                    .prepareSuggest(index.getIndexName(index.getDescriptor(clazz).getIndex()))
-                    .addSuggestion(csb);
+                    .prepareSearch(index.getIndexName(index.getDescriptor(clazz).getIndex()))
+                    .suggest(builder);
     }
 
-    private CompletionSuggestionFuzzyBuilder generateCompletionBuilder() {
-        CompletionSuggestionFuzzyBuilder csfb = new CompletionSuggestionFuzzyBuilder("completion");
+    private SuggestBuilder generateCompletionBuilder() {
+        CompletionSuggestionBuilder builder = SuggestBuilders.completionSuggestion(field).size(limit);
 
-        csfb.field(field);
-        csfb.size(limit);
-        csfb.text(query);
-        csfb.addContextField(contextName, contextValues);
-        csfb.setFuzziness(fuzziness);
+        if (isRegexQuery) {
+            builder.regex(query);
+        } else {
+            builder.prefix(query, fuzziness);
+        }
 
-        return csfb;
+        if (contexts != null) {
+            builder.contexts(contexts);
+        }
+
+        return new SuggestBuilder().addSuggestion("completion", builder);
     }
 }

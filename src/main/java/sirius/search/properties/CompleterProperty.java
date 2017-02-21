@@ -23,13 +23,12 @@ import java.lang.reflect.Field;
  */
 public class CompleterProperty extends ObjectProperty {
 
-    private final boolean payloads;
     private final String contextName;
     private final String contextType;
     private final String analyzer;
 
     /**
-     * Factory for generating properties based on having a {@link FastCompletion} annotation.
+     * Factory for generating properties of type {@link AutoCompletion} .
      */
     @Register
     public static class Factory implements PropertyFactory {
@@ -52,9 +51,6 @@ public class CompleterProperty extends ObjectProperty {
      */
     private CompleterProperty(Field field) {
         super(field);
-        payloads = field.isAnnotationPresent(FastCompletion.class) ?
-                   field.getAnnotation(FastCompletion.class).payloads() :
-                   false;
         contextName = field.isAnnotationPresent(FastCompletion.class) ?
                       field.getAnnotation(FastCompletion.class).contextName() :
                       "";
@@ -71,14 +67,14 @@ public class CompleterProperty extends ObjectProperty {
         builder.startObject(getName());
         builder.field("type", getMappingType());
         builder.field("analyzer", analyzer);
-        builder.field("payloads", payloads);
 
         if (Strings.isFilled(contextName)) {
-            builder.startObject("context");
-            builder.startObject(contextName);
+            builder.startArray("contexts");
+            builder.startObject();
+            builder.field("name", contextName);
             builder.field("type", contextType);
             builder.endObject();
-            builder.endObject();
+            builder.endArray();
         }
         builder.endObject();
     }

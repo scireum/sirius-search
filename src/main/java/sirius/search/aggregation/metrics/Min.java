@@ -9,7 +9,7 @@
 package sirius.search.aggregation.metrics;
 
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.metrics.min.MinBuilder;
+import org.elasticsearch.search.aggregations.metrics.min.MinAggregationBuilder;
 
 /**
  * Represents an aggregation that determines the minimal value of a field
@@ -39,7 +39,7 @@ public class Min extends MetricsAggregation {
      * @return the min-builder
      */
     @Override
-    public MinBuilder getBuilder() {
+    public MinAggregationBuilder getBuilder() {
         return AggregationBuilders.min(getName()).field(getField());
     }
 }

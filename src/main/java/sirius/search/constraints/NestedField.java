@@ -8,6 +8,7 @@
 
 package sirius.search.constraints;
 
+import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -18,6 +19,7 @@ public class NestedField implements Constraint {
 
     private Constraint constraint;
     private String path;
+    private ScoreMode scoreMode = ScoreMode.None;
 
     /*
      * Use the #on(Constraint[]) factory method
@@ -34,13 +36,24 @@ public class NestedField implements Constraint {
      * @param path       the path of the nested field
      * @return the newly created constraint
      */
-    public static Constraint on(String path, Constraint constraint) {
+    public static NestedField on(String path, Constraint constraint) {
         return new NestedField(path, constraint);
+    }
+
+    /**
+     * Sets the score mode for this nested query
+     *
+     * @param scoreMode the used score mode
+     * @return the constraint itself for fluent method calls
+     */
+    public NestedField scoreMode(ScoreMode scoreMode) {
+        this.scoreMode = scoreMode;
+        return this;
     }
 
     @Override
     public QueryBuilder createQuery() {
-        return QueryBuilders.nestedQuery(path, constraint.createQuery());
+        return QueryBuilders.nestedQuery(path, constraint.createQuery(), scoreMode);
     }
 
     @Override

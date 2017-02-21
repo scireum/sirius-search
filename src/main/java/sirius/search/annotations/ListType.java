@@ -30,5 +30,5 @@ public @interface ListType {
      */
     Class<?> value();
 
-    boolean nested() default false;
+    boolean nested() default true;
 }

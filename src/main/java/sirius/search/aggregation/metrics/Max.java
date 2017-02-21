@@ -9,7 +9,7 @@
 package sirius.search.aggregation.metrics;
 
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.metrics.max.MaxBuilder;
+import org.elasticsearch.search.aggregations.metrics.max.MaxAggregationBuilder;
 
 /**
  * Represents an aggregation that determines the maximum value of a field
@@ -39,7 +39,7 @@ public class Max extends MetricsAggregation {
      * @return the max-builder
      */
     @Override
-    public MaxBuilder getBuilder() {
+    public MaxAggregationBuilder getBuilder() {
         return AggregationBuilders.max(getName()).field(getField());
     }
 }

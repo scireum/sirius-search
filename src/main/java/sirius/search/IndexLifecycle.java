@@ -14,6 +14,8 @@ import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 
+import static sirius.search.IndexAccess.LOG;
+
 /**
  * Starts and stops the elasticsearch client.
  */
@@ -30,16 +32,26 @@ public class IndexLifecycle implements Lifecycle {
 
     @Override
     public void started() {
-        if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
-            IndexAccess.LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
+        if (!isEnabled()) {
+            LOG.INFO("ElasticSearch is disabled! (index.host is not set)");
             return;
         }
 
         index.startup();
     }
 
+    private boolean isEnabled() {
+        return Strings.isFilled(Sirius.getConfig().getString("index.host"));
+    }
+
     @Override
     public void stopped() {
+        if (!isEnabled()) {
+            return;
+        }
+
+        index.getSchema().dropTemporaryIndices();
+
         if (index.delayLineTimer != null) {
             index.delayLineTimer.cancel();
         }
@@ -47,13 +59,15 @@ public class IndexLifecycle implements Lifecycle {
 
     @Override
     public void awaitTermination() {
+        if (!isEnabled()) {
+            LOG.INFO("ElasticSearch is disabled! (index.host is not set)");
+            return;
+        }
+
         // We wait until this last call before we cut the connection to the database (elasticsearch) to permit
         // other stopping lifecycles access until the very end...
         index.ready = false;
         index.client.close();
-        if (index.inMemoryNode != null) {
-            index.inMemoryNode.close();
-        }
     }
 
     @Override

@@ -9,10 +9,12 @@
 package sirius.search;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.Sirius;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
 import sirius.kernel.di.std.Parts;
@@ -20,6 +22,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
 import sirius.search.properties.PropertyFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +40,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class Schema {
 
+    private static final String CONFIG_PREFIX_INDEX_SETTINGS = "index.settings.";
     /**
      * Contains all known property factories. These are used to transform fields defined by entity classes to
      * properties
@@ -50,6 +54,8 @@ public class Schema {
      * To support multiple installations in parallel, an indexPrefix can be supplied, which is added to each index
      */
     private String indexPrefix;
+
+    private boolean temporaryIndexPrefix = false;
 
     /**
      * Contains a map with an entity descriptor for each entity class
@@ -66,7 +72,12 @@ public class Schema {
     protected Schema(IndexAccess access) {
         this.access = access;
         indexPrefix = Sirius.getConfig().getString("index.prefix");
-        if (!indexPrefix.endsWith("-")) {
+        if (indexPrefix.contains("${timestamp}")) {
+            temporaryIndexPrefix = true;
+            indexPrefix = indexPrefix.replace("${timestamp}", String.valueOf(System.currentTimeMillis()));
+            IndexAccess.LOG.INFO("Using unique index prefix: %s", indexPrefix);
+        }
+        if (Strings.isFilled(indexPrefix) && !indexPrefix.endsWith("-")) {
             indexPrefix = indexPrefix + "-";
         }
     }
@@ -107,7 +118,7 @@ public class Schema {
      * @return a set of all known ElasticSearch indices
      */
     protected Set<String> getIndices() {
-        Set<String> result = new TreeSet<String>();
+        Set<String> result = new TreeSet<>();
         for (EntityDescriptor e : descriptorTable.values()) {
             result.add(getIndexName(e.getIndex()));
         }
@@ -121,13 +132,12 @@ public class Schema {
      * @param <E>    the type of the entity to get the index for
      * @return the index name associated with the given entity
      */
-    public <E extends Entity> String getIndex(E entity) {
-        if (entity != null) {
-            String result = entity.getIndex();
-            if (result != null) {
-                return getIndexName(result);
-            }
+    public <E extends Entity> String getIndex(@Nonnull E entity) {
+        String result = entity.getIndex();
+        if (result != null) {
+            return getIndexName(result);
         }
+
         return getIndexName(getDescriptor(entity.getClass()).getIndex());
     }
 
@@ -173,29 +183,9 @@ public class Schema {
     protected List<String> createMappings(String indexPrefix) {
         List<String> changes = new ArrayList<>();
         for (EntityDescriptor ed : descriptorTable.values()) {
-            String index = indexPrefix + ed.getIndex();
-            try {
-                IndicesExistsResponse res =
-                        access.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
-                if (!res.isExists()) {
-                    CreateIndexResponse createResponse = access.getClient()
-                                                               .admin()
-                                                               .indices()
-                                                               .prepareCreate(index)
-                                                               .setSettings(createIndexSettings(ed))
-                                                               .execute()
-                                                               .get(10, TimeUnit.SECONDS);
-                    if (createResponse.isAcknowledged()) {
-                        changes.add("Created index " + index + " successfully!");
-                    } else {
-                        changes.add("Failed to create index " + index + "!");
-                    }
-                }
-            } catch (Throwable e) {
-                IndexAccess.LOG.WARN(e);
-                changes.add("Cannot create index " + index + ": " + e.getMessage());
-            }
+            createIndex(indexPrefix, ed, changes);
         }
+
         for (Map.Entry<Class<? extends Entity>, EntityDescriptor> e : descriptorTable.entrySet()) {
             try {
                 if (IndexAccess.LOG.isFINE()) {
@@ -207,7 +197,7 @@ public class Schema {
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 changes.add(Exceptions.handle(IndexAccess.LOG, ex).getMessage());
             }
         }
@@ -215,20 +205,53 @@ public class Schema {
         return changes;
     }
 
+    private void createIndex(String indexPrefix, EntityDescriptor descriptor, List<String> changes) {
+        String index = indexPrefix + descriptor.getIndex();
+        try {
+            IndicesExistsResponse res =
+                    access.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+            if (!res.isExists()) {
+                CreateIndexResponse createResponse = access.getClient()
+                                                           .admin()
+                                                           .indices()
+                                                           .prepareCreate(index)
+                                                           .setSettings(createIndexSettings(descriptor))
+                                                           .execute()
+                                                           .get(10, TimeUnit.SECONDS);
+                if (createResponse.isAcknowledged()) {
+                    changes.add("Created index " + index + " successfully!");
+                } else {
+                    changes.add("Failed to create index " + index + "!");
+                }
+            }
+        } catch (Exception e) {
+            IndexAccess.LOG.WARN(e);
+            changes.add("Cannot create index " + index + ": " + e.getMessage());
+        }
+    }
+
     private XContentBuilder createIndexSettings(EntityDescriptor ed) throws IOException {
-        XContentBuilder builder = XContentFactory.jsonBuilder().startObject().startObject("index");
-        builder.field("number_of_shards",
-                      Sirius.getConfig()
-                            .getInt(Sirius.getConfig().hasPath("index.settings." + ed.getIndex() + ".numberOfShards") ?
-                                    "index.settings." + ed.getIndex() + ".numberOfShards" :
-                                    "index.settings.default.numberOfShards"));
-        builder.field("number_of_replicas",
-                      Sirius.getConfig()
-                            .getInt(Sirius.getConfig()
-                                          .hasPath("index.settings." + ed.getIndex() + ".numberOfReplicas") ?
-                                    "index.settings." + ed.getIndex() + ".numberOfReplicas" :
-                                    "index.settings.default.numberOfReplicas"));
-        return builder.endObject().endObject();
+        try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
+            builder.startObject().startObject("index");
+            builder.field("number_of_shards",
+                          Sirius.getConfig()
+                                .getInt(Sirius.getConfig()
+                                              .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
+                                                       + ed.getIndex()
+                                                       + ".numberOfShards") ?
+                                        CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfShards" :
+                                        "index.settings.default.numberOfShards"));
+            builder.field("number_of_replicas",
+                          Sirius.getConfig()
+                                .getInt(Sirius.getConfig()
+                                              .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
+                                                       + ed.getIndex()
+                                                       + ".numberOfReplicas") ?
+                                        CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfReplicas" :
+                                        "index.settings.default.numberOfReplicas"));
+            builder.endObject().endObject();
+            return builder;
+        }
     }
 
     /**
@@ -282,11 +305,37 @@ public class Schema {
      * @param prefix the new index prefix to use
      */
     public void reIndex(String prefix) {
-        if (!prefix.endsWith("-")) {
-            prefix = prefix + "-";
-        }
-        final String newPrefix = prefix;
-
+        final String newPrefix = prefix.endsWith("-") ? prefix : prefix + "-";
         access.tasks.defaultExecutor().fork(new ReIndexTask(this, newPrefix));
+    }
+
+    /**
+     * Deletes all temporarily created indices (used by UNIT tests).
+     */
+    protected void dropTemporaryIndices() {
+        if (!Sirius.isStartedAsTest()) {
+            return;
+        }
+        if (!temporaryIndexPrefix) {
+            return;
+        }
+
+        for (String index : getIndices()) {
+            try {
+                DeleteIndexResponse res =
+                        access.getClient().admin().indices().prepareDelete(index).execute().get(10, TimeUnit.SECONDS);
+                if (res.isAcknowledged()) {
+                    IndexAccess.LOG.INFO("Successfully deleted temporary index: %s", index);
+                } else {
+                    IndexAccess.LOG.WARN("Failed to delete temporary index: %s", index);
+                }
+            } catch (Exception e) {
+                Exceptions.handle()
+                          .error(e)
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Failed to delete temporary index %s: %s (%s)", index)
+                          .handle();
+            }
+        }
     }
 }

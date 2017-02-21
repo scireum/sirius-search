@@ -74,7 +74,7 @@ public class Filter extends BucketAggregation {
 
     @Override
     public FilterAggregationBuilder getBuilder() {
-        return AggregationBuilders.filter(getName()).filter(getQueryBuilder());
+        return AggregationBuilders.filter(getName(), getQueryBuilder());
     }
 
     /**

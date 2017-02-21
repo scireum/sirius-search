@@ -133,7 +133,7 @@ public class ESCommand implements Command {
 
     private void changeAllocationMode(String mode) {
         ClusterUpdateSettingsRequest request = new ClusterUpdateSettingsRequest();
-        Settings settings = Settings.settingsBuilder().put("cluster.routing.allocation.enable", mode).build();
+        Settings settings = Settings.builder().put("cluster.routing.allocation.enable", mode).build();
         request.transientSettings(settings);
         index.getClient().admin().cluster().updateSettings(request);
     }

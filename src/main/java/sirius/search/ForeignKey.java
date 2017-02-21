@@ -14,7 +14,7 @@ import org.elasticsearch.action.update.UpdateRequestBuilder;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptService;
+import org.elasticsearch.script.ScriptType;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
@@ -394,7 +394,7 @@ public class ForeignKey {
             sb.append(";");
             ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return new Script(sb.toString(), ScriptService.ScriptType.INLINE, LANGUAGE_GROOVY, ctx);
+        return new Script(ScriptType.INLINE, LANGUAGE_GROOVY, sb.toString(), ctx);
     }
 
     /**

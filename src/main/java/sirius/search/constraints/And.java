@@ -52,6 +52,7 @@ public class And implements Constraint {
         return result;
     }
 
+
     @Override
     public String toString(boolean skipConstraintValues) {
         StringBuilder sb = new StringBuilder("(");

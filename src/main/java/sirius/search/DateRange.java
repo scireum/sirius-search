@@ -8,14 +8,15 @@
 
 package sirius.search;
 
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
+import org.joda.time.DateTime;
 import sirius.kernel.nls.NLS;
-import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldOperator;
 
 import javax.annotation.Nullable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 
@@ -212,17 +213,21 @@ public class DateRange {
         return key;
     }
 
-    protected void applyTo(DateRangeBuilder rangeBuilder) {
+    protected void applyTo(DateRangeAggregationBuilder rangeBuilder) {
         if (until == null) {
             if (from != null) {
-                rangeBuilder.addUnboundedFrom(key, FieldEqual.transformFilterValue(from));
+                rangeBuilder.addUnboundedFrom(key,
+                                              new DateTime(from.atZone(ZoneId.systemDefault())
+                                                               .toInstant()
+                                                               .toEpochMilli()));
             }
         } else if (from == null) {
-            if (until != null) {
-                rangeBuilder.addUnboundedTo(key, FieldEqual.transformFilterValue(until));
-            }
+            rangeBuilder.addUnboundedTo(key,
+                                        new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
         } else {
-            rangeBuilder.addRange(key, FieldEqual.transformFilterValue(from), FieldEqual.transformFilterValue(until));
+            rangeBuilder.addRange(key,
+                                  new DateTime(from.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()),
+                                  new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
         }
     }
 

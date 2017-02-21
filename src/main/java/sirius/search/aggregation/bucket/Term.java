@@ -9,12 +9,15 @@
 package sirius.search.aggregation.bucket;
 
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 
 /**
  * Represents an aggregation using terms
  */
 public class Term extends BucketAggregation {
+
+    private Boolean orderAsc = null;
 
     private Term(String name) {
         super(name);
@@ -34,12 +37,38 @@ public class Term extends BucketAggregation {
     }
 
     /**
+     * Sets ordering by {@link #field} to ascending.
+     *
+     * @return the term aggregation helper itself for fluent method calls
+     */
+    public Term orderAsc() {
+        orderAsc = true;
+        return this;
+    }
+
+    /**
+     * Sets ordering by {@link #field} to descending.
+     *
+     * @return the term aggregation helper itself for fluent method calls
+     */
+    public Term orderDesc() {
+        orderAsc = false;
+        return this;
+    }
+
+    /**
      * Constructs the termbuilder
      *
      * @return the termbuilder
      */
     @Override
-    public TermsBuilder getBuilder() {
-        return AggregationBuilders.terms(getName()).field(getField()).size(getSize());
+    public TermsAggregationBuilder getBuilder() {
+        TermsAggregationBuilder builder = AggregationBuilders.terms(getName()).field(getField()).size(getSize());
+
+        if (orderAsc != null) {
+            builder.order(Terms.Order.term(orderAsc));
+        }
+
+        return builder;
     }
 }

@@ -10,6 +10,7 @@ package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
@@ -25,7 +26,7 @@ import java.time.temporal.TemporalAccessor;
 /**
  * Represents a constraint which checks if the given field has the given value.
  */
-public class FieldEqual implements Constraint {
+public class FieldEqual implements Constraint, SpanConstraint {
     private final String field;
     private Object value;
     private boolean ignoreNull = false;
@@ -105,6 +106,17 @@ public class FieldEqual implements Constraint {
             return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
         }
         return QueryBuilders.termQuery(field, value);
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        if (value instanceof String && Strings.isFilled(value)) {
+            return QueryBuilders.spanTermQuery(field, (String) value);
+        }
+
+
+
+        return null;
     }
 
     @Override

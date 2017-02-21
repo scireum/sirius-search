@@ -162,6 +162,35 @@ class EntitiesSpec extends BaseSpecification {
         index.select(StringPropertiesEntity.class).query("stringListExcludedElement2").count() == 0
     }
 
+    def "test list of objects property"() {
+        when:
+        index.select(EntityWithListOfNestedObjects.class).delete()
+        waitForCompletion()
+        def entityWithListOfObjects = new EntityWithListOfNestedObjects()
+        def nested1 = new NestedObject()
+        def nested2 = new NestedObject()
+        nested1.setBoolVar(false)
+        nested1.setStringVar("test")
+        nested1.setNumberVar(42)
+        nested2.setBoolVar(true)
+        nested2.setStringVar("test - 2")
+        nested2.setNumberVar(0)
+        entityWithListOfObjects.getNestedObjects().add(nested1)
+        entityWithListOfObjects.getNestedObjects().add(nested2)
+        index.create(entityWithListOfObjects)
+        index.blockThreadForUpdate()
+        then:
+        List<EntityWithListOfNestedObjects> resultList = index.select(EntityWithListOfNestedObjects.class).queryList()
+        resultList.size() == 1
+        resultList.get(0).getNestedObjects().size() == 2
+        resultList.get(0).getNestedObjects().get(0).getBoolVar() == false
+        resultList.get(0).getNestedObjects().get(0).getNumberVar() == 42
+        resultList.get(0).getNestedObjects().get(0).getStringVar() == "test"
+        resultList.get(0).getNestedObjects().get(1).getBoolVar() == true
+        resultList.get(0).getNestedObjects().get(1).getNumberVar() == 0
+        resultList.get(0).getNestedObjects().get(1).getStringVar() == "test - 2"
+    }
+
     @Part
     private static Tasks tasks
 

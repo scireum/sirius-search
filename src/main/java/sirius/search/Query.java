@@ -21,9 +21,9 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
+import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -832,11 +832,11 @@ public class Query<E extends Entity> {
 
     private void applyAggregations(SearchRequestBuilder srb) {
         for (Aggregation aggregation : aggregations) {
-            AbstractAggregationBuilder aggregationBuilder = aggregation.getBuilder();
+            AbstractAggregationBuilder<?> aggregationBuilder = aggregation.getBuilder();
 
             if (aggregation instanceof BucketAggregation) {
                 for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                    ((AggregationBuilder<?>) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+                    aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
                 }
             }
 
@@ -844,12 +844,12 @@ public class Query<E extends Entity> {
         }
     }
 
-    private AbstractAggregationBuilder buildSubAggregations(Aggregation aggregation) {
-        AbstractAggregationBuilder aggregationBuilder = aggregation.getBuilder();
+    private AbstractAggregationBuilder<?> buildSubAggregations(Aggregation aggregation) {
+        AbstractAggregationBuilder<?> aggregationBuilder = aggregation.getBuilder();
 
         if (aggregation instanceof BucketAggregation) {
             for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                ((AggregationBuilder<?>) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+                aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
             }
         }
 
@@ -859,7 +859,8 @@ public class Query<E extends Entity> {
     private void applyFacets(SearchRequestBuilder srb) {
         for (Facet field : termFacets) {
             if (field instanceof DateFacet) {
-                DateRangeBuilder rangeBuilder = AggregationBuilders.dateRange(field.getName()).field(field.getName());
+                DateRangeAggregationBuilder rangeBuilder =
+                        AggregationBuilders.dateRange(field.getName()).field(field.getName());
                 for (DateRange range : ((DateFacet) field).getRanges()) {
                     range.applyTo(rangeBuilder);
                 }
@@ -876,9 +877,10 @@ public class Query<E extends Entity> {
         if (randomize) {
             if (randomizeField != null) {
                 srb.addSort(SortBuilders.scriptSort(new Script("Math.random()*doc['" + randomizeField + "'].value"),
-                                                    "number").order(SortOrder.DESC));
+                                                    ScriptSortBuilder.ScriptSortType.NUMBER).order(SortOrder.DESC));
             } else {
-                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()"), "number").order(SortOrder.ASC));
+                srb.addSort(SortBuilders.scriptSort(new Script("Math.random()"),
+                                                    ScriptSortBuilder.ScriptSortType.NUMBER).order(SortOrder.ASC));
             }
         } else {
             for (Tuple<String, Boolean> sort : orderBys) {

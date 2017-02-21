@@ -11,13 +11,14 @@ package sirius.search.constraints;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Represents a constraint that allows fuzzy searching on a field for compensating misspellings
  * <p>
  * This constraint allows to match values that differ slightly from the provided value
  */
-public class Fuzzy implements Constraint {
+public class Fuzzy implements Constraint, SpanConstraint {
 
     private final String field;
     private String value;
@@ -31,7 +32,7 @@ public class Fuzzy implements Constraint {
     /**
      * Creates a new fuzzy query for the given field and value.
      * <p>
-     * Use {@link #fuzziness(Fuzziness)} to specify the fuziness of the value. Otherwise {@link Fuzziness#AUTO} is used.
+     * Use {@link #fuzziness(Fuzziness)} to specify the fuzziness of the value. Otherwise {@link Fuzziness#AUTO} is used.
      *
      * @param field the field to search in
      * @param value the value to filter on.
@@ -55,6 +56,11 @@ public class Fuzzy implements Constraint {
     @Override
     public QueryBuilder createQuery() {
         return QueryBuilders.matchQuery(field, value).fuzziness(fuzziness);
+    }
+
+    @Override
+    public SpanQueryBuilder createSpanQuery() {
+        return QueryBuilders.spanMultiTermQueryBuilder(QueryBuilders.fuzzyQuery(field, value));
     }
 
     @Override
