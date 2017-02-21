@@ -23,7 +23,6 @@ import java.lang.reflect.Field;
  */
 public class CompleterProperty extends ObjectProperty {
 
-    private final String analyzer;
     private final String contextName;
     private final String contextType;
     private final String analyzer;
