@@ -21,7 +21,6 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
@@ -837,7 +836,7 @@ public class Query<E extends Entity> {
 
             if (aggregation instanceof BucketAggregation) {
                 for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                    ((AggregationBuilder) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+                    aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
                 }
             }
 
@@ -850,7 +849,7 @@ public class Query<E extends Entity> {
 
         if (aggregation instanceof BucketAggregation) {
             for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                ((AggregationBuilder) aggregationBuilder).subAggregation(buildSubAggregations(subAggregation));
+                aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
             }
         }
 

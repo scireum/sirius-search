@@ -25,6 +25,7 @@ class AggregationsSpec extends BaseSpecification {
 
     def "test nested, min, max, filter and term aggregations"() {
         when:
+        index.ensureIndexExists("test")
         index.select(EntityWithListOfNestedObjects.class).delete()
         def entityWithListOfObjects = new EntityWithListOfNestedObjects()
         def nested1 = new NestedObject()

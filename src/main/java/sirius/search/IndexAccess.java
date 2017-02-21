@@ -58,7 +58,6 @@ import sirius.web.templates.Resources;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
@@ -94,6 +93,7 @@ public class IndexAccess {
      * Async executor category for integrity check tasks
      */
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
+    private static final String CATEGORY_INDEX = "index";
 
     /**
      * Contains the database schema as expected by the java model
@@ -168,6 +168,26 @@ public class IndexAccess {
     @Part
     protected Tasks tasks;
 
+    @Part
+    private Resources resources;
+
+    @ConfigValue("index.host")
+    private String hostAddress;
+
+    @ConfigValue("index.cluster")
+    private String clusterName;
+
+    @ConfigValue("index.port")
+    private int port;
+
+    @ConfigValue("index.updateSchema")
+    private boolean updateSchema;
+
+    /**
+     * Queue of actions which need to be delayed one second
+     */
+    protected static final List<WaitingBlock> oneSecondDelayLine = Lists.newArrayList();
+
     /**
      * Returns the underlying ElasticSearch client
      *
@@ -176,9 +196,6 @@ public class IndexAccess {
     public Client getClient() {
         return client;
     }
-
-    @Part
-    private Resources resources;
 
     /**
      * Loads a test dataset from the classpath. The given file should contains an array of JSON objects.
@@ -197,21 +214,25 @@ public class IndexAccess {
             String contents = CharStreams.toString(new InputStreamReader(res.getUrl().openStream(), Charsets.UTF_8));
             JSONArray json = JSON.parseArray(contents);
             for (JSONObject obj : (List<JSONObject>) (Object) json) {
-                try {
-                    String type = obj.getString("_type");
-                    Class<? extends Entity> entityClass = getType(type);
-                    EntityDescriptor descriptor = getDescriptor(entityClass);
-                    Entity entity = entityClass.newInstance();
-                    entity.setId(obj.getString("_id"));
-                    descriptor.readSource(entity, obj);
-                    update(entity);
-                } catch (Throwable e) {
-                    throw new IllegalArgumentException("Cannot load: " + obj, e);
-                }
+                loadObject(obj);
             }
             blockThreadForUpdate();
         } catch (IOException e) {
             throw Exceptions.handle(e);
+        }
+    }
+
+    private void loadObject(JSONObject obj) {
+        try {
+            String type = obj.getString("_type");
+            Class<? extends Entity> entityClass = getType(type);
+            EntityDescriptor descriptor = getDescriptor(entityClass);
+            Entity entity = entityClass.newInstance();
+            entity.setId(obj.getString("_id"));
+            descriptor.readSource(entity, obj);
+            update(entity);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot load: " + obj, e);
         }
     }
 
@@ -236,7 +257,7 @@ public class IndexAccess {
             IndicesExistsResponse res =
                     getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
             return res.isExists();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -272,7 +293,7 @@ public class IndexAccess {
                     blockThreadForUpdate();
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -299,7 +320,7 @@ public class IndexAccess {
                                 .withSystemErrorMessage("Cannot delete index: %s", schema.getIndexName(name))
                                 .handle();
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -326,13 +347,14 @@ public class IndexAccess {
                        .setSource(desc.createMapping())
                        .execute()
                        .get(10, TimeUnit.SECONDS);
-        } catch (Throwable ex) {
-            while (ex.getCause() != null && ex.getCause() != ex) {
-                ex = ex.getCause();
+        } catch (Exception ex) {
+            Throwable rootCause = ex;
+            while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+                rootCause = rootCause.getCause();
             }
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(ex)
+                            .error(rootCause)
                             .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
                                                     type.getSimpleName(),
                                                     index)
@@ -347,10 +369,14 @@ public class IndexAccess {
      * @return the descriptor for the given class
      */
     public EntityDescriptor getDescriptor(Class<? extends Entity> clazz) {
+        ensureReady();
+        return schema.getDescriptor(clazz);
+    }
+
+    private void ensureReady() {
         if (!ready) {
             throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
         }
-        return schema.getDescriptor(clazz);
     }
 
     /**
@@ -360,9 +386,7 @@ public class IndexAccess {
      * @return the class which is associated with the given type
      */
     public Class<? extends Entity> getType(String name) {
-        if (!ready) {
-            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
-        }
+        ensureReady();
         return schema.getType(name);
     }
 
@@ -373,9 +397,7 @@ public class IndexAccess {
      * @return the qualified name of the given index name
      */
     public String getIndexName(String index) {
-        if (!ready) {
-            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
-        }
+        ensureReady();
         return schema.getIndexName(index);
     }
 
@@ -387,19 +409,20 @@ public class IndexAccess {
      * @return the index name associated with the given class
      */
     public <E extends Entity> String getIndex(Class<E> clazz) {
-        if (!ready) {
-            throw Exceptions.handle().to(LOG).withSystemErrorMessage("Index is not ready yet.").handle();
-        }
+        ensureReady();
         return schema.getIndex(clazz);
     }
 
     protected void startup() {
-        Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
+        Operation.cover(CATEGORY_INDEX, () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
 
         schema = new Schema(this);
         schema.load();
 
-        Operation.cover("index", () -> "IndexLifecycle.updateMappings", Duration.ofSeconds(30), this::updateMappings);
+        Operation.cover(CATEGORY_INDEX,
+                        () -> "IndexLifecycle.updateMappings",
+                        Duration.ofSeconds(30),
+                        this::updateMappings);
 
         ready = true;
         readyFuture.success();
@@ -428,18 +451,13 @@ public class IndexAccess {
                         }
                     }
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Exceptions.handle(LOG, e);
             }
         }
     }
 
     private void updateMappings() {
-        boolean updateSchema =
-                Sirius.getConfig().getBoolean("index.updateSchema") || "in-memory".equalsIgnoreCase(Sirius.getConfig()
-                                                                                                          .getString(
-                                                                                                                  "index.type"));
-
         if (updateSchema) {
             for (String msg : schema.createMappings()) {
                 IndexAccess.LOG.INFO(msg);
@@ -447,17 +465,7 @@ public class IndexAccess {
         }
     }
 
-    @ConfigValue("index.host")
-    private String hostAddress;
-
-    @ConfigValue("index.cluster")
-    private String clusterName;
-
-    @ConfigValue("index.port")
-    private int port;
-
     private void startClient() {
-
         LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
         Settings settings = Settings.builder().put("cluster.name", clusterName).build();
         TransportClient transportClient = new PreBuiltTransportClient(settings);
@@ -468,16 +476,6 @@ public class IndexAccess {
             Exceptions.handle(LOG, e);
         }
         client = transportClient;
-    }
-
-    private String determineDataPath() {
-        if (Sirius.getConfig().hasPath("index.path")) {
-            return Sirius.getConfig().getString("index.path");
-        } else {
-            File homeDir = new File(new File("data"), "index");
-            homeDir.mkdirs();
-            return homeDir.getAbsolutePath();
-        }
     }
 
     /**
@@ -637,11 +635,6 @@ public class IndexAccess {
     }
 
     /**
-     * Queue of actions which need to be delayed one second
-     */
-    protected static final List<WaitingBlock> oneSecondDelayLine = Lists.newArrayList();
-
-    /**
      * Adds an action to the delay line, which ensures that it is at least delayed for one second
      *
      * @param cmd to command to be delayed
@@ -702,7 +695,7 @@ public class IndexAccess {
                 Wait.randomMillis(-500, 500);
             } catch (HandledException e) {
                 throw e;
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 throw Exceptions.handle()
                                 .withSystemErrorMessage(
                                         "An unexpected exception occurred while executing a unit of work: %s (%s)")
@@ -928,7 +921,7 @@ public class IndexAccess {
             }
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -1025,49 +1018,59 @@ public class IndexAccess {
                 e.setId(NEW);
                 return e;
             }
-            if (index == null) {
-                index = schema.getIndex(clazz);
+
+            String indexName = index;
+            if (indexName == null) {
+                indexName = schema.getIndex(clazz);
             } else {
-                index = schema.getIndexName(index);
+                indexName = schema.getIndexName(index);
             }
             EntityDescriptor descriptor = getDescriptor(clazz);
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getType(), id);
+                LOG.FINE("FIND: %s.%s: %s", indexName, descriptor.getType(), id);
             }
             Watch w = Watch.start();
             try {
                 verifyRoutingForFind(routing, clazz, id, descriptor);
-                GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
-                                             .setPreference("_primary")
-                                             .setRouting(routing)
-                                             .execute()
-                                             .actionGet();
-                if (!res.isExists()) {
-                    if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
-                    }
-                    return null;
-                } else {
-                    E entity = clazz.newInstance();
-                    entity.initSourceTracing();
-                    entity.setId(res.getId());
-                    entity.setVersion(res.getVersion());
-                    descriptor.readSource(entity, res.getSource());
-                    if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
-                    }
-                    return entity;
-                }
+                return executeFind(indexName, routing, clazz, id, descriptor);
             } finally {
                 queryDuration.addValue(w.elapsedMillis());
                 w.submitMicroTiming("ES", "UPDATE " + clazz.getName());
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(t)
                             .withSystemErrorMessage("Failed to find '%s' (%s): %s (%s)", id, clazz.getName())
                             .handle();
+        }
+    }
+
+    private <E extends Entity> E executeFind(@Nullable String index,
+                                             @Nullable String routing,
+                                             @Nonnull Class<E> clazz,
+                                             String id,
+                                             EntityDescriptor descriptor) throws Exception {
+        GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
+                                     .setPreference("_primary")
+                                     .setRouting(routing)
+                                     .execute()
+                                     .actionGet();
+        if (!res.isExists()) {
+            if (LOG.isFINE()) {
+                LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
+            }
+            return null;
+        } else {
+            E entity = clazz.newInstance();
+            entity.initSourceTracing();
+            entity.setId(res.getId());
+            entity.setVersion(res.getVersion());
+            descriptor.readSource(entity, res.getSource());
+            if (LOG.isFINE()) {
+                LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
+            }
+            return entity;
         }
     }
 
@@ -1271,7 +1274,7 @@ public class IndexAccess {
             reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -1343,7 +1346,8 @@ public class IndexAccess {
                 b.add(readyFuture);
                 b.await();
             } catch (InterruptedException e) {
-                Exceptions.handle(e);
+                Exceptions.ignore(e);
+                Thread.currentThread().interrupt();
             }
         }
     }

@@ -13,9 +13,6 @@ import sirius.kernel.Sirius;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Exceptions;
-
-import java.io.IOException;
 
 import static sirius.search.IndexAccess.LOG;
 
@@ -45,6 +42,8 @@ public class IndexLifecycle implements Lifecycle {
 
     @Override
     public void stopped() {
+        index.getSchema().dropTemporaryIndices();
+
         if (index.delayLineTimer != null) {
             index.delayLineTimer.cancel();
         }
