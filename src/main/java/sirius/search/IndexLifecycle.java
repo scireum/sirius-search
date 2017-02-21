@@ -32,11 +32,6 @@ public class IndexLifecycle implements Lifecycle {
 
     @Override
     public void started() {
-        if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
-            LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
-            return;
-        }
-
         index.startup();
     }
 

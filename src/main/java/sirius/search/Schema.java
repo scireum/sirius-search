@@ -236,14 +236,16 @@ public class Schema {
                           Sirius.getConfig()
                                 .getInt(Sirius.getConfig()
                                               .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
-                                                       + ed.getIndex() + ".numberOfShards") ?
+                                                       + ed.getIndex()
+                                                       + ".numberOfShards") ?
                                         CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfShards" :
                                         "index.settings.default.numberOfShards"));
             builder.field("number_of_replicas",
                           Sirius.getConfig()
                                 .getInt(Sirius.getConfig()
                                               .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
-                                                       + ed.getIndex() + ".numberOfReplicas") ?
+                                                       + ed.getIndex()
+                                                       + ".numberOfReplicas") ?
                                         CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfReplicas" :
                                         "index.settings.default.numberOfReplicas"));
             builder.endObject();
@@ -330,7 +332,7 @@ public class Schema {
                 Exceptions.handle()
                           .error(e)
                           .to(IndexAccess.LOG)
-                          .withSystemErrorMessage("Failed to delete temporary index %s: %s (%s)")
+                          .withSystemErrorMessage("Failed to delete temporary index %s: %s (%s)", index)
                           .handle();
             }
         }

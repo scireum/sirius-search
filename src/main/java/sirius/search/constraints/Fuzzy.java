@@ -18,7 +18,7 @@ import org.elasticsearch.index.query.SpanQueryBuilder;
  * <p>
  * This constraint allows to match values that differ slightly from the provided value
  */
-public class Fuzzy implements Constraint {
+public class Fuzzy implements Constraint, SpanConstraint {
 
     private final String field;
     private String value;

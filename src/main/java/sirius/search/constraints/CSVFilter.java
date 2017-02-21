@@ -154,11 +154,6 @@ public class CSVFilter implements Constraint {
         return bqb;
     }
 
-    @Override
-    public SpanTermQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
     private void collectValues() {
         if (Strings.isFilled(commaSeparatedValues)) {
             Stream<String> stream = Arrays.stream(commaSeparatedValues.split(splitter))

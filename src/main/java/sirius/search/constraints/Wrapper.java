@@ -41,11 +41,6 @@ public class Wrapper implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return wrapped.toString();
     }

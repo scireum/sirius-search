@@ -42,11 +42,6 @@ public class NotFilled implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString() {
         return toString(false);
     }

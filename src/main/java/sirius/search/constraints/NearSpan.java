@@ -10,16 +10,16 @@ import sirius.kernel.commons.Monoflop;
  * This can e.g. be used to define a query, which searches for the words "word1" and "word2" and between those values
  * mustn't be more than 3 (the defined slop) other words.
  */
-public class NearSpan implements Constraint {
+public class NearSpan implements Constraint, SpanConstraint {
 
-    private Constraint[] constraints;
+    private SpanConstraint[] constraints;
     private int slop = 3;
     private boolean inOrder= false;
 
     /*
      * Use the #on(Constraint...) factory method
      */
-    private NearSpan(Constraint[] constraints) {
+    private NearSpan(SpanConstraint[] constraints) {
         this.constraints = constraints;
     }
 
@@ -32,7 +32,7 @@ public class NearSpan implements Constraint {
      * @param constraints the given sub constraints that should be wrapped in a near span constraint
      * @return the newly created near span constraint
      */
-    public static NearSpan of(Constraint... constraints) {
+    public static NearSpan of(SpanConstraint... constraints) {
         return new NearSpan(constraints);
     }
 
@@ -62,7 +62,7 @@ public class NearSpan implements Constraint {
         Monoflop mflop = Monoflop.create();
         SpanNearQueryBuilder builder = null;
 
-        for (Constraint constraint : constraints) {
+        for (SpanConstraint constraint : constraints) {
             if (mflop.firstCall()) {
                 builder = QueryBuilders.spanNearQuery(constraint.createSpanQuery(), slop);
             } else {

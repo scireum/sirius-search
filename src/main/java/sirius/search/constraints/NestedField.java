@@ -58,11 +58,6 @@ public class NestedField implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return "NESTED[PATH=" + path + "] (" + constraint.toString() + ")";
     }

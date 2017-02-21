@@ -466,6 +466,11 @@ public class IndexAccess {
     }
 
     private void startClient() {
+        if (Sirius.getConfig().hasPath("index.type") && !"server".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            LOG.WARN("Unsupported index.type='%s'. Use 'index.type=server' instead or remove this option.",
+                     Sirius.getConfig().getString("index.type"));
+        }
+
         LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
         Settings settings = Settings.builder().put("cluster.name", clusterName).build();
         TransportClient transportClient = new PreBuiltTransportClient(settings);

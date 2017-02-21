@@ -43,11 +43,6 @@ public class QueryString implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return "_QUERY" + " = '" + (skipConstraintValues ? "?" : value) + "'";
     }

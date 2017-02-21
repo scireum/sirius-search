@@ -45,11 +45,6 @@ public class ValueInField implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return "'" + (skipConstraintValues ? "?" : value) + "' IN " + field;
     }

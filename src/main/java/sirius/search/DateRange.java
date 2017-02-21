@@ -222,12 +222,8 @@ public class DateRange {
                                                                .toEpochMilli()));
             }
         } else if (from == null) {
-            if (until != null) {
-                rangeBuilder.addUnboundedTo(key,
-                                            new DateTime(until.atZone(ZoneId.systemDefault())
-                                                              .toInstant()
-                                                              .toEpochMilli()));
-            }
+            rangeBuilder.addUnboundedTo(key,
+                                        new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
         } else {
             rangeBuilder.addRange(key,
                                   new DateTime(from.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()),
