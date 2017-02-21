@@ -49,13 +49,6 @@ public class Not implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        // currently not easy to implement. QueryBuilders.spanNotquery(include, exclude) needs the exclude AND
-        // the include, which is a parent constraint and not accessible from this point.
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return "!" + inner.toString(skipConstraintValues);
     }

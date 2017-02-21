@@ -26,7 +26,7 @@ import java.time.temporal.TemporalAccessor;
 /**
  * Represents a constraint which checks if the given field has the given value.
  */
-public class FieldEqual implements Constraint {
+public class FieldEqual implements Constraint, SpanConstraint {
     private final String field;
     private Object value;
     private boolean ignoreNull = false;

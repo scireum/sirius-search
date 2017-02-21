@@ -101,11 +101,6 @@ public class OneInField implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         if (values == null || values.isEmpty()) {
             return "<skipped>";

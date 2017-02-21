@@ -42,11 +42,6 @@ public class Filled implements Constraint {
     }
 
     @Override
-    public SpanTermQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString() {
         return toString(false);
     }

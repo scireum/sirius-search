@@ -50,12 +50,6 @@ public class FieldNotEqual implements Constraint {
     }
 
     @Override
-    public SpanTermQueryBuilder createSpanQuery() {
-        // currently not easy to implement. see Not.java
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return field + " != '" + (skipConstraintValues ? "?" : value) + "'";
     }

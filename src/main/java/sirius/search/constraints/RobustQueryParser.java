@@ -83,11 +83,6 @@ public class RobustQueryParser implements Constraint {
     }
 
     @Override
-    public SpanQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return "'" + (skipConstraintValues ? "?" : input) + "' ROBUST QUERY IN " + defaultField;
     }

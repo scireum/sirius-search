@@ -116,11 +116,6 @@ public class FieldOperator implements Constraint {
     }
 
     @Override
-    public SpanTermQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public String toString(boolean skipConstraintValues) {
         return field + " " + bound + " '" + (skipConstraintValues ? "?" : value) + "'";
     }

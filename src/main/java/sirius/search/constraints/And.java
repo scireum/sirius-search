@@ -53,10 +53,6 @@ public class And implements Constraint {
         return result;
     }
 
-    @Override
-    public SpanTermQueryBuilder createSpanQuery() {
-        throw new UnsupportedOperationException("And-constraint not supported for span-queries. Use NearSpan and define a slop value.");
-    }
 
     @Override
     public String toString(boolean skipConstraintValues) {
