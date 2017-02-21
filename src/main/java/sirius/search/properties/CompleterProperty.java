@@ -26,6 +26,7 @@ public class CompleterProperty extends ObjectProperty {
     private final String analyzer;
     private final String contextName;
     private final String contextType;
+    private final String analyzer;
 
     /**
      * Factory for generating properties of type {@link AutoCompletion} .
