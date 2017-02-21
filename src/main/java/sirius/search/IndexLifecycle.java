@@ -9,15 +9,8 @@
 package sirius.search;
 
 import sirius.kernel.Lifecycle;
-import sirius.kernel.Sirius;
-import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Exceptions;
-
-import java.io.IOException;
-
-import static sirius.search.IndexAccess.LOG;
 
 /**
  * Starts and stops the elasticsearch client.

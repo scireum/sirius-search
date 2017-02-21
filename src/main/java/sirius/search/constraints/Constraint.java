@@ -9,7 +9,6 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.SpanQueryBuilder;
 
 /**
  * Defines a constraint which can be added to a {@link sirius.search.Query} to determine the result set.
