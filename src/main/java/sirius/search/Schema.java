@@ -14,6 +14,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.Sirius;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
 import sirius.kernel.di.std.Parts;
@@ -76,7 +77,7 @@ public class Schema {
             indexPrefix = indexPrefix.replace("${timestamp}", String.valueOf(System.currentTimeMillis()));
             IndexAccess.LOG.INFO("Using unique index prefix: %s", indexPrefix);
         }
-        if (!indexPrefix.endsWith("-")) {
+        if (Strings.isFilled(indexPrefix) && !indexPrefix.endsWith("-")) {
             indexPrefix = indexPrefix + "-";
         }
     }
@@ -231,7 +232,7 @@ public class Schema {
 
     private XContentBuilder createIndexSettings(EntityDescriptor ed) throws IOException {
         try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
-            builder.startObject("index");
+            builder.startObject().startObject("index");
             builder.field("number_of_shards",
                           Sirius.getConfig()
                                 .getInt(Sirius.getConfig()
@@ -248,7 +249,7 @@ public class Schema {
                                                        + ".numberOfReplicas") ?
                                         CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfReplicas" :
                                         "index.settings.default.numberOfReplicas"));
-            builder.endObject();
+            builder.endObject().endObject();
             return builder;
         }
     }
