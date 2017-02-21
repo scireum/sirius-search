@@ -436,9 +436,7 @@ public class IndexAccess {
 
     private void updateMappings() {
         boolean updateSchema =
-                Sirius.getConfig().getBoolean("index.updateSchema") || "in-memory".equalsIgnoreCase(Sirius.getConfig()
-                                                                                                          .getString(
-                                                                                                                  "index.type"));
+                Sirius.getConfig().getBoolean("index.updateSchema");
 
         if (updateSchema) {
             for (String msg : schema.createMappings()) {
@@ -457,6 +455,10 @@ public class IndexAccess {
     private int port;
 
     private void startClient() {
+        if (Sirius.getConfig().hasPath("index.type") && !"server".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            LOG.WARN("Unsupported index.type='%s'. Use 'index.type=server' instead or remove this option.",
+                     Sirius.getConfig().getString("index.type"));
+        }
 
         LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
         Settings settings = Settings.builder().put("cluster.name", clusterName).build();
