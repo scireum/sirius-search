@@ -15,6 +15,7 @@ import sirius.kernel.nls.NLS;
 import sirius.search.IndexAccess;
 import sirius.search.annotations.NestedObject;
 import sirius.search.annotations.Transient;
+import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -37,7 +38,7 @@ public class ObjectProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return field.isAnnotationPresent(NestedObject.class);
+            return field.isAnnotationPresent(NestedObject.class) && !field.getType().equals(AutoCompletion.class);
         }
 
         @Override
