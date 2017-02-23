@@ -32,7 +32,8 @@ public class Fuzzy implements Constraint, SpanConstraint {
     /**
      * Creates a new fuzzy query for the given field and value.
      * <p>
-     * Use {@link #fuzziness(Fuzziness)} to specify the fuzziness of the value. Otherwise {@link Fuzziness#AUTO} is used.
+     * Use {@link #fuzziness(Fuzziness)} to specify the fuzziness of the value. Otherwise {@link Fuzziness#AUTO} is
+     * used.
      *
      * @param field the field to search in
      * @param value the value to filter on.
@@ -60,7 +61,7 @@ public class Fuzzy implements Constraint, SpanConstraint {
 
     @Override
     public SpanQueryBuilder createSpanQuery() {
-        return QueryBuilders.spanMultiTermQueryBuilder(QueryBuilders.fuzzyQuery(field, value));
+        return QueryBuilders.spanMultiTermQueryBuilder(QueryBuilders.fuzzyQuery(field, value).fuzziness(fuzziness));
     }
 
     @Override

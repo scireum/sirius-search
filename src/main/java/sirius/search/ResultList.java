@@ -92,6 +92,15 @@ public class ResultList<T> implements Iterable<T> {
     }
 
     /**
+     * Returns the total number of hits not just the fetched ones.
+     *
+     * @return the total number of hits
+     */
+    public long getTotalNumberOfHits() {
+        return this.response.getHits().getTotalHits();
+    }
+
+    /**
      * Returns the facet filters collected when creating the result
      *
      * @return the facet filters defined by the query
