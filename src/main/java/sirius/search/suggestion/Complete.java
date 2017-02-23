@@ -19,7 +19,6 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +135,6 @@ public class Complete<E extends Entity> {
     private List<CompletionSuggestion.Entry.Option> execute(SearchRequestBuilder sqb) {
         SearchResponse response = sqb.execute().actionGet();
         CompletionSuggestion completionSuggestion = response.getSuggest().getSuggestion("completion");
-        ArrayList<String> completions = new ArrayList<>();
 
         if (completionSuggestion != null) {
             List<CompletionSuggestion.Entry> entryList = completionSuggestion.getEntries();

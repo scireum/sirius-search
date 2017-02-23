@@ -922,7 +922,7 @@ public class Query<E extends Entity> {
     public ResultList<E> queryResultList() {
         try {
             if (forceFail) {
-                return new ResultList<>(Lists.newArrayList(), Lists.newArrayList(), null);
+                return new ResultList<>(Lists.newArrayList(), null);
             }
             boolean defaultLimitEnforced = false;
             if (limit == null) {
@@ -1044,7 +1044,7 @@ public class Query<E extends Entity> {
     protected ResultList<E> transform(SearchRequestBuilder builder) throws Exception {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
-        ResultList<E> result = new ResultList<>(termFacets, aggregations, searchResponse);
+        ResultList<E> result = new ResultList<>(termFacets, searchResponse);
         EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
             E entity = clazz.newInstance();
@@ -1133,7 +1133,7 @@ public class Query<E extends Entity> {
         int originalLimit = limit;
         limit++;
         Watch w = Watch.start();
-        ResultList<E> result = new ResultList<>(termFacets, aggregations, null);
+        ResultList<E> result = new ResultList<>(termFacets, null);
         if (!forceFail) {
             try {
                 result = queryResultList();

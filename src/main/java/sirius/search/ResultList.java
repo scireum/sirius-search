@@ -31,7 +31,6 @@ import java.util.Map;
 public class ResultList<T> implements Iterable<T> {
 
     private final List<Facet> termFacets;
-    private final List<Aggregation> aggregations;
     private List<T> results = Lists.newArrayList();
     private SearchResponse response;
     private Monoflop facetsProcessed = Monoflop.create();
@@ -40,13 +39,11 @@ public class ResultList<T> implements Iterable<T> {
      * Creates a new result list
      *
      * @param termFacets   list of facets created by the query
-     * @param aggregations the list of aggregations computed by the query
      * @param response     underlying search response building the result
      */
-    protected ResultList(List<Facet> termFacets, List<Aggregation> aggregations, SearchResponse response) {
+    protected ResultList(List<Facet> termFacets, SearchResponse response) {
         this.termFacets = termFacets;
         this.response = response;
-        this.aggregations = aggregations;
     }
 
     @Override
