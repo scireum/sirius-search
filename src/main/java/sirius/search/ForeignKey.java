@@ -221,11 +221,11 @@ public class ForeignKey {
                  .iterateAll(row -> {
                      try {
                          index.forceDelete(row);
-                     } catch (Throwable e) {
+                     } catch (Exception e) {
                          Exceptions.handle(IndexAccess.LOG, e);
                      }
                  });
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
     }
@@ -258,11 +258,11 @@ public class ForeignKey {
                          } else {
                              updateReferencedFields(null, row, true);
                          }
-                     } catch (Throwable e) {
+                     } catch (Exception e) {
                          Exceptions.handle(IndexAccess.LOG, e);
                      }
                  });
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
     }
@@ -306,7 +306,7 @@ public class ForeignKey {
                      updateReferencedFields(entity, row, false);
                      return true;
                  });
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
     }
@@ -332,7 +332,7 @@ public class ForeignKey {
             index.reportClash(child);
         } catch (DocumentMissingException t) {
             Exceptions.ignore(t);
-        } catch (Throwable t) {
+        } catch (Exception t) {
             if (IndexAccess.LOG.isFINE()) {
                 IndexAccess.LOG.FINE("UPDATE: %s.%s: FAILED: %s",
                                      index.getIndex(getLocalClass()),

@@ -96,7 +96,7 @@ public class ObjectProperty extends Property {
                     valueMap.put(innerField.getName(), NLS.toMachineString(val));
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle()
                       .error(e)
                       .to(IndexAccess.LOG)
@@ -121,7 +121,7 @@ public class ObjectProperty extends Property {
                 }
             }
             return obj;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .error(e)
                             .to(IndexAccess.LOG)
@@ -144,7 +144,7 @@ public class ObjectProperty extends Property {
                     innerField.set(obj, NLS.parseMachineString(innerField.getType(), values.get(innerField.getName())));
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle()
                       .error(e)
                       .to(IndexAccess.LOG)

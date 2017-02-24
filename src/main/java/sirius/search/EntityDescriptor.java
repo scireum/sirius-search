@@ -74,8 +74,8 @@ public class EntityDescriptor {
      */
     public List<Property> getProperties() {
         if (properties == null) {
-            List<Property> props = new ArrayList<Property>();
-            List<ForeignKey> keys = new ArrayList<ForeignKey>();
+            List<Property> props = new ArrayList<>();
+            List<ForeignKey> keys = new ArrayList<>();
             addProperties(clazz, clazz, props, keys);
             properties = props;
             foreignKeys = keys;
@@ -87,56 +87,66 @@ public class EntityDescriptor {
     /*
      * Adds all properties of the given class (and its superclasses)
      */
-    @SuppressWarnings("unchecked")
     private void addProperties(Class<?> rootClass, Class<?> clazz, List<Property> props, List<ForeignKey> keys) {
         for (Field field : clazz.getDeclaredFields()) {
             if (!field.isAnnotationPresent(Transient.class) && !Modifier.isStatic(field.getModifiers())) {
-                Property p = null;
-                for (PropertyFactory f : Schema.factories.getParts()) {
-                    if (f.accepts(field)) {
-                        p = f.create(field);
-                        if (propertyAlreadyExists(props, p)) {
-                            IndexAccess.LOG.SEVERE(Strings.apply(
-                                    "A property named '%s' already exists for the type '%s'. Cannot transform field %s",
-                                    p.getName(),
-                                    rootClass.getSimpleName(),
-                                    field));
-                            p = null;
-                            break;
-                        }
-                        props.add(p);
-                        if (!p.acceptsSetter() && hasSetter(field)) {
-                            IndexAccess.LOG.WARN("Property %s in type %s does not accept a setter method to be present",
-                                                 field.getName(),
-                                                 rootClass.getSimpleName());
-                        }
-                        break;
-                    }
-                }
-                if (p == null) {
-                    IndexAccess.LOG.WARN("Cannot create property %s in type %s",
-                                         field.getName(),
-                                         clazz.getSimpleName());
-                } else {
-                    if (field.isAnnotationPresent(RefType.class)) {
-                        keys.add(new ForeignKey(field, (Class<? extends Entity>) rootClass));
-                    }
-                    if (field.isAnnotationPresent(RefField.class)) {
-                        ForeignKey key = findForeignKey(keys, field.getAnnotation(RefField.class).localRef());
-                        if (key == null) {
-                            IndexAccess.LOG.WARN("No foreign key %s found for field reference %s    ",
-                                                 field.getAnnotation(RefField.class).localRef(),
-                                                 field.getName());
-                        } else {
-                            key.addReference(p, field.getAnnotation(RefField.class).remoteField());
-                        }
-                    }
-                }
+                addProperty(rootClass, clazz, props, keys, field);
             }
         }
         if (clazz.getSuperclass() != null && !Object.class.equals(clazz.getSuperclass())) {
             addProperties(rootClass, clazz.getSuperclass(), props, keys);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addProperty(Class<?> rootClass,
+                             Class<?> clazz,
+                             List<Property> props,
+                             List<ForeignKey> keys,
+                             Field field) {
+        Property p = createProperty(rootClass, props, field);
+        if (p == null) {
+            IndexAccess.LOG.WARN("Cannot create property %s in type %s", field.getName(), clazz.getSimpleName());
+        } else {
+            if (field.isAnnotationPresent(RefType.class)) {
+                keys.add(new ForeignKey(field, (Class<? extends Entity>) rootClass));
+            }
+            if (field.isAnnotationPresent(RefField.class)) {
+                ForeignKey key = findForeignKey(keys, field.getAnnotation(RefField.class).localRef());
+                if (key == null) {
+                    IndexAccess.LOG.WARN("No foreign key %s found for field reference %s    ",
+                                         field.getAnnotation(RefField.class).localRef(),
+                                         field.getName());
+                } else {
+                    key.addReference(p, field.getAnnotation(RefField.class).remoteField());
+                }
+            }
+        }
+    }
+
+    private Property createProperty(Class<?> rootClass, List<Property> props, Field field) {
+        for (PropertyFactory f : Schema.factories.getParts()) {
+            if (f.accepts(field)) {
+                Property p = f.create(field);
+                if (propertyAlreadyExists(props, p)) {
+                    IndexAccess.LOG.SEVERE(Strings.apply(
+                            "A property named '%s' already exists for the type '%s'. Cannot transform field %s",
+                            p.getName(),
+                            rootClass.getSimpleName(),
+                            field));
+                    return null;
+                }
+                props.add(p);
+                if (!p.acceptsSetter() && hasSetter(field)) {
+                    IndexAccess.LOG.WARN("Property %s in type %s does not accept a setter method to be present",
+                                         field.getName(),
+                                         rootClass.getSimpleName());
+                }
+                return p;
+            }
+        }
+
+        return null;
     }
 
     private boolean propertyAlreadyExists(List<Property> props, Property check) {
@@ -206,8 +216,7 @@ public class EntityDescriptor {
      * @return the entity json as string
      */
     public String toJson(Entity entity, @Nullable String objectName) {
-        try {
-            XContentBuilder builder = XContentFactory.jsonBuilder();
+        try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
             if (Strings.isFilled(objectName)) {
                 builder.startObject(objectName);
             } else {
@@ -254,14 +263,17 @@ public class EntityDescriptor {
      * @throws IOException in case of an IO error during the JSON encoding
      */
     public XContentBuilder createMapping() throws IOException {
-        XContentBuilder builder = XContentFactory.jsonBuilder().startObject().startObject(getType());
-        builder.startObject("properties");
-        for (Property p : getProperties()) {
-            p.createMapping(builder);
-        }
-        builder.endObject();
+        try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
+            builder.startObject().startObject(getType());
 
-        return builder.endObject().endObject();
+            builder.startObject("properties");
+            for (Property p : getProperties()) {
+                p.createMapping(builder);
+            }
+            builder.endObject();
+
+            return builder.endObject().endObject();
+        }
     }
 
     /**

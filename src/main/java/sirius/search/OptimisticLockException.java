@@ -16,7 +16,7 @@ import org.elasticsearch.index.engine.VersionConflictEngineException;
 public class OptimisticLockException extends Exception {
 
     private static final long serialVersionUID = 3422074853606377097L;
-    private Entity entity;
+    private final transient Entity entity;
 
     /**
      * Creates a new optimistic lock error for the given entity.

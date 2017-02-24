@@ -89,7 +89,7 @@ public abstract class Entity {
             for (Property p : index.getDescriptor(getClass()).getProperties()) {
                 try {
                     p.init(this);
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     Exceptions.ignore(e);
                     IndexAccess.LOG.WARN("Cannot initialize %s of %s", p.getName(), getClass().getSimpleName());
                 }
@@ -233,7 +233,7 @@ public abstract class Entity {
                                      .set("field", p.getFieldTitle())
                                      .set("value", NLS.toUserString(p.getField().get(this)))
                                      .handle();
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     Exceptions.handle(e);
                 }
             }
@@ -347,7 +347,7 @@ public abstract class Entity {
                 propertyToFill.getField()
                               .set(this, remoteDescriptor.getProperty(ref.remoteField()).getField().get(sourceEntity));
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle()
                       .to(IndexAccess.LOG)
                       .error(e)

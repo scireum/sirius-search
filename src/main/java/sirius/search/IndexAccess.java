@@ -94,6 +94,7 @@ public class IndexAccess {
      */
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
     private static final String CATEGORY_INDEX = "index";
+    private static final String CONFIG_KEY_INDEX_TYPE = "index.type";
 
     /**
      * Contains the database schema as expected by the java model
@@ -349,7 +350,7 @@ public class IndexAccess {
                        .get(10, TimeUnit.SECONDS);
         } catch (Exception ex) {
             Throwable rootCause = ex;
-            while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+            while (rootCause.getCause() != null && !rootCause.getCause().equals(rootCause)) {
                 rootCause = rootCause.getCause();
             }
             throw Exceptions.handle()
@@ -466,9 +467,11 @@ public class IndexAccess {
     }
 
     private void startClient() {
-        if (Sirius.getConfig().hasPath("index.type") && !"server".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+        if (Sirius.getConfig().hasPath(CONFIG_KEY_INDEX_TYPE) && !"server".equalsIgnoreCase(Sirius.getConfig()
+                                                                                                  .getString(
+                                                                                                          CONFIG_KEY_INDEX_TYPE))) {
             LOG.WARN("Unsupported index.type='%s'. Use 'index.type=server' instead or remove this option.",
-                     Sirius.getConfig().getString("index.type"));
+                     Sirius.getConfig().getString(CONFIG_KEY_INDEX_TYPE));
         }
 
         LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);
