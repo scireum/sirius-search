@@ -16,7 +16,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.TaskContext;
-import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 
@@ -27,6 +26,7 @@ import sirius.kernel.health.Exceptions;
  */
 class ReIndexTask implements Runnable {
 
+    private static final long FIVE_MINUTES = 5 * 60L;
     private Schema schema;
     private final String newPrefix;
     private int counter;
@@ -67,49 +67,58 @@ class ReIndexTask implements Runnable {
 
             // Limit to 10 per shard
             srb.setSize(10);
-            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60));
+            srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(FIVE_MINUTES));
             SearchResponse searchResponse = srb.execute().actionGet();
             while (TaskContext.get().isActive()) {
-                Watch w = Watch.start();
-                searchResponse = index.getClient()
-                                      .prepareSearchScroll(searchResponse.getScrollId())
-                                      .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(5 * 60))
-                                      .execute()
-                                      .actionGet();
-                for (SearchHit hit : searchResponse.getHits()) {
-                    bulk.add(index.getClient()
-                                  .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
-                                  .setId(hit.getId())
-                                  .setSource(hit.source())
-                                  .request());
-                    counter++;
-                    if (counter > 1000) {
-                        executeAndReCreateBulk();
-                    }
-                }
+                searchResponse = reindexBlock(ed, searchResponse.getScrollId());
                 //Break condition: No hits are returned
                 if (searchResponse.getHits().hits().length == 0) {
                     return;
                 }
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle(IndexAccess.LOG, t);
         }
+    }
+
+    private SearchResponse reindexBlock(EntityDescriptor ed, String scollId) {
+        SearchResponse searchResponse = index.getClient()
+                                             .prepareSearchScroll(scollId)
+                                             .setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(
+                                                     FIVE_MINUTES))
+                                             .execute()
+                                             .actionGet();
+        for (SearchHit hit : searchResponse.getHits()) {
+            bulk.add(index.getClient()
+                          .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
+                          .setId(hit.getId())
+                          .setSource(hit.source())
+                          .request());
+            counter++;
+            if (counter > 1000) {
+                executeAndReCreateBulk();
+            }
+        }
+        return searchResponse;
     }
 
     private void executeAndReCreateBulk() {
         if (counter > 0) {
             IndexAccess.LOG.INFO("Executing bulk...");
             BulkResponse res = bulk.execute().actionGet();
-            if (res.hasFailures()) {
-                for (BulkItemResponse itemRes : res.getItems()) {
-                    if (itemRes.isFailed()) {
-                        IndexAccess.LOG.SEVERE("Re-Indexing failed: " + itemRes.getFailureMessage());
-                    }
-                }
-            }
+            processFailures(res);
         }
         bulk = index.getClient().prepareBulk();
         counter = 0;
+    }
+
+    private void processFailures(BulkResponse res) {
+        if (res.hasFailures()) {
+            for (BulkItemResponse itemRes : res.getItems()) {
+                if (itemRes.isFailed()) {
+                    IndexAccess.LOG.SEVERE("Re-Indexing failed: " + itemRes.getFailureMessage());
+                }
+            }
+        }
     }
 }

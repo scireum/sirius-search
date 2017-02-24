@@ -78,7 +78,7 @@ public class IdGenerator {
             }
         } catch (HandledException e) {
             throw e;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(IndexAccess.LOG)
                             .error(e)
