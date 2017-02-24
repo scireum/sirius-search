@@ -9,7 +9,7 @@
         <version>3.8.3</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>5.0.3</version>
+    <version>5.0.4</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -34,7 +34,31 @@
             <version>5.2.1</version>
             <exclusions>
                 <exclusion>
-                    <artifactId>*</artifactId>
+                    <artifactId>netty-common</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-codec-http</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-transport</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-handler</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-resolver</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-buffer</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
             </exclusions>
