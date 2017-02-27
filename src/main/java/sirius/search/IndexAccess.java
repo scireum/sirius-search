@@ -18,6 +18,8 @@ import com.google.common.io.CharStreams;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
@@ -666,8 +668,12 @@ public class IndexAccess {
      * is absolutely necessary.
      */
     public void blockThreadForUpdate() {
+        blockThreadForUpdate(1);
+    }
+
+    public void blockThreadForUpdate(int seconds) {
         blocks.inc();
-        Wait.seconds(1);
+        Wait.seconds(seconds);
     }
 
     /**
@@ -773,6 +779,21 @@ public class IndexAccess {
     }
 
     /**
+     * Tries to update the given entities in the database.
+     * <p>
+     * If one of the entities was modified in the database already, an <tt>OptimisticLockException</tt> will be thrown
+     *
+     * @param entities the entities to save
+     * @param <E>      the type of the entities to update
+     * @return the saved entities
+     * @throws OptimisticLockException if one of the entities was modified in the database and those changes where
+     *                                 not reflected by the entities to be saved
+     */
+    public <E extends Entity> List<E> tryUpdate(List<E> entities) throws OptimisticLockException {
+        return update(entities, true, false);
+    }
+
+    /**
      * Updates the entity in the database.
      * <p>
      * If the entity was modified in the database and those changes where not reflected
@@ -794,6 +815,25 @@ public class IndexAccess {
                                                     entity.toDebugString(),
                                                     entity.getId())
                             .handle();
+        }
+    }
+
+    /**
+     * Updates the entities in the database.
+     * <p>
+     * If one of the entities was modified in the database and those changes where not reflected
+     * by the entity to be saved, this operation will fail.
+     *
+     * @param entities the entites to be written into the DB
+     * @param <E>      the type of the entities to update
+     * @return the updated entities
+     */
+    public <E extends Entity> List<E> update(List<E> entities) {
+        try {
+            return update(entities, true, false);
+        } catch (OptimisticLockException e) {
+            entities.stream().filter(entity -> entity.version == -1L).forEach(this::reportClash);
+            throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed Bulk-Update").handle();
         }
     }
 
@@ -940,6 +980,70 @@ public class IndexAccess {
         }
     }
 
+    /**
+     * Internal save method used by {@link #create(Entity)}, {@link #tryUpdate(Entity)}, {@link #update(Entity)}
+     * and {@link #override(Entity)}
+     *
+     * @param entities            the entities to save
+     * @param performVersionCheck determines if change tracking will be enabled
+     * @param forceCreate         determines if a new entity should be created
+     * @param <E>                 the type of the entity to update
+     * @return the saved entity
+     * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
+     */
+    protected <E extends Entity> List<E> update(final List<E> entities,
+                                                final boolean performVersionCheck,
+                                                final boolean forceCreate) throws OptimisticLockException {
+        try {
+            BulkRequestBuilder bulkRequest = getClient().prepareBulk();
+            EntityDescriptor descriptor;
+
+            for (E entity : entities) {
+                final Map<String, Object> source = Maps.newTreeMap();
+                entity.beforeSave();
+                descriptor = getDescriptor(entity.getClass());
+                descriptor.writeTo(entity, source);
+
+                if (LOG.isFINE()) {
+                    LOG.FINE("BULK-SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
+                             forceCreate,
+                             performVersionCheck,
+                             schema.getIndex(entity),
+                             descriptor.getType(),
+                             Strings.join(source));
+                }
+
+                String id = entity.getId();
+                if (NEW.equals(id)) {
+                    id = null;
+                }
+                if (Strings.isEmpty(id)) {
+                    id = entity.computePossibleId();
+                }
+
+                IndexRequestBuilder irb = getClient().prepareIndex(schema.getIndex(entity), descriptor.getType(), id)
+                                                     .setCreate(forceCreate)
+                                                     .setSource(source);
+                if (!entity.isNew() && performVersionCheck) {
+                    irb.setVersion(entity.getVersion());
+                }
+
+                applyRouting("Updating", entity, descriptor, irb::setRouting);
+                bulkRequest.add(irb);
+            }
+
+            return executeUpdate(entities, bulkRequest);
+        } catch (OptimisticLockException e) {
+            if (LOG.isFINE()) {
+                LOG.FINE("Version conflict while performing bulk-update");
+            }
+            optimisticLockErrors.inc();
+            throw e;
+        } catch (Throwable e) {
+            throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed bulk-update").handle();
+        }
+    }
+
     private <E extends Entity> void applyRouting(String action,
                                                  E entity,
                                                  EntityDescriptor descriptor,
@@ -975,6 +1079,39 @@ public class IndexAccess {
         w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
         traceChange(entity);
         return entity;
+    }
+
+    private <E extends Entity> List<E> executeUpdate(List<E> entities, BulkRequestBuilder brb)
+            throws OptimisticLockException {
+        Watch w = Watch.start();
+        BulkResponse indexResponse = brb.execute().actionGet();
+
+        if (!indexResponse.hasFailures() && LOG.isFINE()) {
+            LOG.FINE("BULK-SAVE SUCCEEDED");
+        } else if (indexResponse.hasFailures() && LOG.isFINE()) {
+            LOG.FINE(indexResponse.buildFailureMessage());
+        }
+
+        for (int i = 0; i < indexResponse.getItems().length; i++) {
+            E entity = entities.get(i);
+            entity.id = indexResponse.getItems()[i].getId();
+            entity.version = indexResponse.getItems()[i].getVersion();
+
+            if (!indexResponse.getItems()[i].isFailed()) {
+                entity.afterSave();
+            }
+
+            traceChange(entity);
+        }
+
+        queryDuration.addValue(w.elapsedMillis());
+        w.submitMicroTiming("ES", "BULK-UPDATE");
+
+        if (indexResponse.hasFailures()) {
+            throw new OptimisticLockException(indexResponse.buildFailureMessage(), entities);
+        }
+
+        return entities;
     }
 
     /**

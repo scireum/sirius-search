@@ -67,7 +67,51 @@ class QueriesSpec extends BaseSpecification {
                 FieldEqual.on(QueryEntity.CONTENT, "value3"),
                 FieldEqual.on(QueryEntity.CONTENT, "value1")).slop(3).inOrder())
                 .queryList().isEmpty()
+        cleanup:
+        index.select(QueryEntity.class).delete()
+        index.blockThreadForUpdate()
     }
 
+    def "bulk update works"() {
+        given:
+        index.select(QueryEntity.class).delete()
+        List<QueryEntity> entities = new ArrayList<>()
+        for (int i = 0; i < 500; i++) {
+            entities.add(new QueryEntity())
+        }
+        when:
+        entities = index.tryUpdate(entities)
+        and:
+        index.blockThreadForUpdate(4)
+        then:
+        index.select(QueryEntity.class).count() == 500
+        and:
+        noExceptionThrown()
+    }
+
+    def "bulk update combined with version conflict"() {
+        given:
+        List<QueryEntity> entities = new ArrayList<>()
+        QueryEntity e = new QueryEntity()
+        QueryEntity e2 = new QueryEntity()
+        entities.add(e)
+        entities.add(e2)
+        when:
+        entities = index.update(entities)
+        and:
+        index.blockThreadForUpdate()
+        and:
+        e = index.select(QueryEntity.class).eq(QueryEntity.ID, entities.get(0).id).queryFirst()
+        e2 = index.select(QueryEntity.class).eq(QueryEntity.ID, entities.get(0).id).queryFirst()
+        index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        and:
+        entities.clear()
+        entities.add(e2)
+        index.tryUpdate(entities)
+        then:
+        thrown(OptimisticLockException)
+    }
 
 }
