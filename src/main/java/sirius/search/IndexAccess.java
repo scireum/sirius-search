@@ -665,12 +665,19 @@ public class IndexAccess {
      * Manually blocks the current thread for one second, to make a write visible in ES.
      * <p>
      * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
-     * is absolutely necessary.
+     * if absolutely necessary.
      */
     public void blockThreadForUpdate() {
         blockThreadForUpdate(1);
     }
 
+
+    /**
+     * Manually blocks the current thread for n seconds, to make e.g. a bulk write visible in ES.
+     * <p>
+     * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
+     * if absolutely necessary.
+     */
     public void blockThreadForUpdate(int seconds) {
         blocks.inc();
         Wait.seconds(seconds);
@@ -981,8 +988,7 @@ public class IndexAccess {
     }
 
     /**
-     * Internal save method used by {@link #create(Entity)}, {@link #tryUpdate(Entity)}, {@link #update(Entity)}
-     * and {@link #override(Entity)}
+     * Internal save method used by {@link #update(List)}.
      *
      * @param entities            the entities to save
      * @param performVersionCheck determines if change tracking will be enabled

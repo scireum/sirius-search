@@ -67,9 +67,6 @@ class QueriesSpec extends BaseSpecification {
                 FieldEqual.on(QueryEntity.CONTENT, "value3"),
                 FieldEqual.on(QueryEntity.CONTENT, "value1")).slop(3).inOrder())
                 .queryList().isEmpty()
-        cleanup:
-        index.select(QueryEntity.class).delete()
-        index.blockThreadForUpdate()
     }
 
     def "bulk update works"() {
@@ -77,14 +74,16 @@ class QueriesSpec extends BaseSpecification {
         index.select(QueryEntity.class).delete()
         List<QueryEntity> entities = new ArrayList<>()
         for (int i = 0; i < 500; i++) {
-            entities.add(new QueryEntity())
+            QueryEntity e = new QueryEntity()
+            e.setContent("bulk")
+            entities.add(e)
         }
         when:
         entities = index.tryUpdate(entities)
         and:
         index.blockThreadForUpdate(4)
         then:
-        index.select(QueryEntity.class).count() == 500
+        index.select(QueryEntity.class).eq(QueryEntity.CONTENT, "bulk").count() == 500
         and:
         noExceptionThrown()
     }
