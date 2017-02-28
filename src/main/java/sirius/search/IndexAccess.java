@@ -1039,7 +1039,7 @@ public class IndexAccess {
             }
             optimisticLockErrors.inc();
             throw e;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed bulk-update").handle();
         }
     }
