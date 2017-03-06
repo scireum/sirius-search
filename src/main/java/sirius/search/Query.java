@@ -18,6 +18,8 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
@@ -100,6 +102,7 @@ public class Query<E extends Entity> {
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
     private List<Aggregation> aggregations = Lists.newArrayList();
+    private ScoreFunctionBuilder<?> scoreFunctionBuilder;
     private boolean randomize;
     private String randomizeField;
     private int start;
@@ -561,6 +564,17 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds the given score function to the query which can be used for fine grained scoring calculation.
+     *
+     * @param scoreFunctionBuilder the desired score function
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> addScoreFunction(ScoreFunctionBuilder<?> scoreFunctionBuilder) {
+        this.scoreFunctionBuilder = scoreFunctionBuilder;
+        return this;
+    }
+
+    /**
      * Adds a term facet to be filled by the query.
      *
      * @param field      the field to scan
@@ -893,8 +907,13 @@ public class Query<E extends Entity> {
 
     private void applyQueries(SearchRequestBuilder srb) {
         QueryBuilder qb = buildQuery();
+
         if (qb != null) {
-            srb.setQuery(qb);
+            if (scoreFunctionBuilder != null) {
+                srb.setQuery(new FunctionScoreQueryBuilder(qb, scoreFunctionBuilder));
+            } else {
+                srb.setQuery(qb);
+            }
         }
     }
 
