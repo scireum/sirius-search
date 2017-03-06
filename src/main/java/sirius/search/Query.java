@@ -922,7 +922,7 @@ public class Query<E extends Entity> {
     public ResultList<E> queryResultList() {
         try {
             if (forceFail) {
-                return new ResultList<>(Lists.newArrayList(), null);
+                return new ResultList<>(new ArrayList<>(), null);
             }
             boolean defaultLimitEnforced = false;
             if (limit == null) {
