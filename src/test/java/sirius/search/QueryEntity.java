@@ -20,11 +20,22 @@ public class QueryEntity extends Entity{
             normEnabled = IndexMode.NORMS_DISABLED)
     private String content;
 
+    public static final String RANKING = "ranking";
+    private long ranking;
+
     public String getContent() {
         return content;
     }
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public long getRanking() {
+        return ranking;
+    }
+
+    public void setRanking(long ranking) {
+        this.ranking = ranking;
     }
 }

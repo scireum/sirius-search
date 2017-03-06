@@ -82,7 +82,7 @@ public class ObjectListProperty extends Property {
                                                        NLS.parseMachineString(innerField.getType(),
                                                                               values.get(innerField.getName())));
                                     }
-                                } catch (Throwable e) {
+                                } catch (Exception e) {
                                     Exceptions.handle()
                                               .error(e)
                                               .to(IndexAccess.LOG)
@@ -95,7 +95,7 @@ public class ObjectListProperty extends Property {
                         }
 
                         result.add(obj);
-                    } catch (Throwable e) {
+                    } catch (Exception e) {
                         Exceptions.handle()
                                   .error(e)
                                   .to(IndexAccess.LOG)
@@ -126,7 +126,7 @@ public class ObjectListProperty extends Property {
                                 if (val != null) {
                                     valueMap.put(innerField.getName(), NLS.toMachineString(val));
                                 }
-                            } catch (Throwable e) {
+                            } catch (Exception e) {
                                 Exceptions.handle()
                                           .error(e)
                                           .to(IndexAccess.LOG)
