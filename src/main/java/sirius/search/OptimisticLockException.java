@@ -10,8 +10,6 @@ package sirius.search;
 
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 
-import java.util.List;
-
 /**
  * Wrapper for VersionConflictEngineException to make it a checked exception again.
  */
@@ -30,7 +28,6 @@ public class OptimisticLockException extends Exception {
         super(root);
         this.entity = entity;
     }
-
 
     /**
      * Returns the entity which caused the optimistic lock error.
