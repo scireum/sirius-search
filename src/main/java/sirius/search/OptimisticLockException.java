@@ -18,8 +18,7 @@ import java.util.List;
 public class OptimisticLockException extends Exception {
 
     private static final long serialVersionUID = 3422074853606377097L;
-    private transient Entity entity;
-    private transient List<? extends Entity> entities;
+    private final transient Entity entity;
 
     /**
      * Creates a new optimistic lock error for the given entity.
@@ -32,17 +31,6 @@ public class OptimisticLockException extends Exception {
         this.entity = entity;
     }
 
-    /**
-     * Creates a new optimistic lock error for the given entities. As no {@link VersionConflictEngineException} is
-     * thrown for bulk-operations, the failure-message is passed instead of a direct exception.
-     *
-     * @param message  the message
-     * @param entities the entities which caused the error during a bulk-request
-     */
-    public OptimisticLockException(String message, List<? extends Entity> entities) {
-        super(message);
-        this.entities = entities;
-    }
 
     /**
      * Returns the entity which caused the optimistic lock error.
@@ -51,14 +39,5 @@ public class OptimisticLockException extends Exception {
      */
     public Entity getEntity() {
         return entity;
-    }
-
-    /**
-     * Returns the entities which caused the optimistic lock error.
-     *
-     * @return the entities which caused the optimistic lock error
-     */
-    public List<? extends Entity> getEntities() {
-        return entities;
     }
 }

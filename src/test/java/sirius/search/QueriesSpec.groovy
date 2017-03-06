@@ -79,7 +79,7 @@ class QueriesSpec extends BaseSpecification {
             entities.add(e)
         }
         when:
-        entities = index.tryUpdate(entities)
+        entities = index.updateBulk(entities)
         and:
         index.blockThreadForUpdate(4)
         then:
@@ -96,7 +96,7 @@ class QueriesSpec extends BaseSpecification {
         entities.add(e)
         entities.add(e2)
         when:
-        entities = index.update(entities)
+        entities = index.updateBulk(entities)
         and:
         index.blockThreadForUpdate()
         and:
@@ -108,9 +108,9 @@ class QueriesSpec extends BaseSpecification {
         and:
         entities.clear()
         entities.add(e2)
-        index.tryUpdate(entities)
+        index.updateBulk(entities)
         then:
-        thrown(OptimisticLockException)
+        entities.findAll {x -> x.version == -1L}.collect().size()
     }
 
 }

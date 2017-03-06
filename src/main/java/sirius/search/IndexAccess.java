@@ -671,7 +671,6 @@ public class IndexAccess {
         blockThreadForUpdate(1);
     }
 
-
     /**
      * Manually blocks the current thread for n seconds, to make e.g. a bulk write visible in ES.
      * <p>
@@ -786,21 +785,6 @@ public class IndexAccess {
     }
 
     /**
-     * Tries to update the given entities in the database.
-     * <p>
-     * If one of the entities was modified in the database already, an <tt>OptimisticLockException</tt> will be thrown
-     *
-     * @param entities the entities to save
-     * @param <E>      the type of the entities to update
-     * @return the saved entities
-     * @throws OptimisticLockException if one of the entities was modified in the database and those changes where
-     *                                 not reflected by the entities to be saved
-     */
-    public <E extends Entity> List<E> tryUpdate(List<E> entities) throws OptimisticLockException {
-        return update(entities, true, false);
-    }
-
-    /**
      * Updates the entity in the database.
      * <p>
      * If the entity was modified in the database and those changes where not reflected
@@ -829,19 +813,14 @@ public class IndexAccess {
      * Updates the entities in the database.
      * <p>
      * If one of the entities was modified in the database and those changes where not reflected
-     * by the entity to be saved, this operation will fail.
+     * by the entity to be saved, this operation will fail (the version of the according entity will be set to -1L).
      *
      * @param entities the entites to be written into the DB
      * @param <E>      the type of the entities to update
      * @return the updated entities
      */
-    public <E extends Entity> List<E> update(List<E> entities) {
-        try {
-            return update(entities, true, false);
-        } catch (OptimisticLockException e) {
-            entities.stream().filter(entity -> entity.version == -1L).forEach(this::reportClash);
-            throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed Bulk-Update").handle();
-        }
+    public <E extends Entity> List<E> updateBulk(List<E> entities) {
+        return updateBulk(entities, true, false);
     }
 
     protected <E extends Entity> void reportClash(E entity) {
@@ -988,7 +967,7 @@ public class IndexAccess {
     }
 
     /**
-     * Internal save method used by {@link #update(List)}.
+     * Internal save method used by {@link #updateBulk(List)}.
      *
      * @param entities            the entities to save
      * @param performVersionCheck determines if change tracking will be enabled
@@ -997,9 +976,9 @@ public class IndexAccess {
      * @return the saved entity
      * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
      */
-    protected <E extends Entity> List<E> update(final List<E> entities,
-                                                final boolean performVersionCheck,
-                                                final boolean forceCreate) throws OptimisticLockException {
+    protected <E extends Entity> List<E> updateBulk(final List<E> entities,
+                                                    final boolean performVersionCheck,
+                                                    final boolean forceCreate) {
         try {
             BulkRequestBuilder bulkRequest = getClient().prepareBulk();
             EntityDescriptor descriptor;
@@ -1038,13 +1017,7 @@ public class IndexAccess {
                 bulkRequest.add(irb);
             }
 
-            return executeUpdate(entities, bulkRequest);
-        } catch (OptimisticLockException e) {
-            if (LOG.isFINE()) {
-                LOG.FINE("Version conflict while performing bulk-update");
-            }
-            optimisticLockErrors.inc();
-            throw e;
+            return executeBulkUpdate(entities, bulkRequest);
         } catch (Exception e) {
             throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed bulk-update").handle();
         }
@@ -1087,8 +1060,7 @@ public class IndexAccess {
         return entity;
     }
 
-    private <E extends Entity> List<E> executeUpdate(List<E> entities, BulkRequestBuilder brb)
-            throws OptimisticLockException {
+    private <E extends Entity> List<E> executeBulkUpdate(List<E> entities, BulkRequestBuilder brb) {
         Watch w = Watch.start();
         BulkResponse indexResponse = brb.execute().actionGet();
 
@@ -1112,10 +1084,6 @@ public class IndexAccess {
 
         queryDuration.addValue(w.elapsedMillis());
         w.submitMicroTiming("ES", "BULK-UPDATE");
-
-        if (indexResponse.hasFailures()) {
-            throw new OptimisticLockException(indexResponse.buildFailureMessage(), entities);
-        }
 
         return entities;
     }
