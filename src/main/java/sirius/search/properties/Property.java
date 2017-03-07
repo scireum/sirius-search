@@ -155,6 +155,16 @@ public class Property {
     }
 
     /**
+     * Permits to create an dynamic mapping templates.
+     *
+     * @param builder the builder used to generate JSON
+     * @throws IOException in case of an io error while generating the mapping
+     */
+    public void createDynamicTemplates(XContentBuilder builder) throws IOException {
+        // Empty by default as this is optional
+    }
+
+    /**
      * Determines if this value should not be included in the _all field.
      *
      * @return <tt>true</tt> if the value should not be included in the all field, <tt>false</tt> otherwise.

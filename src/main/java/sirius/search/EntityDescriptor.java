@@ -265,12 +265,16 @@ public class EntityDescriptor {
     public XContentBuilder createMapping() throws IOException {
         try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
             builder.startObject().startObject(getType());
-
             builder.startObject("properties");
             for (Property p : getProperties()) {
                 p.createMapping(builder);
             }
             builder.endObject();
+            builder.startArray("dynamic_templates");
+            for (Property p : getProperties()) {
+                p.createDynamicTemplates(builder);
+            }
+            builder.endArray();
 
             return builder.endObject().endObject();
         }
