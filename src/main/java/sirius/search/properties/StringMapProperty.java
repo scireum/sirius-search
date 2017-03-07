@@ -13,6 +13,7 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
@@ -104,6 +105,29 @@ public class StringMapProperty extends Property {
         builder.field("type", getMappingType());
         if (isIgnoreFromAll()) {
             builder.field("include_in_all", false);
+        }
+        builder.endObject();
+    }
+
+
+    @Override
+    public void createDynamicTemplates(XContentBuilder builder) throws IOException {
+        builder.startObject();
+        {
+            builder.startObject(getName() + "_strings");
+            {
+                builder.field("path_match", getName() + ".*");
+                builder.field("match_mapping_type", "string");
+                builder.startObject("mapping");
+                {
+                    builder.field("type", "string");
+                    builder.field("store", "no");
+                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
+                    builder.field("include_in_all", false);
+                }
+                builder.endObject();
+            }
+            builder.endObject();
         }
         builder.endObject();
     }
