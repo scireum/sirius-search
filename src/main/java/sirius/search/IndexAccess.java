@@ -18,6 +18,8 @@ import com.google.common.io.CharStreams;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
@@ -663,11 +665,21 @@ public class IndexAccess {
      * Manually blocks the current thread for one second, to make a write visible in ES.
      * <p>
      * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
-     * is absolutely necessary.
+     * if absolutely necessary.
      */
     public void blockThreadForUpdate() {
+        blockThreadForUpdate(1);
+    }
+
+    /**
+     * Manually blocks the current thread for n seconds, to make e.g. a bulk write visible in ES.
+     * <p>
+     * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
+     * if absolutely necessary.
+     */
+    public void blockThreadForUpdate(int seconds) {
         blocks.inc();
-        Wait.seconds(1);
+        Wait.seconds(seconds);
     }
 
     /**
@@ -795,6 +807,20 @@ public class IndexAccess {
                                                     entity.getId())
                             .handle();
         }
+    }
+
+    /**
+     * Updates the entities in the database.
+     * <p>
+     * If one of the entities was modified in the database and those changes where not reflected
+     * by the entity to be saved, this operation will fail (the version of the according entity will be set to -1L).
+     *
+     * @param entities the entites to be written into the DB
+     * @param <E>      the type of the entities to update
+     * @return the updated entities
+     */
+    public <E extends Entity> List<E> updateBulk(List<E> entities) {
+        return updateBulk(entities, true, false);
     }
 
     protected <E extends Entity> void reportClash(E entity) {
@@ -940,6 +966,63 @@ public class IndexAccess {
         }
     }
 
+    /**
+     * Internal save method used by {@link #updateBulk(List)}.
+     *
+     * @param entities            the entities to save
+     * @param performVersionCheck determines if change tracking will be enabled
+     * @param forceCreate         determines if a new entity should be created
+     * @param <E>                 the type of the entity to update
+     * @return the saved entity
+     * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
+     */
+    protected <E extends Entity> List<E> updateBulk(final List<E> entities,
+                                                    final boolean performVersionCheck,
+                                                    final boolean forceCreate) {
+        try {
+            BulkRequestBuilder bulkRequest = getClient().prepareBulk();
+            EntityDescriptor descriptor;
+
+            for (E entity : entities) {
+                final Map<String, Object> source = Maps.newTreeMap();
+                entity.beforeSave();
+                descriptor = getDescriptor(entity.getClass());
+                descriptor.writeTo(entity, source);
+
+                if (LOG.isFINE()) {
+                    LOG.FINE("BULK-SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
+                             forceCreate,
+                             performVersionCheck,
+                             schema.getIndex(entity),
+                             descriptor.getType(),
+                             Strings.join(source));
+                }
+
+                String id = entity.getId();
+                if (NEW.equals(id)) {
+                    id = null;
+                }
+                if (Strings.isEmpty(id)) {
+                    id = entity.computePossibleId();
+                }
+
+                IndexRequestBuilder irb = getClient().prepareIndex(schema.getIndex(entity), descriptor.getType(), id)
+                                                     .setCreate(forceCreate)
+                                                     .setSource(source);
+                if (!entity.isNew() && performVersionCheck) {
+                    irb.setVersion(entity.getVersion());
+                }
+
+                applyRouting("Updating", entity, descriptor, irb::setRouting);
+                bulkRequest.add(irb);
+            }
+
+            return executeBulkUpdate(entities, bulkRequest);
+        } catch (Exception e) {
+            throw Exceptions.handle().to(LOG).error(e).withSystemErrorMessage("Failed bulk-update").handle();
+        }
+    }
+
     private <E extends Entity> void applyRouting(String action,
                                                  E entity,
                                                  EntityDescriptor descriptor,
@@ -975,6 +1058,34 @@ public class IndexAccess {
         w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
         traceChange(entity);
         return entity;
+    }
+
+    private <E extends Entity> List<E> executeBulkUpdate(List<E> entities, BulkRequestBuilder brb) {
+        Watch w = Watch.start();
+        BulkResponse indexResponse = brb.execute().actionGet();
+
+        if (!indexResponse.hasFailures() && LOG.isFINE()) {
+            LOG.FINE("BULK-SAVE SUCCEEDED");
+        } else if (indexResponse.hasFailures() && LOG.isFINE()) {
+            LOG.FINE(indexResponse.buildFailureMessage());
+        }
+
+        for (int i = 0; i < indexResponse.getItems().length; i++) {
+            E entity = entities.get(i);
+            entity.id = indexResponse.getItems()[i].getId();
+            entity.version = indexResponse.getItems()[i].getVersion();
+
+            if (!indexResponse.getItems()[i].isFailed()) {
+                entity.afterSave();
+            }
+
+            traceChange(entity);
+        }
+
+        queryDuration.addValue(w.elapsedMillis());
+        w.submitMicroTiming("ES", "BULK-UPDATE");
+
+        return entities;
     }
 
     /**

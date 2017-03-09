@@ -73,6 +73,50 @@ class QueriesSpec extends BaseSpecification {
                 .queryList().isEmpty()
     }
 
+    def "bulk update works"() {
+        given:
+        index.select(QueryEntity.class).delete()
+        List<QueryEntity> entities = new ArrayList<>()
+        for (int i = 0; i < 500; i++) {
+            QueryEntity e = new QueryEntity()
+            e.setContent("bulk")
+            entities.add(e)
+        }
+        when:
+        entities = index.updateBulk(entities)
+        and:
+        index.blockThreadForUpdate(4)
+        then:
+        index.select(QueryEntity.class).eq(QueryEntity.CONTENT, "bulk").count() == 500
+        and:
+        noExceptionThrown()
+    }
+
+    def "bulk update combined with version conflict"() {
+        given:
+        List<QueryEntity> entities = new ArrayList<>()
+        QueryEntity e = new QueryEntity()
+        QueryEntity e2 = new QueryEntity()
+        entities.add(e)
+        entities.add(e2)
+        when:
+        entities = index.updateBulk(entities)
+        and:
+        index.blockThreadForUpdate()
+        and:
+        e = index.select(QueryEntity.class).eq(QueryEntity.ID, entities.get(0).id).queryFirst()
+        e2 = index.select(QueryEntity.class).eq(QueryEntity.ID, entities.get(0).id).queryFirst()
+        index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        and:
+        entities.clear()
+        entities.add(e2)
+        index.updateBulk(entities)
+        then:
+        entities.findAll {x -> x.version == -1L}.collect().size()
+    }
+
     def "fine grained scoring works"() {
         given:
         QueryEntity e = new QueryEntity()
@@ -105,6 +149,5 @@ class QueriesSpec extends BaseSpecification {
 
 
     }
-
 
 }
