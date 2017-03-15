@@ -676,6 +676,8 @@ public class IndexAccess {
      * <p>
      * Consider using {@link #callAfterUpdate(Runnable)} which does not block system resources. Only use this method
      * if absolutely necessary.
+     *
+     * @param seconds the number of seconds to block
      */
     public void blockThreadForUpdate(int seconds) {
         blocks.inc();
@@ -974,7 +976,6 @@ public class IndexAccess {
      * @param forceCreate         determines if a new entity should be created
      * @param <E>                 the type of the entity to update
      * @return the saved entity
-     * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
      */
     protected <E extends Entity> List<E> updateBulk(final List<E> entities,
                                                     final boolean performVersionCheck,
