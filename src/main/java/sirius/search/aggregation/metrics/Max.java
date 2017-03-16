@@ -8,6 +8,7 @@
 
 package sirius.search.aggregation.metrics;
 
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.metrics.max.MaxAggregationBuilder;
 
@@ -15,6 +16,8 @@ import org.elasticsearch.search.aggregations.metrics.max.MaxAggregationBuilder;
  * Represents an aggregation that determines the maximum value of a field
  */
 public class Max extends MetricsAggregation {
+
+    private Script script;
 
     private Max(String name) {
         super(name);
@@ -34,12 +37,29 @@ public class Max extends MetricsAggregation {
     }
 
     /**
+     * Used to generate a max-aggregation with the given name and script.
+     *
+     * @param name   the name of the aggregation
+     * @param script the script that should be executed
+     * @return the max-aggregation helper itself for fluent method calls
+     */
+    public static Max withScript(String name, Script script) {
+        Max aggregation = new Max(name);
+        aggregation.script = script;
+        return aggregation;
+    }
+
+    /**
      * Constructs the builder
      *
      * @return the max-builder
      */
     @Override
     public MaxAggregationBuilder getBuilder() {
-        return AggregationBuilders.max(getName()).field(getField());
+        if (script == null) {
+            return AggregationBuilders.max(getName()).field(getField());
+        } else {
+            return AggregationBuilders.max(getName()).script(script);
+        }
     }
 }

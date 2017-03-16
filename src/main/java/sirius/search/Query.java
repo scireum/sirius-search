@@ -22,6 +22,7 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
@@ -967,6 +968,88 @@ public class Query<E extends Entity> {
         } catch (Exception e) {
             throw Exceptions.handle(IndexAccess.LOG, e);
         }
+    }
+
+    /**
+     * Can be used to return the raw {@link SearchResponse}. This can e.g. be useful in combination with the {@link
+     * sirius.search.aggregation.metrics.TopHits} aggregation where the aggregated hits need to be parsed from the
+     * aggregation section of the response.
+     *
+     * @return the raw {@link SearchResponse}
+     */
+    public SearchResponse queryRaw() {
+        if (forceFail) {
+            return new SearchResponse();
+        }
+
+        boolean defaultLimitEnforced = false;
+        if (limit == null) {
+            limit = DEFAULT_LIMIT;
+            defaultLimitEnforced = true;
+        }
+
+        SearchRequestBuilder srb = buildSearch();
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH: %s.%s: %s",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 buildQuery());
+        }
+
+        Watch w = Watch.start();
+        SearchResponse response = srb.execute().actionGet();
+
+        if (IndexAccess.LOG.isFINE()) {
+            IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
+                                 indexAccess.getIndex(clazz),
+                                 indexAccess.getDescriptor(clazz).getType(),
+                                 response.getHits().totalHits(),
+                                 response.getTookInMillis());
+        }
+
+        if (defaultLimitEnforced && response.getHits().getHits().length == DEFAULT_LIMIT) {
+            IndexAccess.LOG.WARN("Default limit was hit when using Query.queryList or Query.queryResultList! "
+                                 + "Please provide an explicit limit or use Query.iterate to remove this warning. "
+                                 + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
+        }
+
+        if (Microtiming.isEnabled()) {
+            w.submitMicroTiming("ES", "RAW: " + toString(true));
+        }
+
+        return response;
+    }
+
+    /**
+     * Helper method to parse searchHits. Can e.g. be used in combination with {@link
+     * sirius.search.aggregation.metrics.TopHits} where the aggregated hits are not part of the query section.
+     * <p>
+     * {@code
+     * query = index.select(...).where(...).addAggregation(...);
+     * SearchResponse response = query.queryRaw();
+     * for (Terms.Bucket bucket : response.getAggregations().get("...").getBuckets()) {
+     * entities.addAll(query.transformTopHits(bucket.getAggregations().get("item")).getHits()));
+     * }
+     * }
+     *
+     * @param searchHits the JSON encoded searchHits
+     * @return the transformed searchHits
+     * @throws ReflectiveOperationException
+     */
+    public List<E> transformTopHits(SearchHits searchHits) throws ReflectiveOperationException {
+        List<E> transformedHits = new ArrayList<>();
+
+        for (SearchHit searchHit : searchHits) {
+            EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
+            E entity = clazz.newInstance();
+            entity.initSourceTracing();
+            entity.setId(searchHit.getId());
+            entity.setVersion(searchHit.getVersion());
+            descriptor.readSource(entity, searchHit.getSource());
+            transformedHits.add(entity);
+        }
+
+        return transformedHits;
     }
 
     /**
