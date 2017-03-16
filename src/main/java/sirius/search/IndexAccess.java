@@ -417,15 +417,16 @@ public class IndexAccess {
     }
 
     protected void startup() {
-        Operation.cover(CATEGORY_INDEX, () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
+        try (Operation op = new Operation(() -> "IndexLifecycle.startClient", Duration.ofSeconds(15))) {
+            startClient();
+        }
 
         schema = new Schema(this);
         schema.load();
 
-        Operation.cover(CATEGORY_INDEX,
-                        () -> "IndexLifecycle.updateMappings",
-                        Duration.ofSeconds(30),
-                        this::updateMappings);
+        try (Operation op = new Operation(() -> "IndexLifecycle.updateMappings", Duration.ofSeconds(30))) {
+            updateMappings();
+        }
 
         ready = true;
         readyFuture.success();
