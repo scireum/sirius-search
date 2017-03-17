@@ -1,3 +1,11 @@
+/*
+ * Made with all the love in the world
+ * by scireum in Remshalden, Germany
+ *
+ * Copyright by scireum GmbH
+ * http://www.scireum.de - info@scireum.de
+ */
+
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilders;
@@ -14,7 +22,7 @@ public class NearSpan implements Constraint, SpanConstraint {
 
     private SpanConstraint[] constraints;
     private int slop = 3;
-    private boolean inOrder= false;
+    private boolean inOrder = false;
 
     /*
      * Use the #on(Constraint...) factory method
@@ -52,7 +60,7 @@ public class NearSpan implements Constraint, SpanConstraint {
      *
      * @return the contraint itself for fluent method calls
      */
-    public NearSpan inOrder(){
+    public NearSpan inOrder() {
         this.inOrder = true;
         return this;
     }

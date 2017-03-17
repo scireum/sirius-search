@@ -114,8 +114,6 @@ public class FieldEqual implements Constraint, SpanConstraint {
             return QueryBuilders.spanTermQuery(field, (String) value);
         }
 
-
-
         return null;
     }
 

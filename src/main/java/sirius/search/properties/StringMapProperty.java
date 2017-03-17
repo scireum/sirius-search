@@ -109,7 +109,6 @@ public class StringMapProperty extends Property {
         builder.endObject();
     }
 
-
     @Override
     public void createDynamicTemplates(XContentBuilder builder) throws IOException {
         builder.startObject();
