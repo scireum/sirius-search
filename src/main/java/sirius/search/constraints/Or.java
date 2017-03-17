@@ -8,7 +8,11 @@
 
 package sirius.search.constraints;
 
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.SpanOrQueryBuilder;
+import org.elasticsearch.index.query.SpanQueryBuilder;
 import sirius.kernel.commons.Monoflop;
 
 /**

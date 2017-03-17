@@ -11,13 +11,18 @@ package sirius.search.aggregation.bucket;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents an aggregation using terms
  */
 public class Term extends BucketAggregation {
 
-    private Boolean orderAsc = null;
+    private List<Tuple<String, Boolean>> orderBys = new ArrayList<>();
 
     private Term(String name) {
         super(name);
@@ -42,7 +47,7 @@ public class Term extends BucketAggregation {
      * @return the term aggregation helper itself for fluent method calls
      */
     public Term orderAsc() {
-        orderAsc = true;
+        orderBys.add(Tuple.create(field, true));
         return this;
     }
 
@@ -52,7 +57,29 @@ public class Term extends BucketAggregation {
      * @return the term aggregation helper itself for fluent method calls
      */
     public Term orderDesc() {
-        orderAsc = false;
+        orderBys.add(Tuple.create(field, false));
+        return this;
+    }
+
+    /**
+     * Sets the ordering by a contained aggregation to descending.
+     *
+     * @param aggregationName the name of the aggregation which should be used for ordering
+     * @return the term aggregation helper itself for fluent method calls
+     */
+    public Term orderDesc(String aggregationName) {
+        orderBys.add(Tuple.create(aggregationName, false));
+        return this;
+    }
+
+    /**
+     * Sets the ordering by a contained aggregation to ascending.
+     *
+     * @param aggregationName the name of the aggregation which should be used for ordering
+     * @return the term aggregation helper itself for fluent method calls
+     */
+    public Term orderAsc(String aggregationName) {
+        orderBys.add(Tuple.create(aggregationName, true));
         return this;
     }
 
@@ -65,8 +92,14 @@ public class Term extends BucketAggregation {
     public TermsAggregationBuilder getBuilder() {
         TermsAggregationBuilder builder = AggregationBuilders.terms(getName()).field(getField()).size(getSize());
 
-        if (orderAsc != null) {
-            builder.order(Terms.Order.term(orderAsc));
+        if (!orderBys.isEmpty()) {
+            for (Tuple<String, Boolean> orderBy : orderBys) {
+                if (Strings.areEqual(orderBy.getFirst(), field)) {
+                    builder.order(Terms.Order.term(orderBy.getSecond()));
+                } else {
+                    builder.order(Terms.Order.aggregation(orderBy.getFirst(), orderBy.getSecond()));
+                }
+            }
         }
 
         return builder;
