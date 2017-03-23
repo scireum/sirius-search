@@ -72,9 +72,9 @@ public class NearSpan implements Constraint, SpanConstraint {
 
         for (SpanConstraint constraint : constraints) {
             if (mflop.firstCall()) {
-                builder = QueryBuilders.spanNearQuery(constraint.createSpanQuery(), slop);
+                builder = QueryBuilders.spanNearQuery(constraint.createSpanQuery(), slop).inOrder(inOrder);
             } else {
-                builder.addClause(constraint.createSpanQuery());
+                builder.addClause(constraint.createSpanQuery()).inOrder(inOrder);
             }
         }
         return builder;
