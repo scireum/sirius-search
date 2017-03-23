@@ -92,15 +92,20 @@ public class Term extends BucketAggregation {
     public TermsAggregationBuilder getBuilder() {
         TermsAggregationBuilder builder = AggregationBuilders.terms(getName()).field(getField()).size(getSize());
 
-        if (!orderBys.isEmpty()) {
-            for (Tuple<String, Boolean> orderBy : orderBys) {
+        if (!this.orderBys.isEmpty()) {
+            List<Terms.Order> orders = new ArrayList<>();
+
+            for (Tuple<String, Boolean> orderBy : this.orderBys) {
                 if (Strings.areEqual(orderBy.getFirst(), field)) {
-                    builder.order(Terms.Order.term(orderBy.getSecond()));
+                    orders.add(Terms.Order.term(orderBy.getSecond()));
                 } else {
-                    builder.order(Terms.Order.aggregation(orderBy.getFirst(), orderBy.getSecond()));
+                    orders.add(Terms.Order.aggregation(orderBy.getFirst(), orderBy.getSecond()));
                 }
             }
+
+            builder.order(orders);
         }
+
 
         return builder;
     }
