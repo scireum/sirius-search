@@ -71,6 +71,11 @@ class QueriesSpec extends BaseSpecification {
                 FieldEqual.on(QueryEntity.CONTENT, "value3"),
                 FieldEqual.on(QueryEntity.CONTENT, "value1")).slop(3).inOrder())
                 .queryList().isEmpty()
+
+        !index.select(QueryEntity.class).where(NearSpan.of(
+                FieldEqual.on(QueryEntity.CONTENT, "value3"),
+                FieldEqual.on(QueryEntity.CONTENT, "value1")).slop(3))
+                .queryList().isEmpty()
     }
 
     def "bulk update works"() {
