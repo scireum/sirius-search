@@ -8,6 +8,7 @@
 
 package sirius.search.suggestion;
 
+import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -27,6 +28,7 @@ import java.util.Map;
  * @param <E> the type of entities supported by this suggester.
  */
 public class Suggest<E extends Entity> {
+
     private IndexAccess index;
     private Class<E> clazz;
     private String field = "_all";
@@ -36,10 +38,10 @@ public class Suggest<E extends Entity> {
     private float confidence = 1f;
     private SuggestMode suggestMode = SuggestMode.MISSING;
     private String analyzer = "whitespace";
-
     private String collateQuery;
     private Map<String, Object> collateParams;
     private boolean collatePrune;
+    private ListenableActionFuture<SearchResponse> future;
 
     /**
      * Used to create a new suggestion for entities of the given class
@@ -215,18 +217,49 @@ public class Suggest<E extends Entity> {
      * @return tuples of the query string and all suggest options
      */
     private List<PhraseSuggestion.Entry.Option> execute(SearchRequestBuilder sqb) {
+        this.future = sqb.execute();
+        return getSuggestions();
+    }
 
-        SearchResponse response = sqb.execute().actionGet();
-        PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
+    /**
+     * In contrast to {@link #execute(SearchRequestBuilder)} this is executed async. The retrieved suggestions can be
+     * retrieved using {@link #getSuggestions()}.
+     *
+     * @return the helper itself for fluent method calls
+     */
+    public Suggest<E> executeAsync() {
+        this.future = generateRequestBuilder(generateSuggestionBuilder()).execute();
+        return this;
+    }
 
-        if (phraseSuggestion != null) {
-            List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
+    /**
+     * Can be used in combination with {@link #executeAsync()} to read the returned suggestions.
+     *
+     * @return tuples of the query string and all suggest options
+     */
+    public List<PhraseSuggestion.Entry.Option> getSuggestions() {
+        if (future != null) {
+            SearchResponse response = future.actionGet();
+            PhraseSuggestion phraseSuggestion = response.getSuggest().getSuggestion("suggestPhrase");
 
-            if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
-                return entryList.get(0).getOptions();
+            if (phraseSuggestion != null) {
+                List<PhraseSuggestion.Entry> entryList = phraseSuggestion.getEntries();
+
+                if (entryList != null && entryList.get(0) != null && entryList.get(0).getOptions() != null) {
+                    return entryList.get(0).getOptions();
+                }
             }
         }
 
         return Collections.emptyList();
+    }
+
+    /**
+     * Returns the used query.
+     *
+     * @return the used query
+     */
+    public String getQuery() {
+        return this.query;
     }
 }
