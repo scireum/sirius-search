@@ -15,6 +15,7 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
+import sirius.kernel.commons.Tuple;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -41,6 +42,7 @@ public class Suggest<E extends Entity> {
     private String collateQuery;
     private Map<String, Object> collateParams;
     private boolean collatePrune;
+    private Tuple<String, String> highlightTags;
     private ListenableActionFuture<SearchResponse> future;
 
     /**
@@ -181,6 +183,17 @@ public class Suggest<E extends Entity> {
     }
 
     /**
+     * Can be used to provide a pre- and posttag which are used to highligt changes in suggested words.
+     *
+     * @param tags a {@link Tuple} containing the pre- and posttag
+     * @return the helper itself for fluent method calls
+     */
+    public Suggest<E> highlight(Tuple<String, String> tags) {
+        this.highlightTags = tags;
+        return this;
+    }
+
+    /**
      * Builds the phrase suggestion builder with all given settings
      *
      * @return the PhraseSuggestionBuilder
@@ -195,6 +208,9 @@ public class Suggest<E extends Entity> {
                                                          .collateQuery(collateQuery)
                                                          .collateParams(collateParams)
                                                          .collatePrune(collatePrune);
+        if (highlightTags != null) {
+            builder.highlight(highlightTags.getFirst(), highlightTags.getSecond());
+        }
 
         return new SuggestBuilder().addSuggestion("suggestPhrase", builder);
     }
