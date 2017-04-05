@@ -12,10 +12,10 @@ import sirius.search.annotations.*;
 import sirius.search.suggestion.AutoCompletion;
 
 @Indexed(index = "test")
-public class AutoCompletionPropertyEntity extends Entity{
+public class AutoCompletionPropertyEntity extends Entity {
 
     public static final String COMPLETE = "complete";
-    @FastCompletion(contextName = "filter")
+    @FastCompletion(contextNames = "filter")
     @sirius.search.annotations.NestedObject(sirius.search.suggestion.AutoCompletion.class)
     private AutoCompletion complete;
 

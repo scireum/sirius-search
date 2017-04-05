@@ -21,16 +21,16 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface FastCompletion {
     /**
-     * The name for the context used to filter completions
+     * The names for the contexts used to filter completions
      *
-     * @return the name of the context used
+     * @return the names of the contexts used
      */
-    String contextName() default "";
+    String[] contextNames() default "";
 
     /**
-     * The type of context. ElasticSearch provides "category" and "geo".
+     * The types of contexts. ElasticSearch provides "category" and "geo".
      *
-     * @return the type of the context
+     * @return the types of the contexts
      */
-    String contextType() default "category";
+    String[] contextTypes() default "category";
 }
