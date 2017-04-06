@@ -104,6 +104,16 @@ public @interface IndexMode {
     String ANALYZER_WHITESPACE = "whitespace";
 
     /**
+     * Sets the {@link #analyzer()} ()} ()} to "trigram".
+     * <p>
+     * This will instruct elasticsearch to use a trigram analyzer which creates "shingles" of min length 2 and max
+     * length 3. This analyzer is useful in combination with {@link sirius.search.suggestion.Suggest}.
+     * <p>
+     * See the elasticsearch docs for a detailed description of the behaviour.
+     */
+    String ANALYZER_TRIGRAM = "trigram";
+
+    /**
      * Determines the index mode used by elastricsearch.
      *
      * @return use one of the constants defined by this annotations to specify the index mode
