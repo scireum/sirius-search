@@ -249,9 +249,39 @@ public class Schema {
                                                        + ".numberOfReplicas") ?
                                         CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfReplicas" :
                                         "index.settings.default.numberOfReplicas"));
+
+            builder.startObject("analysis");
+            buildCustomAnalyzers(builder);
+            buildCustomFilters(builder);
+            builder.endObject();
+
             builder.endObject().endObject();
             return builder;
         }
+    }
+
+    private void buildCustomAnalyzers(XContentBuilder builder) throws IOException {
+        builder.startObject("analyzer");
+
+        builder.startObject("trigram");
+        builder.field("type", "custom");
+        builder.field("tokenizer", "standard");
+        builder.array("filter", "standard", "shingle");
+        builder.endObject();
+
+        builder.endObject();
+    }
+
+    private void buildCustomFilters(XContentBuilder builder) throws IOException {
+        builder.startObject("filter");
+
+        builder.startObject("shingle");
+        builder.field("type", "shingle");
+        builder.field("min_shingle_size", "2");
+        builder.field("max_shingle_size", "3");
+        builder.endObject();
+
+        builder.endObject();
     }
 
     /**
