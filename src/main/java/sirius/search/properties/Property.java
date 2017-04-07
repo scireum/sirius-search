@@ -14,6 +14,7 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.NotNull;
 import sirius.web.http.WebContext;
 import sirius.web.security.UserContext;
@@ -40,6 +41,11 @@ public class Property {
     protected final boolean nullAllowed;
 
     /**
+     * Determines whether the property should be exclude from the _source field.
+     */
+    protected final boolean excludeFromSource;
+
+    /**
      * Generates a new property for the given field
      *
      * @param field the underlying field from which the property was created
@@ -48,6 +54,8 @@ public class Property {
         this.field = field;
         this.field.setAccessible(true);
         this.nullAllowed = !field.getType().isPrimitive() && !field.isAnnotationPresent(NotNull.class);
+        this.excludeFromSource =
+                field.isAnnotationPresent(IndexMode.class) && field.getAnnotation(IndexMode.class).excludeFromSource();
     }
 
     /**
@@ -84,6 +92,15 @@ public class Property {
      */
     public boolean isNullAllowed() {
         return nullAllowed;
+    }
+
+    /**
+     * Determines whether this property should be excluded from _source field.
+     *
+     * @return <tt>true</tt> if the property should be excluded from the _source field, <tt>false</tt> otherwise.
+     */
+    public boolean isExcludeFromSource() {
+        return excludeFromSource;
     }
 
     /**
