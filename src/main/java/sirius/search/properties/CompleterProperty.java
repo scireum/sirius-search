@@ -9,7 +9,7 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Register;
 import sirius.search.annotations.FastCompletion;
 import sirius.search.annotations.IndexMode;
@@ -17,15 +17,16 @@ import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Generates a field for fast completion using the es-completion-suggester
  */
 public class CompleterProperty extends ObjectProperty {
 
-    private final String contextName;
-    private final String contextType;
     private final String analyzer;
+    private final List<Tuple<String, String>> contexts = new ArrayList<>();
 
     /**
      * Factory for generating properties of type {@link AutoCompletion} .
@@ -51,12 +52,17 @@ public class CompleterProperty extends ObjectProperty {
      */
     private CompleterProperty(Field field) {
         super(field);
-        contextName = field.isAnnotationPresent(FastCompletion.class) ?
-                      field.getAnnotation(FastCompletion.class).contextName() :
-                      "";
-        contextType = field.isAnnotationPresent(FastCompletion.class) ?
-                      field.getAnnotation(FastCompletion.class).contextType() :
-                      "";
+
+        if (field.getAnnotation(FastCompletion.class).contextNames().length != field.getAnnotation(FastCompletion.class)
+                                                                                    .contextTypes().length) {
+            throw new IllegalStateException("Different dimensions for context names and context types!");
+        }
+
+        for (int i = 0; i < field.getAnnotation(FastCompletion.class).contextNames().length; i++) {
+            contexts.add(Tuple.create(field.getAnnotation(FastCompletion.class).contextNames()[i],
+                                      field.getAnnotation(FastCompletion.class).contextTypes()[i]));
+        }
+
         analyzer = field.isAnnotationPresent(IndexMode.class) ?
                    field.getAnnotation(IndexMode.class).analyzer() :
                    "whitespace";
@@ -68,12 +74,16 @@ public class CompleterProperty extends ObjectProperty {
         builder.field("type", getMappingType());
         builder.field("analyzer", analyzer);
 
-        if (Strings.isFilled(contextName)) {
+        if (!contexts.isEmpty()) {
             builder.startArray("contexts");
-            builder.startObject();
-            builder.field("name", contextName);
-            builder.field("type", contextType);
-            builder.endObject();
+
+            for (Tuple<String, String> context : contexts) {
+                builder.startObject();
+                builder.field("name", context.getFirst());
+                builder.field("type", context.getSecond());
+                builder.endObject();
+            }
+
             builder.endArray();
         }
         builder.endObject();

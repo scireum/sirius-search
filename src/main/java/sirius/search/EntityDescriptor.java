@@ -263,13 +263,26 @@ public class EntityDescriptor {
      * @throws IOException in case of an IO error during the JSON encoding
      */
     public XContentBuilder createMapping() throws IOException {
+        String[] excludes = getProperties().stream()
+                                           .filter(Property::isExcludeFromSource)
+                                           .map(Property::getName)
+                                           .toArray(String[]::new);
+
         try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
             builder.startObject().startObject(getType());
+
+            if (excludes.length > 0) {
+                builder.startObject("_source");
+                builder.array("excludes", excludes);
+                builder.endObject();
+            }
+
             builder.startObject("properties");
             for (Property p : getProperties()) {
                 p.createMapping(builder);
             }
             builder.endObject();
+
             builder.startArray("dynamic_templates");
             for (Property p : getProperties()) {
                 p.createDynamicTemplates(builder);
