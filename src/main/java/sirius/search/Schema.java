@@ -71,7 +71,7 @@ public class Schema {
 
     protected Schema(IndexAccess access) {
         this.access = access;
-        indexPrefix = Sirius.getConfig().getString("index.prefix");
+        indexPrefix = Sirius.getSettings().getString("index.prefix");
         if (indexPrefix.contains("${timestamp}")) {
             temporaryIndexPrefix = true;
             indexPrefix = indexPrefix.replace("${timestamp}", String.valueOf(System.currentTimeMillis()));
@@ -234,16 +234,20 @@ public class Schema {
         try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
             builder.startObject().startObject("index");
             builder.field("number_of_shards",
-                          Sirius.getConfig()
-                                .getInt(Sirius.getConfig()
+                          Sirius.getSettings()
+                                .getConfig()
+                                .getInt(Sirius.getSettings()
+                                              .getConfig()
                                               .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
                                                        + ed.getIndex()
                                                        + ".numberOfShards") ?
                                         CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfShards" :
                                         "index.settings.default.numberOfShards"));
             builder.field("number_of_replicas",
-                          Sirius.getConfig()
-                                .getInt(Sirius.getConfig()
+                          Sirius.getSettings()
+                                .getConfig()
+                                .getInt(Sirius.getSettings()
+                                              .getConfig()
                                               .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
                                                        + ed.getIndex()
                                                        + ".numberOfReplicas") ?
