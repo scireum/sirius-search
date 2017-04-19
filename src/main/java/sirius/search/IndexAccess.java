@@ -470,11 +470,11 @@ public class IndexAccess {
     }
 
     private void startClient() {
-        if (Sirius.getConfig().hasPath(CONFIG_KEY_INDEX_TYPE) && !"server".equalsIgnoreCase(Sirius.getConfig()
+        if (Sirius.getSettings().getConfig().hasPath(CONFIG_KEY_INDEX_TYPE) && !"server".equalsIgnoreCase(Sirius.getSettings().getConfig()
                                                                                                   .getString(
                                                                                                           CONFIG_KEY_INDEX_TYPE))) {
             LOG.WARN("Unsupported index.type='%s'. Use 'index.type=server' instead or remove this option.",
-                     Sirius.getConfig().getString(CONFIG_KEY_INDEX_TYPE));
+                     Sirius.getSettings().getConfig().getString(CONFIG_KEY_INDEX_TYPE));
         }
 
         LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...", clusterName, hostAddress);

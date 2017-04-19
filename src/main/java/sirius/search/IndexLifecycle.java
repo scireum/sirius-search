@@ -41,7 +41,7 @@ public class IndexLifecycle implements Lifecycle {
     }
 
     private boolean isEnabled() {
-        return Strings.isFilled(Sirius.getConfig().getString("index.host"));
+        return Strings.isFilled(Sirius.getSettings().getString("index.host"));
     }
 
     @Override
