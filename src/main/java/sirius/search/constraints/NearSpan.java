@@ -87,6 +87,19 @@ public class NearSpan implements Constraint, SpanConstraint {
 
     @Override
     public String toString(boolean skipConstraintValues) {
-        return null;
+        StringBuilder sb = new StringBuilder("(");
+        for (SpanConstraint child : constraints) {
+            if (sb.length() > 1) {
+                sb.append(") NEAR [slop=").append(slop).append("] (");
+            }
+            sb.append(child.toString(skipConstraintValues));
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return toString(false);
     }
 }

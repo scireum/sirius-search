@@ -27,6 +27,7 @@ public class CompleterProperty extends ObjectProperty {
 
     private final String analyzer;
     private final List<Tuple<String, String>> contexts = new ArrayList<>();
+    private final int maxInputLength;
 
     /**
      * Factory for generating properties of type {@link AutoCompletion} .
@@ -66,6 +67,8 @@ public class CompleterProperty extends ObjectProperty {
         analyzer = field.isAnnotationPresent(IndexMode.class) ?
                    field.getAnnotation(IndexMode.class).analyzer() :
                    "whitespace";
+
+        maxInputLength = field.getAnnotation(FastCompletion.class).maxInputLength();
     }
 
     @Override
@@ -73,6 +76,7 @@ public class CompleterProperty extends ObjectProperty {
         builder.startObject(getName());
         builder.field("type", getMappingType());
         builder.field("analyzer", analyzer);
+        builder.field("max_input_length", maxInputLength);
 
         if (!contexts.isEmpty()) {
             builder.startArray("contexts");

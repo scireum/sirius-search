@@ -15,6 +15,7 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
 import org.elasticsearch.search.suggest.phrase.PhraseSuggestionBuilder;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
@@ -204,10 +205,12 @@ public class Suggest<E extends Entity> {
                                                          .maxErrors(maxErrors)
                                                          .size(limit)
                                                          .analyzer(analyzer)
-                                                         .confidence(confidence)
-                                                         .collateQuery(collateQuery)
-                                                         .collateParams(collateParams)
-                                                         .collatePrune(collatePrune);
+                                                         .confidence(confidence);
+
+        if (Strings.isFilled(collateQuery)) {
+            builder.collateQuery(collateQuery).collateParams(collateParams).collatePrune(collatePrune);
+        }
+
         if (highlightTags != null) {
             builder.highlight(highlightTags.getFirst(), highlightTags.getSecond());
         }
