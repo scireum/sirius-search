@@ -21,6 +21,13 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface FastCompletion {
     /**
+     * Limits the length of a single input at index-time. See the ES docs for detailed information.
+     *
+     * @return the maximum length of a single input
+     */
+    int maxInputLength() default 50;
+
+    /**
      * The names for the contexts used to filter completions
      *
      * @return the names of the contexts used

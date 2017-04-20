@@ -16,6 +16,7 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.elasticsearch.search.suggest.completion.RegexOptions;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -42,6 +43,7 @@ public class Complete<E extends Entity> {
     private Map<String, List<? extends ToXContent>> contexts;
     private Fuzziness fuzziness = Fuzziness.AUTO;
     private boolean isRegexQuery = false;
+    private int maxDeterminizedStates = -1;
 
     /**
      * Creates a new completion for the given index access and entity type.
@@ -96,6 +98,11 @@ public class Complete<E extends Entity> {
      */
     public Complete<E> limit(int limit) {
         this.limit = limit;
+        return this;
+    }
+
+    public Complete<E> maxDeterminizedStates(int maxDeterminizedStates) {
+        this.maxDeterminizedStates = maxDeterminizedStates;
         return this;
     }
 
@@ -156,7 +163,13 @@ public class Complete<E extends Entity> {
         CompletionSuggestionBuilder builder = SuggestBuilders.completionSuggestion(field).size(limit);
 
         if (isRegexQuery) {
-            builder.regex(query);
+            RegexOptions.Builder regexOptionsBuilder = RegexOptions.builder();
+
+            if (maxDeterminizedStates != -1) {
+                regexOptionsBuilder.setMaxDeterminizedStates(maxDeterminizedStates);
+            }
+
+            builder.regex(query, regexOptionsBuilder.build());
         } else {
             builder.prefix(query, fuzziness);
         }
