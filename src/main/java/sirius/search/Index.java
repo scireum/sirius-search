@@ -34,28 +34,14 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.Barrier;
-import sirius.kernel.async.CallContext;
-import sirius.kernel.async.ExecutionPoint;
-import sirius.kernel.async.Future;
-import sirius.kernel.async.Operation;
-import sirius.kernel.async.Tasks;
+import sirius.kernel.async.*;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
-import sirius.kernel.commons.Callback;
-import sirius.kernel.commons.Monoflop;
-import sirius.kernel.commons.Strings;
-import sirius.kernel.commons.Tuple;
-import sirius.kernel.commons.Wait;
-import sirius.kernel.commons.Watch;
+import sirius.kernel.commons.*;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.Average;
-import sirius.kernel.health.Counter;
-import sirius.kernel.health.Exceptions;
-import sirius.kernel.health.HandledException;
-import sirius.kernel.health.Log;
+import sirius.kernel.health.*;
 import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
@@ -69,11 +55,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -201,8 +183,7 @@ public class Index {
     public static <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
-                                                             @Nonnull
-                                                                     com.google.common.cache.Cache<String, Object> cache) {
+                                                             @Nonnull com.google.common.cache.Cache<String, Object> cache) {
         if (Strings.isEmpty(id)) {
             return Tuple.create(null, false);
         }
@@ -537,7 +518,7 @@ public class Index {
 
         @Override
         public void started() {
-            if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
+            if (Strings.isEmpty(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
                 return;
             }
@@ -545,7 +526,7 @@ public class Index {
             Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
 
             // Setup index
-            indexPrefix = Sirius.getConfig().getString("index.prefix");
+            indexPrefix = Sirius.getSettings().getString("index.prefix");
             if (!indexPrefix.endsWith("-")) {
                 indexPrefix = indexPrefix + "-";
             }
@@ -566,8 +547,8 @@ public class Index {
         }
 
         private void updateMappings() {
-            boolean updateSchema = Sirius.getConfig().getBoolean("index.updateSchema")
-                                   || "in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"));
+            boolean updateSchema = Sirius.getSettings().getConfig().getBoolean("index.updateSchema") ||
+                    "in-memory".equalsIgnoreCase(Sirius.getSettings().getString("index.type"));
 
             if (updateSchema) {
                 for (String msg : schema.createMappings()) {
@@ -577,7 +558,7 @@ public class Index {
         }
 
         private void startClient() {
-            if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            if ("embedded".equalsIgnoreCase(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
                 Settings settings = ImmutableSettings.settingsBuilder()
                                                      .put("node.http.enabled", false)
@@ -589,28 +570,28 @@ public class Index {
                                                      .put("script.disable_dynamic", false)
                                                      .build();
                 client = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node().client();
-            } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            } else if ("in-memory".equalsIgnoreCase(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
             } else {
                 LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...",
-                         Sirius.getConfig().getString("index.cluster"),
-                         Sirius.getConfig().getString("index.host"));
+                         Sirius.getSettings().getString("index.cluster"),
+                         Sirius.getSettings().getString("index.host"));
                 Settings settings = ImmutableSettings.settingsBuilder()
-                                                     .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
+                                                     .put("cluster.name", Sirius.getSettings().getString("index.cluster"))
                                                      .build();
                 TransportClient transportClient = new TransportClient(settings);
-                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
+                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getSettings()
                                                                                          .getString("index.host"),
-                                                                                   Sirius.getConfig()
+                                                                                   Sirius.getSettings()
                                                                                          .getInt("index.port")));
                 client = transportClient;
             }
         }
 
         private String determineDataPath() {
-            if (Sirius.getConfig().hasPath("index.path")) {
-                return Sirius.getConfig().getString("index.path");
+            if (Sirius.getSettings().getConfig().hasPath("index.path")) {
+                return Sirius.getSettings().getString("index.path");
             } else {
                 File homeDir = new File(new File("data"), "index");
                 homeDir.mkdirs();
@@ -720,8 +701,12 @@ public class Index {
     public static boolean existsIndex(String name) {
         String index = getIndexName(name);
         try {
-            IndicesExistsResponse res =
-                    Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+            IndicesExistsResponse res = Index.getClient()
+                                             .admin()
+                                             .indices()
+                                             .prepareExists(index)
+                                             .execute()
+                                             .get(10, TimeUnit.SECONDS);
             return res.isExists();
         } catch (Throwable e) {
             throw Exceptions.handle()
@@ -1125,17 +1110,17 @@ public class Index {
             Exceptions.handle()
                       .to(LOG)
                       .withSystemErrorMessage(
-                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
-                              + "This will most probably FAIL!",
+                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! " +
+                                      "This will most probably FAIL!",
                               clazz.getName(),
                               id)
                       .handle();
         } else if (!descriptor.hasRouting() && routing != null) {
             Exceptions.handle()
                       .to(LOG)
-                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing "
-                                              + "- but entity has no routing attribute (in @Indexed)! "
-                                              + "This will most probably FAIL!", clazz.getName(), id)
+                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing " +
+                                                      "- but entity has no routing attribute (in @Indexed)! " +
+                                                      "This will most probably FAIL!", clazz.getName(), id)
                       .handle();
         }
     }
@@ -1313,8 +1298,8 @@ public class Index {
      * @param <E>    the type of the entity to delete
      * @throws OptimisticLockException if the entity was changed since the last read
      */
-    protected static <E extends Entity> void delete(final E entity, final boolean force)
-            throws OptimisticLockException {
+    protected static <E extends Entity> void delete(final E entity,
+                                                    final boolean force) throws OptimisticLockException {
         try {
             if (entity.isNew()) {
                 return;
@@ -1329,8 +1314,9 @@ public class Index {
             }
             entity.beforeDelete();
             Watch w = Watch.start();
-            DeleteRequestBuilder drb =
-                    getClient().prepareDelete(getIndex(entity), descriptor.getType(), entity.getId());
+            DeleteRequestBuilder drb = getClient().prepareDelete(getIndex(entity),
+                                                                 descriptor.getType(),
+                                                                 entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }

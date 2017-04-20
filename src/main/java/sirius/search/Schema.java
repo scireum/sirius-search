@@ -32,14 +32,7 @@ import sirius.search.properties.PropertyFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,14 +53,12 @@ public class Schema {
     /**
      * Contains a map with an entity descriptor for each entity class
      */
-    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable =
-            Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
+    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable = Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
 
     /**
      * Contains a map providing the class for each entity type name
      */
-    private Map<String, Class<? extends Entity>> nameTable =
-            Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
+    private Map<String, Class<? extends Entity>> nameTable = Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
 
     /*
      * Adds a known entity class
@@ -135,8 +126,12 @@ public class Schema {
         for (EntityDescriptor ed : descriptorTable.values()) {
             String index = indexPrefix + ed.getIndex();
             try {
-                IndicesExistsResponse res =
-                        Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+                IndicesExistsResponse res = Index.getClient()
+                                                 .admin()
+                                                 .indices()
+                                                 .prepareExists(index)
+                                                 .execute()
+                                                 .get(10, TimeUnit.SECONDS);
                 if (!res.isExists()) {
                     CreateIndexResponse createResponse = Index.getClient()
                                                               .admin()
@@ -178,16 +173,21 @@ public class Schema {
     private XContentBuilder createIndexSettings(EntityDescriptor ed) throws IOException {
         XContentBuilder builder = XContentFactory.jsonBuilder().startObject().startObject("index");
         builder.field("number_of_shards",
-                      Sirius.getConfig()
-                            .getInt(Sirius.getConfig().hasPath("index.settings." + ed.getIndex() + ".numberOfShards") ?
-                                    "index.settings." + ed.getIndex() + ".numberOfShards" :
-                                    "index.settings.default.numberOfShards"));
+                      Sirius.getSettings()
+                            .getInt(Sirius.getSettings()
+                                          .getConfig()
+                                          .hasPath("index.settings." + ed.getIndex() + ".numberOfShards") ?
+                                            "index.settings." +
+                                                    ed.getIndex() +
+                                                    ".numberOfShards" : "index.settings.default.numberOfShards"));
         builder.field("number_of_replicas",
-                      Sirius.getConfig()
-                            .getInt(Sirius.getConfig()
+                      Sirius.getSettings()
+                            .getInt(Sirius.getSettings()
+                                          .getConfig()
                                           .hasPath("index.settings." + ed.getIndex() + ".numberOfReplicas") ?
-                                    "index.settings." + ed.getIndex() + ".numberOfReplicas" :
-                                    "index.settings.default.numberOfReplicas"));
+                                            "index.settings." +
+                                                    ed.getIndex() +
+                                                    ".numberOfReplicas" : "index.settings.default.numberOfReplicas"));
         return builder.endObject().endObject();
     }
 
@@ -279,8 +279,9 @@ public class Schema {
 
         private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
             try {
-                SearchRequestBuilder srb =
-                        Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
+                SearchRequestBuilder srb = Index.getClient()
+                                                .prepareSearch(Index.getIndexPrefix() + ed.getIndex())
+                                                .setTypes(ed.getType());
                 srb.setSearchType(SearchType.SCAN);
                 // Limit to 10 per shard
                 srb.setSize(10);
