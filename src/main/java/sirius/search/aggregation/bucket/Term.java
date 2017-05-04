@@ -23,6 +23,7 @@ import java.util.List;
 public class Term extends BucketAggregation {
 
     private List<Tuple<String, Boolean>> orderBys = new ArrayList<>();
+    private String missing;
 
     private Term(String name) {
         super(name);
@@ -84,6 +85,17 @@ public class Term extends BucketAggregation {
     }
 
     /**
+     * Sets the value that should be used if a document has no value.
+     *
+     * @param missing the value that should be used as a placeholder
+     * @return the term aggregation helper itself for fluent method calls
+     */
+    public Term missing(String missing) {
+        this.missing = missing;
+        return this;
+    }
+
+    /**
      * Constructs the termbuilder
      *
      * @return the termbuilder
@@ -91,6 +103,10 @@ public class Term extends BucketAggregation {
     @Override
     public TermsAggregationBuilder getBuilder() {
         TermsAggregationBuilder builder = AggregationBuilders.terms(getName()).field(getField()).size(getSize());
+
+        if (Strings.isFilled(missing)) {
+            builder.missing(missing);
+        }
 
         if (!this.orderBys.isEmpty()) {
             List<Terms.Order> orders = new ArrayList<>();
@@ -105,7 +121,6 @@ public class Term extends BucketAggregation {
 
             builder.order(orders);
         }
-
 
         return builder;
     }
