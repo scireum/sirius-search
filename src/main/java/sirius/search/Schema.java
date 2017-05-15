@@ -21,6 +21,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Tasks;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
@@ -28,17 +29,32 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.kernel.health.Log;
+import sirius.search.annotations.Indexed;
 import sirius.search.properties.PropertyFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.*;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Describes the expected database schema based on all known subclasses of {@link Entity}.
  */
 public class Schema {
+
+    /**
+     * Logger used by this framework
+     */
+    public static final Log LOG = Log.get("index");
 
     /**
      * Contains all known property factories. These are used to transform fields defined by entity classes to
@@ -53,15 +69,20 @@ public class Schema {
     /**
      * Contains a map with an entity descriptor for each entity class
      */
-    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable = Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
+    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable =
+            Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
 
     /**
      * Contains a map providing the class for each entity type name
      */
-    private Map<String, Class<? extends Entity>> nameTable = Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
+    private Map<String, Class<? extends Entity>> nameTable =
+            Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
 
-    /*
+    /**
      * Adds a known entity class
+     *
+     * @param entityType class to add
+     * @param <E>        type of the class to add
      */
     private <E extends Entity> void addKnownClass(Class<E> entityType) {
         EntityDescriptor result = descriptorTable.get(entityType);
@@ -69,10 +90,49 @@ public class Schema {
             result = new EntityDescriptor(entityType);
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
+
+            if (Strings.isFilled(result.getSubClassCode()) && !addAbstractParentClass(entityType, result)) {
+                LOG.WARN(
+                        "LOAD: Class %s has subClassCode but no abstract parent class with the same index name, type name and routing could be found",
+                        entityType.getName());
+            }
         }
     }
 
-    /*
+    /**
+     * Searches for the first abstract parent class in the class hierarchy with the same {@link Indexed} annotation and
+     * creates a {@link EntityDescriptor} for it.
+     *
+     * @param subClass           the subclass
+     * @param subClassDescriptor descriptor of the subclass
+     * @param <E>                type of the subclass
+     * @return whether a matching parent class cloud be found
+     */
+    private <E extends Entity> boolean addAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
+        // iterate recurseviley over all parent classes until the Entity class
+        for (Class<? extends Entity> parentEntityType = (Class<? extends Entity>) subClass.getSuperclass();
+             parentEntityType != null && Entity.class.isAssignableFrom(parentEntityType);
+             parentEntityType = (Class<? extends Entity>) parentEntityType.getSuperclass()) {
+            if (Modifier.isAbstract(parentEntityType.getModifiers())
+                && parentEntityType.isAnnotationPresent(Indexed.class)) {
+                EntityDescriptor parentDescriptor =
+                        descriptorTable.getOrDefault(parentEntityType, new EntityDescriptor(parentEntityType));
+
+                // index name, type name and routing must be equal
+                if (parentDescriptor.equals(subClassDescriptor)) {
+                    parentDescriptor.getSubClassDescriptors()
+                                    .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+                    descriptorTable.put(parentEntityType, parentDescriptor);
+                    nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Links the schema and builds up foreign keys, etc.
      */
     private void linkSchema() {

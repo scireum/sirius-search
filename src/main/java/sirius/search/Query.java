@@ -1030,13 +1030,8 @@ public class Query<E extends Entity> {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
         ResultList<E> result = new ResultList<>(termFacets, searchResponse);
-        EntityDescriptor descriptor = Index.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
-            E entity = clazz.newInstance();
-            entity.initSourceTracing();
-            entity.setId(hit.getId());
-            entity.setVersion(hit.getVersion());
-            descriptor.readSource(entity, hit.getSource());
+            E entity = Index.createEntity(clazz, hit);
             result.getResults().add(entity);
         }
         if (Index.LOG.isFINE()) {
@@ -1065,11 +1060,7 @@ public class Query<E extends Entity> {
         E result = null;
         if (searchResponse.getHits().hits().length > 0) {
             SearchHit hit = searchResponse.getHits().hits()[0];
-            result = clazz.newInstance();
-            result.initSourceTracing();
-            result.setId(hit.getId());
-            result.setVersion(hit.getVersion());
-            Index.getDescriptor(clazz).readSource(result, hit.getSource());
+            result = Index.createEntity(clazz, hit);
         }
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
@@ -1183,11 +1174,7 @@ public class Query<E extends Entity> {
                     lastScroll = performScrollMonitoring(lastScroll);
 
                     for (SearchHit hit : searchResponse.getHits()) {
-                        E entity = clazz.newInstance();
-                        entity.setId(hit.getId());
-                        entity.initSourceTracing();
-                        entity.setVersion(hit.getVersion());
-                        entityDescriptor.readSource(entity, hit.getSource());
+                        E entity = Index.createEntity(clazz, hit);
 
                         try {
                             if (lim.nextRow()) {

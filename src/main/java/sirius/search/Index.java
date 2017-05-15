@@ -32,16 +32,31 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
-import sirius.kernel.async.*;
+import sirius.kernel.async.Barrier;
+import sirius.kernel.async.CallContext;
+import sirius.kernel.async.ExecutionPoint;
+import sirius.kernel.async.Future;
+import sirius.kernel.async.Operation;
+import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
-import sirius.kernel.commons.*;
+import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Monoflop;
+import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
+import sirius.kernel.commons.Wait;
+import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
-import sirius.kernel.health.*;
+import sirius.kernel.health.Average;
+import sirius.kernel.health.Counter;
+import sirius.kernel.health.Exceptions;
+import sirius.kernel.health.HandledException;
+import sirius.kernel.health.Log;
 import sirius.kernel.health.metrics.MetricProvider;
 import sirius.kernel.health.metrics.MetricState;
 import sirius.kernel.health.metrics.MetricsCollector;
@@ -54,8 +69,13 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Modifier;
 import java.time.Duration;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -79,6 +99,11 @@ public class Index {
      * Async executor category for integrity check tasks
      */
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
+
+    /**
+     * The field in which subClassCodes of Entities will be stored in ES
+     */
+    public static final String SUBCLASSCODE_FIELD = "subClassCode";
 
     /**
      * Contains the database schema as expected by the java model
@@ -911,6 +936,9 @@ public class Index {
             entity.beforeSave();
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             descriptor.writeTo(entity, source);
+            if (Strings.isFilled(descriptor.getSubClassCode())) {
+                source.put(SUBCLASSCODE_FIELD, descriptor.getSubClassCode());
+            }
 
             if (LOG.isFINE()) {
                 LOG.FINE("SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
@@ -1052,6 +1080,12 @@ public class Index {
                 return null;
             }
             if (NEW.equals(id)) {
+                if (Modifier.isAbstract(clazz.getModifiers())) {
+                    if (LOG.isFINE()) {
+                        LOG.FINE("FIND: %s: IS ABSTRACT", clazz.getName());
+                    }
+                    return null;
+                }
                 E e = clazz.newInstance();
                 e.setId(NEW);
                 return e;
@@ -1079,11 +1113,7 @@ public class Index {
                     }
                     return null;
                 } else {
-                    E entity = clazz.newInstance();
-                    entity.initSourceTracing();
-                    entity.setId(res.getId());
-                    entity.setVersion(res.getVersion());
-                    descriptor.readSource(entity, res.getSource());
+                    E entity = createEntity(clazz, res);
                     if (LOG.isFINE()) {
                         LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
                     }
@@ -1298,8 +1328,8 @@ public class Index {
      * @param <E>    the type of the entity to delete
      * @throws OptimisticLockException if the entity was changed since the last read
      */
-    protected static <E extends Entity> void delete(final E entity,
-                                                    final boolean force) throws OptimisticLockException {
+    protected static <E extends Entity> void delete(final E entity, final boolean force)
+            throws OptimisticLockException {
         try {
             if (entity.isNew()) {
                 return;
@@ -1542,5 +1572,54 @@ public class Index {
         } catch (IOException e) {
             throw Exceptions.handle(e);
         }
+    }
+
+    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
+                                                    @Nonnull String id,
+                                                    long version,
+                                                    @Nonnull Map<String, Object> source)
+            throws IllegalAccessException, InstantiationException {
+        EntityDescriptor descriptor = getDescriptor(clazz);
+        if (Modifier.isAbstract(clazz.getModifiers())) {
+            String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+            EntityDescriptor subclassDescriptor = descriptor.getSubClassDescriptors().get(subClassCode);
+            if (subclassDescriptor == null) {
+                LOG.WARN("INSTANTIATE SUBCLASS: %s: no descriptor found for subClassCode \"%s\"!",
+                         clazz.getName(),
+                         subClassCode);
+                return null;
+            }
+            try {
+                E subEntity = (E) subclassDescriptor.getClazz().newInstance();
+                subEntity.initSourceTracing();
+                subEntity.setId(id);
+                subEntity.setVersion(version);
+                subclassDescriptor.readSource(subEntity, source);
+                return subEntity;
+            } catch (Exception e) {
+                LOG.WARN(
+                        "INSTANTIATE SUBCLASS: %s: no instance of subclass %s could be created for subClassCode \"%s\"!",
+                        clazz.getName(),
+                        subclassDescriptor.getClazz().getName());
+                return null;
+            }
+        }
+
+        E entity = clazz.newInstance();
+        entity.initSourceTracing();
+        entity.setId(id);
+        entity.setVersion(version);
+        descriptor.readSource(entity, source);
+        return entity;
+    }
+
+    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull GetResponse res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
+    }
+
+    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull SearchHit res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
     }
 }
