@@ -106,7 +106,7 @@ public class Schema {
      * @param subClass           the subclass
      * @param subClassDescriptor descriptor of the subclass
      * @param <E>                type of the subclass
-     * @return whether a matching parent class cloud be found
+     * @return whether a matching parent class could be found
      */
     private <E extends Entity> boolean addAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
         // iterate recurseviley over all parent classes until the Entity class
@@ -120,10 +120,22 @@ public class Schema {
 
                 // index name, type name and routing must be equal
                 if (parentDescriptor.equals(subClassDescriptor)) {
-                    parentDescriptor.getSubClassDescriptors()
-                                    .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
-                    descriptorTable.put(parentEntityType, parentDescriptor);
-                    nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
+                    if (parentDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
+                        LOG.WARN(
+                                "LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
+                                subClass.getName(),
+                                parentDescriptor.getSubClassDescriptors()
+                                                .get(subClassDescriptor.getSubClassCode())
+                                                .getClazz()
+                                                .getName(),
+                                parentEntityType,
+                                subClassDescriptor.getSubClassCode());
+                    } else {
+                        parentDescriptor.getSubClassDescriptors()
+                                        .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+                        descriptorTable.put(parentEntityType, parentDescriptor);
+                        nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
+                    }
                     return true;
                 }
             }
@@ -186,12 +198,8 @@ public class Schema {
         for (EntityDescriptor ed : descriptorTable.values()) {
             String index = indexPrefix + ed.getIndex();
             try {
-                IndicesExistsResponse res = Index.getClient()
-                                                 .admin()
-                                                 .indices()
-                                                 .prepareExists(index)
-                                                 .execute()
-                                                 .get(10, TimeUnit.SECONDS);
+                IndicesExistsResponse res =
+                        Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
                 if (!res.isExists()) {
                     CreateIndexResponse createResponse = Index.getClient()
                                                               .admin()
@@ -237,17 +245,15 @@ public class Schema {
                             .getInt(Sirius.getSettings()
                                           .getConfig()
                                           .hasPath("index.settings." + ed.getIndex() + ".numberOfShards") ?
-                                            "index.settings." +
-                                                    ed.getIndex() +
-                                                    ".numberOfShards" : "index.settings.default.numberOfShards"));
+                                    "index.settings." + ed.getIndex() + ".numberOfShards" :
+                                    "index.settings.default.numberOfShards"));
         builder.field("number_of_replicas",
                       Sirius.getSettings()
                             .getInt(Sirius.getSettings()
                                           .getConfig()
                                           .hasPath("index.settings." + ed.getIndex() + ".numberOfReplicas") ?
-                                            "index.settings." +
-                                                    ed.getIndex() +
-                                                    ".numberOfReplicas" : "index.settings.default.numberOfReplicas"));
+                                    "index.settings." + ed.getIndex() + ".numberOfReplicas" :
+                                    "index.settings.default.numberOfReplicas"));
         return builder.endObject().endObject();
     }
 
@@ -339,9 +345,8 @@ public class Schema {
 
         private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
             try {
-                SearchRequestBuilder srb = Index.getClient()
-                                                .prepareSearch(Index.getIndexPrefix() + ed.getIndex())
-                                                .setTypes(ed.getType());
+                SearchRequestBuilder srb =
+                        Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
                 srb.setSearchType(SearchType.SCAN);
                 // Limit to 10 per shard
                 srb.setSize(10);
