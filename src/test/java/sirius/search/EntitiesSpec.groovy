@@ -130,6 +130,34 @@ class EntitiesSpec extends BaseSpecification {
         Index.refreshIfPossible(child).getParentName() == "Test1"
     }
 
+    def "abstract parent entity works"() {
+        given:
+        def entity = new ConcreteChildEntity();
+        entity.setName("Test");
+        entity.setSubname("Sub-Test");
+        when:
+        Index.create(entity);
+        Index.blockThreadForUpdate();
+        def refreshedEntity = Index.refreshOrFail(entity);
+        def foundEntity = Index.find(AbstractParentEntity.class, entity.getId());
+        def selectedEntity = Index.select(AbstractParentEntity.class).queryFirst();
+        Index.delete(selectedEntity);
+        Index.blockThreadForUpdate();
+        def deletedEntity = Index.select(AbstractParentEntity.class).queryFirst();
+        then:
+        refreshedEntity.getName() == "Test"
+        refreshedEntity.getSubname() == "Sub-Test"
+        foundEntity != null
+        foundEntity.getName() == "Test"
+        foundEntity instanceof ConcreteChildEntity
+        foundEntity.getSubname() == "Sub-Test"
+        selectedEntity != null
+        selectedEntity.getName() == "Test"
+        selectedEntity instanceof ConcreteChildEntity
+        selectedEntity.getSubname() == "Sub-Test"
+        deletedEntity == null
+    }
+
     def "test including and excluding from _all"() {
         when:
         def stringProp = new StringPropertiesEntity();
