@@ -536,7 +536,6 @@ public class Query<E extends Entity> {
      * Picks random items from the result set instead of the first N.
      * <p>
      * A higher weight in the given field increases the chances of the entity to be part of the result.
-     * </p>
      *
      * @param field the field to use as weight for the randomization.
      * @return the query itself for fluent method calls

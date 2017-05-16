@@ -91,7 +91,7 @@ public class Schema {
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
 
-            if (Strings.isFilled(result.getSubClassCode()) && !addAbstractParentClass(entityType, result)) {
+            if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
                 LOG.WARN(
                         "LOAD: Class %s has subClassCode but no abstract parent class with the same index name, type name and routing could be found",
                         entityType.getName());
@@ -108,8 +108,8 @@ public class Schema {
      * @param <E>                type of the subclass
      * @return whether a matching parent class could be found
      */
-    private <E extends Entity> boolean addAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
-        // iterate recurseviley over all parent classes until the Entity class
+    private <E extends Entity> boolean findAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
+        // iterate recursiveley over all parent classes until the Entity class
         for (Class<? extends Entity> parentEntityType = (Class<? extends Entity>) subClass.getSuperclass();
              parentEntityType != null && Entity.class.isAssignableFrom(parentEntityType);
              parentEntityType = (Class<? extends Entity>) parentEntityType.getSuperclass()) {
@@ -120,28 +120,41 @@ public class Schema {
 
                 // index name, type name and routing must be equal
                 if (parentDescriptor.equals(subClassDescriptor)) {
-                    if (parentDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
-                        LOG.WARN(
-                                "LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
-                                subClass.getName(),
-                                parentDescriptor.getSubClassDescriptors()
-                                                .get(subClassDescriptor.getSubClassCode())
-                                                .getClazz()
-                                                .getName(),
-                                parentEntityType,
-                                subClassDescriptor.getSubClassCode());
-                    } else {
-                        parentDescriptor.getSubClassDescriptors()
-                                        .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
-                        descriptorTable.put(parentEntityType, parentDescriptor);
-                        nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
-                    }
+                    addAbstractParentClass(subClass, subClassDescriptor, parentEntityType, parentDescriptor);
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    /**
+     * Links the <tt>subClassDescriptor</tt> to the <tt>parentDescriptor</tt> and stores the latter for later use.
+     *
+     * @param subClass type of the subclass
+     * @param subClassDescriptor descriptor of the subclass
+     * @param parentEntityType type of the parent class
+     * @param parentDescriptor descriptor of the parent class
+     */
+    private void addAbstractParentClass(Class<? extends Entity> subClass,
+                                        EntityDescriptor subClassDescriptor,
+                                        Class<? extends Entity> parentEntityType,
+                                        EntityDescriptor parentDescriptor) {
+        if (parentDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
+            LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
+                     subClass.getName(),
+                     parentDescriptor.getSubClassDescriptors()
+                                     .get(subClassDescriptor.getSubClassCode())
+                                     .getEntityType()
+                                     .getName(),
+                     parentEntityType,
+                     subClassDescriptor.getSubClassCode());
+        } else {
+            parentDescriptor.getSubClassDescriptors().put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+            descriptorTable.put(parentEntityType, parentDescriptor);
+            nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
+        }
     }
 
     /**

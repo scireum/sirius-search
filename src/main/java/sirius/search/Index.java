@@ -1575,35 +1575,14 @@ public class Index {
         }
     }
 
-    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
+    private static <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
                                                     @Nonnull String id,
                                                     long version,
                                                     @Nonnull Map<String, Object> source)
             throws IllegalAccessException, InstantiationException {
         EntityDescriptor descriptor = getDescriptor(clazz);
         if (Modifier.isAbstract(clazz.getModifiers())) {
-            String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
-            EntityDescriptor subclassDescriptor = descriptor.getSubClassDescriptors().get(subClassCode);
-            if (subclassDescriptor == null) {
-                LOG.WARN("INSTANTIATE SUBCLASS: %s: no descriptor found for subClassCode \"%s\"!",
-                         clazz.getName(),
-                         subClassCode);
-                return null;
-            }
-            try {
-                E subEntity = (E) subclassDescriptor.getClazz().newInstance();
-                subEntity.initSourceTracing();
-                subEntity.setId(id);
-                subEntity.setVersion(version);
-                subclassDescriptor.readSource(subEntity, source);
-                return subEntity;
-            } catch (Exception e) {
-                LOG.WARN(
-                        "INSTANTIATE SUBCLASS: %s: no instance of subclass %s could be created for subClassCode \"%s\"!",
-                        clazz.getName(),
-                        subclassDescriptor.getClazz().getName());
-                return null;
-            }
+            return handleAbstractEntity(clazz, id, version, source, descriptor);
         }
 
         E entity = clazz.newInstance();
@@ -1612,6 +1591,43 @@ public class Index {
         entity.setVersion(version);
         descriptor.readSource(entity, source);
         return entity;
+    }
+
+    private static <E extends Entity> E handleAbstractEntity(@Nonnull Class<E> clazz,
+                                                             @Nonnull String id,
+                                                             long version,
+                                                             @Nonnull Map<String, Object> source,
+                                                             EntityDescriptor descriptor) {
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+        EntityDescriptor subclassDescriptor = descriptor.getSubClassDescriptors().get(subClassCode);
+        if (subclassDescriptor == null) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .withSystemErrorMessage(
+                                    "No descriptor found for subClassCode '%s' in document of abstract type %s with ID '%s'",
+                                    subClassCode,
+                                    clazz.getName(),
+                                    id)
+                            .handle();
+        }
+        try {
+            E subEntity = (E) subclassDescriptor.getEntityType().newInstance();
+            subEntity.initSourceTracing();
+            subEntity.setId(id);
+            subEntity.setVersion(version);
+            subclassDescriptor.readSource(subEntity, source);
+            return subEntity;
+        } catch (Exception e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage(
+                                    "Failed to instantiate subclass %s of abstract parent class %s for subClassCode '%s'",
+                                    subclassDescriptor.getEntityType().getName(),
+                                    clazz.getName(),
+                                    subclassDescriptor.getSubClassCode())
+                            .handle();
+        }
     }
 
     public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull GetResponse res)

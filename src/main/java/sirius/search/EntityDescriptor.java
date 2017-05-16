@@ -227,11 +227,11 @@ public class EntityDescriptor {
     }
 
     /**
-     * Returns the class object of this descriptors {@link Entity} subclass
+     * Returns the class object of this descriptor's {@link Entity}
      *
-     * @return the class object of this descriptors {@link Entity} subclass
+     * @return the class object of this descriptor's {@link Entity}
      */
-    public Class<? extends Entity> getClazz() {
+    public Class<? extends Entity> getEntityType() {
         return clazz;
     }
 
@@ -240,7 +240,6 @@ public class EntityDescriptor {
      * <p>
      * Note that this is an ElasticSearch index and not to be confused with a database index. This would be more or
      * less something like a schema in a SQL db
-     * </p>
      *
      * @return the name of the ES index used to store entities
      */
@@ -252,7 +251,6 @@ public class EntityDescriptor {
      * Returns the type name used to store entities related to this descriptor.
      * <p>
      * A type in ElasticSearch can be compared to a table in a SQL db.
-     * </p>
      *
      * @return the type name used to store entities related to this descriptor
      */
@@ -268,7 +266,6 @@ public class EntityDescriptor {
      * {@link Index} class recognizes this and creates an instance of the specific subclass instead of the abstract
      * parent class (which would fail anyway). The descriptor of the parent class stores its subclasses' descriptors in
      * {@link #getSubClassDescriptors()}.
-     * </p>
      *
      * @return this descriptors subClassCode, or an empty string if it does not have one
      * @see #getSubClassDescriptors()
@@ -278,11 +275,11 @@ public class EntityDescriptor {
     }
 
     /**
-     * Returns the descriptors of subclasses of this descriptor's {@link #getClazz() class object}. This is only used
+     * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only used
      * in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs to an
      * abstract parent class!
      *
-     * @return the descriptors of subclasses of this descriptor's {@link #getClazz() class object}.
+     * @return the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}.
      * @see #getSubClassCode()
      */
     public Map<String, EntityDescriptor> getSubClassDescriptors() {
@@ -376,13 +373,13 @@ public class EntityDescriptor {
             return false;
         }
         EntityDescriptor that = (EntityDescriptor) o;
-        return java.util.Objects.equals(indexName, that.indexName)
-               && java.util.Objects.equals(typeName, that.typeName)
-               && java.util.Objects.equals(routing, that.routing);
+        return Objects.equal(indexName, that.indexName)
+               && Objects.equal(typeName, that.typeName)
+               && Objects.equal(routing, that.routing);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(indexName, typeName, routing);
+        return Objects.hashCode(indexName, typeName, routing);
     }
 }
