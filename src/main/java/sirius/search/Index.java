@@ -453,7 +453,7 @@ public class Index {
                         }
                     }
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Exceptions.handle(LOG, e);
             }
         }
@@ -681,7 +681,7 @@ public class Index {
                 Wait.randomMillis(-500, 500);
             } catch (HandledException e) {
                 throw e;
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 throw Exceptions.handle()
                                 .withSystemErrorMessage(
                                         "An unexpected exception occurred while executing a unit of work: %s (%s)")
@@ -733,7 +733,7 @@ public class Index {
                                              .execute()
                                              .get(10, TimeUnit.SECONDS);
             return res.isExists();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -771,7 +771,7 @@ public class Index {
                     Index.blockThreadForUpdate();
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -799,7 +799,7 @@ public class Index {
                                 .withSystemErrorMessage("Cannot delete index: %s", getIndexName(name))
                                 .handle();
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -827,13 +827,14 @@ public class Index {
                  .setSource(desc.createMapping())
                  .execute()
                  .get(10, TimeUnit.SECONDS);
-        } catch (Throwable ex) {
+        } catch (Exception ex) {
+            Throwable cause = ex;
             while (ex.getCause() != null && ex.getCause() != ex) {
-                ex = ex.getCause();
+                cause = ex.getCause();
             }
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(ex)
+                            .error(cause)
                             .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
                                                     type.getSimpleName(),
                                                     index)
@@ -982,7 +983,7 @@ public class Index {
             }
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -1123,7 +1124,7 @@ public class Index {
                 queryDuration.addValue(w.elapsedMillis());
                 w.submitMicroTiming("ES", "UPDATE " + clazz.getName());
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(t)
@@ -1380,7 +1381,7 @@ public class Index {
             reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -1564,7 +1565,7 @@ public class Index {
                     entity.setId(obj.getString("_id"));
                     descriptor.readSource(entity, obj);
                     update(entity);
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     throw new IllegalArgumentException("Cannot load: " + obj, e);
                 }
             }

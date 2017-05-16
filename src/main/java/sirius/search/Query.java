@@ -767,7 +767,7 @@ public class Query<E extends Entity> {
                                buildQuery());
             }
             return transformFirst(srb);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle(Index.LOG, e);
         }
     }
@@ -929,7 +929,7 @@ public class Query<E extends Entity> {
                                + "Query: %s, Location: %s", this, ExecutionPoint.snapshot());
             }
             return resultList;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle(Index.LOG, e);
         }
     }
@@ -963,7 +963,7 @@ public class Query<E extends Entity> {
                 Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
             }
             return transformCount(crb);
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle(Index.LOG, t);
         }
     }
@@ -1202,7 +1202,7 @@ public class Query<E extends Entity> {
             } finally {
                 clearScroll(searchResponse);
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle(Index.LOG, t);
         }
     }
@@ -1210,7 +1210,7 @@ public class Query<E extends Entity> {
     private void clearScroll(SearchResponse searchResponse) {
         try {
             Index.getClient().prepareClearScroll().addScrollId(searchResponse.getScrollId()).execute().actionGet();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             Exceptions.handle(Index.LOG, e);
         }
     }
@@ -1354,7 +1354,7 @@ public class Query<E extends Entity> {
                     break;
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle(Index.LOG, e);
         }
     }
@@ -1436,7 +1436,7 @@ public class Query<E extends Entity> {
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle(Index.LOG, e);
         }
     }
@@ -1474,12 +1474,12 @@ public class Query<E extends Entity> {
         builder.execute().actionGet();
     }
 
-    protected void deleteByIteration() throws Throwable {
-        ValueHolder<Throwable> error = ValueHolder.of(null);
+    protected void deleteByIteration() throws Exception {
+        ValueHolder<Exception> error = ValueHolder.of(null);
         iterate(e -> {
             try {
                 Index.delete(e);
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 error.set(ex);
             }
             return true;

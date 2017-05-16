@@ -214,7 +214,7 @@ public class Schema {
                         changes.add("Failed to create index " + index + "!");
                     }
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Index.LOG.WARN(e);
                 changes.add("Cannot create index " + index + ": " + e.getMessage());
             }
@@ -230,7 +230,7 @@ public class Schema {
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 changes.add(Exceptions.handle(Index.LOG, ex).getMessage());
             }
         }
@@ -375,7 +375,7 @@ public class Schema {
                         return;
                     }
                 }
-            } catch (Throwable t) {
+            } catch (Exception t) {
                 throw Exceptions.handle(Index.LOG, t);
             }
         }
