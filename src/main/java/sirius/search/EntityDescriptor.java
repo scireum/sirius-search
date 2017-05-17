@@ -44,6 +44,7 @@ public class EntityDescriptor {
     private String routing;
     private String subClassCode;
     private Map<String, EntityDescriptor> subClassDescriptors = new HashMap<>();
+    private EntityDescriptor parent;
     private final Class<? extends Entity> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
@@ -259,6 +260,19 @@ public class EntityDescriptor {
     }
 
     /**
+     * If this descriptor has a parent descriptor, then this will return its parent's type. Otherwise this will return
+     * its own type.
+     * <p>
+     * A type in ElasticSearch can be compared to a table in a SQL db.
+     *
+     * @return the type name used to store entities related to this descriptor
+     * @see #getType()
+     */
+    public String getEffectiveType() {
+        return hasParent() ? getParent().getType() : getType();
+    }
+
+    /**
      * Returns the subclass-code of this descriptor.
      * <p>
      * With subclass-codes, it is possible to store different subclasses of an abstract parent class in the index. The
@@ -275,9 +289,9 @@ public class EntityDescriptor {
     }
 
     /**
-     * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only used
-     * in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs to an
-     * abstract parent class!
+     * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only
+     * used in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs
+     * to an abstract parent class!
      *
      * @return the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}.
      * @see #getSubClassCode()
@@ -362,6 +376,18 @@ public class EntityDescriptor {
      */
     public boolean hasForeignKeys() {
         return !foreignKeys.isEmpty();
+    }
+
+    public boolean hasParent() {
+        return this.parent != null;
+    }
+
+    public EntityDescriptor getParent() {
+        return parent;
+    }
+
+    public void setParent(EntityDescriptor parent) {
+        this.parent = parent;
     }
 
     @Override

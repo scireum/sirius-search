@@ -214,7 +214,7 @@ public class Index {
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
+        E value = (E) cache.getIfPresent(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -232,7 +232,7 @@ public class Index {
             value = find(type, id);
         }
         if (value != null) {
-            cache.put(descriptor.getType() + "-" + id, value);
+            cache.put(descriptor.getEffectiveType() + "-" + id, value);
         }
         return Tuple.create(value, false);
     }
@@ -279,7 +279,7 @@ public class Index {
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        E value = (E) globalCache.get(descriptor.getType() + "-" + id);
+        E value = (E) globalCache.get(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -296,7 +296,7 @@ public class Index {
         } else {
             value = find(type, id);
         }
-        globalCache.put(descriptor.getType() + "-" + id, value);
+        globalCache.put(descriptor.getEffectiveType() + "-" + id, value);
         return Tuple.create(value, false);
     }
 
@@ -946,7 +946,7 @@ public class Index {
                          forceCreate,
                          performVersionCheck,
                          getIndex(entity),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          Strings.join(source));
             }
 
@@ -958,7 +958,7 @@ public class Index {
                 id = entity.computePossibleId();
             }
 
-            IndexRequestBuilder irb = getClient().prepareIndex(getIndex(entity), descriptor.getType(), id)
+            IndexRequestBuilder irb = getClient().prepareIndex(getIndex(entity), descriptor.getEffectiveType(), id)
                                                  .setCreate(forceCreate)
                                                  .setSource(source);
             if (!entity.isNew() && performVersionCheck) {
@@ -1000,7 +1000,7 @@ public class Index {
         if (LOG.isFINE()) {
             LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
                      getIndex(entity),
-                     descriptor.getType(),
+                     descriptor.getEffectiveType(),
                      indexResponse.getId(),
                      indexResponse.getVersion());
         }
@@ -1098,25 +1098,25 @@ public class Index {
             }
             EntityDescriptor descriptor = getDescriptor(clazz);
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getType(), id);
+                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getEffectiveType(), id);
             }
             Watch w = Watch.start();
             try {
                 verifyRoutingForFind(routing, clazz, id, descriptor);
-                GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
+                GetResponse res = getClient().prepareGet(index, descriptor.getEffectiveType(), id)
                                              .setPreference("_primary")
                                              .setRouting(routing)
                                              .execute()
                                              .actionGet();
                 if (!res.isExists()) {
                     if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
+                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getEffectiveType());
                     }
                     return null;
                 } else {
                     E entity = createEntity(clazz, res);
                     if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
+                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getEffectiveType(), Strings.join(res.getSource()));
                     }
                     return entity;
                 }
@@ -1340,13 +1340,13 @@ public class Index {
                 LOG.FINE("DELETE[FORCE: %b]: %s.%s: %s",
                          force,
                          getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             entity.beforeDelete();
             Watch w = Watch.start();
             DeleteRequestBuilder drb = getClient().prepareDelete(getIndex(entity),
-                                                                 descriptor.getType(),
+                                                                 descriptor.getEffectiveType(),
                                                                  entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
@@ -1370,7 +1370,7 @@ public class Index {
             if (LOG.isFINE()) {
                 LOG.FINE("DELETE: %s.%s: %s SUCCESS",
                          getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             traceChange(entity);
@@ -1593,6 +1593,7 @@ public class Index {
         return entity;
     }
 
+    @SuppressWarnings("unchecked")
     private static <E extends Entity> E handleAbstractEntity(@Nonnull Class<E> clazz,
                                                              @Nonnull String id,
                                                              long version,

@@ -108,6 +108,7 @@ public class Schema {
      * @param <E>                type of the subclass
      * @return whether a matching parent class could be found
      */
+    @SuppressWarnings("unchecked")
     private <E extends Entity> boolean findAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
         // iterate recursiveley over all parent classes until the Entity class
         for (Class<? extends Entity> parentEntityType = (Class<? extends Entity>) subClass.getSuperclass();
@@ -119,7 +120,8 @@ public class Schema {
                         descriptorTable.getOrDefault(parentEntityType, new EntityDescriptor(parentEntityType));
 
                 // index name, type name and routing must be equal
-                if (parentDescriptor.equals(subClassDescriptor)) {
+                if (Strings.areEqual(parentDescriptor.getIndex(), subClassDescriptor.getIndex())
+                    && Strings.areEqual(parentDescriptor.getRouting(), subClassDescriptor.getRouting())) {
                     addAbstractParentClass(subClass, subClassDescriptor, parentEntityType, parentDescriptor);
                     return true;
                 }
@@ -130,30 +132,32 @@ public class Schema {
     }
 
     /**
-     * Links the <tt>subClassDescriptor</tt> to the <tt>parentDescriptor</tt> and stores the latter for later use.
+     * Links the <tt>subClassDescriptor</tt> to the <tt>parentClassDescriptor</tt> and stores the latter for later use.
      *
-     * @param subClass type of the subclass
-     * @param subClassDescriptor descriptor of the subclass
-     * @param parentEntityType type of the parent class
-     * @param parentDescriptor descriptor of the parent class
+     * @param subClass              type of the subclass
+     * @param subClassDescriptor    descriptor of the subclass
+     * @param parentClass           type of the parent class
+     * @param parentClassDescriptor descriptor of the parent class
      */
     private void addAbstractParentClass(Class<? extends Entity> subClass,
                                         EntityDescriptor subClassDescriptor,
-                                        Class<? extends Entity> parentEntityType,
-                                        EntityDescriptor parentDescriptor) {
-        if (parentDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
+                                        Class<? extends Entity> parentClass,
+                                        EntityDescriptor parentClassDescriptor) {
+        if (parentClassDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
             LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
                      subClass.getName(),
-                     parentDescriptor.getSubClassDescriptors()
-                                     .get(subClassDescriptor.getSubClassCode())
-                                     .getEntityType()
-                                     .getName(),
-                     parentEntityType,
+                     parentClassDescriptor.getSubClassDescriptors()
+                                          .get(subClassDescriptor.getSubClassCode())
+                                          .getEntityType()
+                                          .getName(),
+                     parentClass,
                      subClassDescriptor.getSubClassCode());
         } else {
-            parentDescriptor.getSubClassDescriptors().put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
-            descriptorTable.put(parentEntityType, parentDescriptor);
-            nameTable.put(parentDescriptor.getIndex() + "-" + parentDescriptor.getType(), subClass);
+            parentClassDescriptor.getSubClassDescriptors()
+                                 .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+            subClassDescriptor.setParent(parentClassDescriptor);
+            descriptorTable.put(parentClass, parentClassDescriptor);
+            nameTable.put(parentClassDescriptor.getIndex() + "-" + parentClassDescriptor.getType(), parentClass);
         }
     }
 
