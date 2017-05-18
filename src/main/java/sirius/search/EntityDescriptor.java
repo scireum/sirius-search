@@ -15,6 +15,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.health.Exceptions;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefField;
 import sirius.search.annotations.RefType;
@@ -312,6 +313,15 @@ public class EntityDescriptor {
         for (Property p : getProperties()) {
             p.createMapping(builder);
         }
+        builder.startObject(Index.SUBCLASSCODE_FIELD);
+        builder.field("type", "string");
+        builder.field("store", "yes");
+        builder.field("index", IndexMode.MODE_NOT_ANALYZED);
+        builder.startObject("norms");
+        builder.field("enabled", IndexMode.NORMS_DISABLED);
+        builder.endObject();
+        builder.field("include_in_all", true);
+        builder.endObject();
         builder.endObject();
         if (Strings.isFilled(routing)) {
             builder.startObject("_routing");
