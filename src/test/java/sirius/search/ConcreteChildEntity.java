@@ -10,7 +10,7 @@ package sirius.search;
 
 import sirius.search.annotations.Indexed;
 
-@Indexed(index = "test", type = "AbstractParentEntity", subClassCode = "concrete")
+@Indexed(index = "test", routing=AbstractParentEntity.ROUTING, subClassCode = "concrete")
 public class ConcreteChildEntity extends AbstractParentEntity {
 
     private String subname;
