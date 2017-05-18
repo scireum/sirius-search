@@ -122,6 +122,9 @@ public class Query<E extends Entity> {
      */
     protected Query(Class<E> clazz) {
         this.clazz = clazz;
+        if (Index.getDescriptor(clazz).hasParent()) {
+            eq(Index.SUBCLASSCODE_FIELD, Index.getDescriptor(clazz).getSubClassCode());
+        }
     }
 
     /**
@@ -235,7 +238,7 @@ public class Query<E extends Entity> {
 
     /**
      * Adds an <tt>exclude</tt> constraint to the query in the id field.
-     *
+     * <p>
      * This effectively excludes all entities from the given list from the query.
      *
      * @param entities the entities to exclude
@@ -288,8 +291,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query across all searchable fields.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -301,8 +304,8 @@ public class Query<E extends Entity> {
     /**
      * Adds a textual query to a specific field.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -317,8 +320,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling {@link #query(String, String,
-     * java.util.function.Function, boolean, boolean)}.
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @return the query itself for fluent method calls
@@ -332,8 +335,8 @@ public class Query<E extends Entity> {
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
      * <p>
-     * Uses the DEFAULT_ANALYZER while calling {@link #query(String, String, java.util.function.Function, boolean,
-     * boolean)}.
+     * Uses the DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
      *
      * @param query the query to search for
      * @param field the field to apply query to
@@ -762,7 +765,7 @@ public class Query<E extends Entity> {
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
                                Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
+                               Index.getDescriptor(clazz).getEffectiveType(),
                                buildQuery());
             }
             return transformFirst(srb);
@@ -785,7 +788,7 @@ public class Query<E extends Entity> {
         EntityDescriptor ed = Index.getDescriptor(clazz);
         SearchRequestBuilder srb = Index.getClient()
                                         .prepareSearch(index != null ? index : Index.getIndexName(ed.getIndex()))
-                                        .setTypes(ed.getType());
+                                        .setTypes(ed.getEffectiveType());
         srb.setVersion(true);
         if (primary) {
             srb.setPreference("_primary");
@@ -918,7 +921,7 @@ public class Query<E extends Entity> {
             if (Index.LOG.isFINE()) {
                 Index.LOG.FINE("SEARCH: %s.%s: %s",
                                Index.getIndex(clazz),
-                               Index.getDescriptor(clazz).getType(),
+                               Index.getDescriptor(clazz).getEffectiveType(),
                                buildQuery());
             }
             ResultList<E> resultList = transform(srb);
@@ -946,7 +949,7 @@ public class Query<E extends Entity> {
             EntityDescriptor ed = Index.getDescriptor(clazz);
             CountRequestBuilder crb = Index.getClient()
                                            .prepareCount(index != null ? index : Index.getIndex(clazz))
-                                           .setTypes(ed.getType());
+                                           .setTypes(ed.getEffectiveType());
 
             applyRouting(ed, crb::setRouting);
 
@@ -959,7 +962,7 @@ public class Query<E extends Entity> {
                 crb.setQuery(QueryBuilders.filteredQuery(qb, sb));
             }
             if (Index.LOG.isFINE()) {
-                Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
+                Index.LOG.FINE("COUNT: %s.%s: %s", Index.getIndex(clazz), ed.getEffectiveType(), buildQuery());
             }
             return transformCount(crb);
         } catch (Exception t) {
@@ -1036,7 +1039,7 @@ public class Query<E extends Entity> {
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
                            Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
+                           Index.getDescriptor(clazz).getEffectiveType(),
                            searchResponse.getHits().totalHits(),
                            searchResponse.getTookInMillis());
         }
@@ -1064,7 +1067,7 @@ public class Query<E extends Entity> {
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
                            Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
+                           Index.getDescriptor(clazz).getEffectiveType(),
                            searchResponse.getHits().totalHits(),
                            searchResponse.getTookInMillis());
         }
@@ -1086,7 +1089,7 @@ public class Query<E extends Entity> {
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
                            Index.getIndex(clazz),
-                           Index.getDescriptor(clazz).getType(),
+                           Index.getDescriptor(clazz).getEffectiveType(),
                            res.getCount());
         }
         if (Microtiming.isEnabled()) {
@@ -1240,7 +1243,7 @@ public class Query<E extends Entity> {
         if (Index.LOG.isFINE()) {
             Index.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
                            Index.getIndex(clazz),
-                           entityDescriptor.getType(),
+                           entityDescriptor.getEffectiveType(),
                            searchResponse.getHits().hits().length,
                            searchResponse.getHits().totalHits(),
                            searchResponse.getTookInMillis());
@@ -1262,7 +1265,10 @@ public class Query<E extends Entity> {
         srb.setSize(routing != null ? MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD : MAX_SCROLL_RESULTS_PER_SHARD);
         srb.setScroll(org.elasticsearch.common.unit.TimeValue.timeValueSeconds(scrollTTL));
         if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("ITERATE: %s.%s: %s", Index.getIndex(clazz), entityDescriptor.getType(), buildQuery());
+            Index.LOG.FINE("ITERATE: %s.%s: %s",
+                           Index.getIndex(clazz),
+                           entityDescriptor.getEffectiveType(),
+                           buildQuery());
         }
 
         return srb.execute().actionGet();
@@ -1319,7 +1325,7 @@ public class Query<E extends Entity> {
                 if (Index.LOG.isFINE()) {
                     Index.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
                                    Index.getIndex(clazz),
-                                   Index.getDescriptor(clazz).getType(),
+                                   Index.getDescriptor(clazz).getEffectiveType(),
                                    buildQuery());
                 }
                 ResultList<E> resultList = transform(srb);
@@ -1443,7 +1449,7 @@ public class Query<E extends Entity> {
     protected void deleteByQuery(EntityDescriptor ed) {
         DeleteByQueryRequestBuilder builder = Index.getClient()
                                                    .prepareDeleteByQuery(index != null ? index : Index.getIndex(clazz))
-                                                   .setTypes(ed.getType());
+                                                   .setTypes(ed.getEffectiveType());
         if (Strings.isFilled(routing)) {
             if (!ed.hasRouting()) {
                 throw Exceptions.handle()
@@ -1468,7 +1474,7 @@ public class Query<E extends Entity> {
             builder.setQuery(qb);
         }
         if (Index.LOG.isFINE()) {
-            Index.LOG.FINE("DELETE: %s.%s: %s", Index.getIndex(clazz), ed.getType(), buildQuery());
+            Index.LOG.FINE("DELETE: %s.%s: %s", Index.getIndex(clazz), ed.getEffectiveType(), buildQuery());
         }
         builder.execute().actionGet();
     }

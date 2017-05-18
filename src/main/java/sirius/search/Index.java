@@ -1581,8 +1581,12 @@ public class Index {
                                                     @Nonnull Map<String, Object> source)
             throws IllegalAccessException, InstantiationException {
         EntityDescriptor descriptor = getDescriptor(clazz);
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
         if (Modifier.isAbstract(clazz.getModifiers())) {
             return handleAbstractEntity(clazz, id, version, source, descriptor);
+        }
+        if(Strings.isFilled(subClassCode) && !Strings.areEqual(descriptor.getSubClassCode(), subClassCode)) {
+            return null;
         }
 
         E entity = clazz.newInstance();
