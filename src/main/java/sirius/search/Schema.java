@@ -21,6 +21,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Tasks;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
@@ -28,11 +29,20 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.search.annotations.Indexed;
 import sirius.search.properties.PropertyFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.*;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -53,15 +63,20 @@ public class Schema {
     /**
      * Contains a map with an entity descriptor for each entity class
      */
-    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable = Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
+    private Map<Class<? extends Entity>, EntityDescriptor> descriptorTable =
+            Collections.synchronizedMap(new HashMap<Class<? extends Entity>, EntityDescriptor>());
 
     /**
      * Contains a map providing the class for each entity type name
      */
-    private Map<String, Class<? extends Entity>> nameTable = Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
+    private Map<String, Class<? extends Entity>> nameTable =
+            Collections.synchronizedMap(new HashMap<String, Class<? extends Entity>>());
 
-    /*
+    /**
      * Adds a known entity class
+     *
+     * @param entityType class to add
+     * @param <E>        type of the class to add
      */
     private <E extends Entity> void addKnownClass(Class<E> entityType) {
         EntityDescriptor result = descriptorTable.get(entityType);
@@ -69,10 +84,78 @@ public class Schema {
             result = new EntityDescriptor(entityType);
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
+
+            if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
+                Index.LOG.WARN(
+                        "LOAD: Class %s has subClassCode but no abstract parent class with the same index name, type name and routing could be found",
+                        entityType.getName());
+            }
         }
     }
 
-    /*
+    /**
+     * Searches for the first abstract parent class in the class hierarchy with the same {@link Indexed} annotation and
+     * creates a {@link EntityDescriptor} for it.
+     *
+     * @param subClass           the subclass
+     * @param subClassDescriptor descriptor of the subclass
+     * @param <E>                type of the subclass
+     * @return whether a matching parent class could be found
+     */
+    @SuppressWarnings("unchecked")
+    private <E extends Entity> boolean findAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
+        // iterate recursiveley over all parent classes until the Entity class
+        for (Class<? extends Entity> parentEntityType = (Class<? extends Entity>) subClass.getSuperclass();
+             parentEntityType != null && Entity.class.isAssignableFrom(parentEntityType);
+             parentEntityType = (Class<? extends Entity>) parentEntityType.getSuperclass()) {
+            if (Modifier.isAbstract(parentEntityType.getModifiers())
+                && parentEntityType.isAnnotationPresent(Indexed.class)) {
+                EntityDescriptor parentDescriptor =
+                        descriptorTable.getOrDefault(parentEntityType, new EntityDescriptor(parentEntityType));
+
+                // index name, type name and routing must be equal
+                if (Strings.areEqual(parentDescriptor.getIndex(), subClassDescriptor.getIndex())
+                    && Strings.areEqual(parentDescriptor.getRouting(), subClassDescriptor.getRouting())) {
+                    addAbstractParentClass(subClass, subClassDescriptor, parentEntityType, parentDescriptor);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Links the <tt>subClassDescriptor</tt> to the <tt>parentClassDescriptor</tt> and stores the latter for later use.
+     *
+     * @param subClass              type of the subclass
+     * @param subClassDescriptor    descriptor of the subclass
+     * @param parentClass           type of the parent class
+     * @param parentClassDescriptor descriptor of the parent class
+     */
+    private void addAbstractParentClass(Class<? extends Entity> subClass,
+                                        EntityDescriptor subClassDescriptor,
+                                        Class<? extends Entity> parentClass,
+                                        EntityDescriptor parentClassDescriptor) {
+        if (parentClassDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
+            Index.LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
+                     subClass.getName(),
+                     parentClassDescriptor.getSubClassDescriptors()
+                                          .get(subClassDescriptor.getSubClassCode())
+                                          .getEntityType()
+                                          .getName(),
+                     parentClass,
+                     subClassDescriptor.getSubClassCode());
+        } else {
+            parentClassDescriptor.getSubClassDescriptors()
+                                 .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+            subClassDescriptor.setParent(parentClassDescriptor);
+            descriptorTable.put(parentClass, parentClassDescriptor);
+            nameTable.put(parentClassDescriptor.getIndex() + "-" + parentClassDescriptor.getType(), parentClass);
+        }
+    }
+
+    /**
      * Links the schema and builds up foreign keys, etc.
      */
     private void linkSchema() {
@@ -126,12 +209,8 @@ public class Schema {
         for (EntityDescriptor ed : descriptorTable.values()) {
             String index = indexPrefix + ed.getIndex();
             try {
-                IndicesExistsResponse res = Index.getClient()
-                                                 .admin()
-                                                 .indices()
-                                                 .prepareExists(index)
-                                                 .execute()
-                                                 .get(10, TimeUnit.SECONDS);
+                IndicesExistsResponse res =
+                        Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
                 if (!res.isExists()) {
                     CreateIndexResponse createResponse = Index.getClient()
                                                               .admin()
@@ -146,7 +225,7 @@ public class Schema {
                         changes.add("Failed to create index " + index + "!");
                     }
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Index.LOG.WARN(e);
                 changes.add("Cannot create index " + index + ": " + e.getMessage());
             }
@@ -162,7 +241,7 @@ public class Schema {
                 changes.add("Created mapping for " + e.getValue().getType() + " in " + e.getValue().getIndex());
             } catch (HandledException ex) {
                 changes.add(ex.getMessage());
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 changes.add(Exceptions.handle(Index.LOG, ex).getMessage());
             }
         }
@@ -177,17 +256,15 @@ public class Schema {
                             .getInt(Sirius.getSettings()
                                           .getConfig()
                                           .hasPath("index.settings." + ed.getIndex() + ".numberOfShards") ?
-                                            "index.settings." +
-                                                    ed.getIndex() +
-                                                    ".numberOfShards" : "index.settings.default.numberOfShards"));
+                                    "index.settings." + ed.getIndex() + ".numberOfShards" :
+                                    "index.settings.default.numberOfShards"));
         builder.field("number_of_replicas",
                       Sirius.getSettings()
                             .getInt(Sirius.getSettings()
                                           .getConfig()
                                           .hasPath("index.settings." + ed.getIndex() + ".numberOfReplicas") ?
-                                            "index.settings." +
-                                                    ed.getIndex() +
-                                                    ".numberOfReplicas" : "index.settings.default.numberOfReplicas"));
+                                    "index.settings." + ed.getIndex() + ".numberOfReplicas" :
+                                    "index.settings.default.numberOfReplicas"));
         return builder.endObject().endObject();
     }
 
@@ -279,9 +356,8 @@ public class Schema {
 
         private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
             try {
-                SearchRequestBuilder srb = Index.getClient()
-                                                .prepareSearch(Index.getIndexPrefix() + ed.getIndex())
-                                                .setTypes(ed.getType());
+                SearchRequestBuilder srb =
+                        Index.getClient().prepareSearch(Index.getIndexPrefix() + ed.getIndex()).setTypes(ed.getType());
                 srb.setSearchType(SearchType.SCAN);
                 // Limit to 10 per shard
                 srb.setSize(10);
@@ -310,7 +386,7 @@ public class Schema {
                         return;
                     }
                 }
-            } catch (Throwable t) {
+            } catch (Exception t) {
                 throw Exceptions.handle(Index.LOG, t);
             }
         }

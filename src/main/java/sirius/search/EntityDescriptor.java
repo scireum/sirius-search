@@ -15,6 +15,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.health.Exceptions;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefField;
 import sirius.search.annotations.RefType;
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +43,10 @@ public class EntityDescriptor {
     private final String indexName;
     private String typeName;
     private String routing;
-    private final Class<?> clazz;
+    private String subClassCode;
+    private Map<String, EntityDescriptor> subClassDescriptors = new HashMap<>();
+    private EntityDescriptor parent;
+    private final Class<? extends Entity> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
     protected List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
@@ -51,7 +56,7 @@ public class EntityDescriptor {
      *
      * @param clazz the entity class to be inspected
      */
-    public EntityDescriptor(Class<?> clazz) {
+    public EntityDescriptor(Class<? extends Entity> clazz) {
         this.clazz = clazz;
         if (!clazz.isAnnotationPresent(Indexed.class)) {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
@@ -59,6 +64,7 @@ public class EntityDescriptor {
         this.indexName = clazz.getAnnotation(Indexed.class).index();
         this.typeName = clazz.getAnnotation(Indexed.class).type();
         this.routing = clazz.getAnnotation(Indexed.class).routing();
+        this.subClassCode = clazz.getAnnotation(Indexed.class).subClassCode();
         if (Strings.isEmpty(routing)) {
             routing = null;
         }
@@ -223,6 +229,15 @@ public class EntityDescriptor {
     }
 
     /**
+     * Returns the class object of this descriptor's {@link Entity}
+     *
+     * @return the class object of this descriptor's {@link Entity}
+     */
+    public Class<? extends Entity> getEntityType() {
+        return clazz;
+    }
+
+    /**
      * Returns the name of the index which is used to store the data.
      * <p>
      * Note that this is an ElasticSearch index and not to be confused with a database index. This would be more or
@@ -246,6 +261,47 @@ public class EntityDescriptor {
     }
 
     /**
+     * If this descriptor has a parent descriptor, then this will return its parent's type. Otherwise this will return
+     * its own type.
+     * <p>
+     * A type in ElasticSearch can be compared to a table in a SQL db.
+     *
+     * @return the type name used to store entities related to this descriptor
+     * @see #getType()
+     */
+    public String getEffectiveType() {
+        return hasParent() ? getParent().getType() : getType();
+    }
+
+    /**
+     * Returns the subclass-code of this descriptor.
+     * <p>
+     * With subclass-codes, it is possible to store different subclasses of an abstract parent class in the index. The
+     * subclass-code is herefore stored among the other fields of the subclass. When instantiating search hits, the
+     * {@link Index} class recognizes this and creates an instance of the specific subclass instead of the abstract
+     * parent class (which would fail anyway). The descriptor of the parent class stores its subclasses' descriptors in
+     * {@link #getSubClassDescriptors()}.
+     *
+     * @return this descriptors subClassCode, or an empty string if it does not have one
+     * @see #getSubClassDescriptors()
+     */
+    public String getSubClassCode() {
+        return subClassCode;
+    }
+
+    /**
+     * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only
+     * used in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs
+     * to an abstract parent class!
+     *
+     * @return the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}.
+     * @see #getSubClassCode()
+     */
+    public Map<String, EntityDescriptor> getSubClassDescriptors() {
+        return subClassDescriptors;
+    }
+
+    /**
      * Creates the mapping required by ElasticSearch to store entities related to this descriptor.
      *
      * @return a JSON structure defining the mapping of this descriptor
@@ -257,6 +313,7 @@ public class EntityDescriptor {
         for (Property p : getProperties()) {
             p.createMapping(builder);
         }
+        createSubClassCodeMapping(builder);
         builder.endObject();
         if (Strings.isFilled(routing)) {
             builder.startObject("_routing");
@@ -265,6 +322,18 @@ public class EntityDescriptor {
         }
 
         return builder.endObject().endObject();
+    }
+
+    private void createSubClassCodeMapping(XContentBuilder builder) throws IOException {
+        builder.startObject(Index.SUBCLASSCODE_FIELD);
+        builder.field("type", "string");
+        builder.field("store", "yes");
+        builder.field("index", IndexMode.MODE_NOT_ANALYZED);
+        builder.startObject("norms");
+        builder.field("enabled", IndexMode.NORMS_DISABLED);
+        builder.endObject();
+        builder.field("include_in_all", true);
+        builder.endObject();
     }
 
     /**
@@ -321,5 +390,36 @@ public class EntityDescriptor {
      */
     public boolean hasForeignKeys() {
         return !foreignKeys.isEmpty();
+    }
+
+    public boolean hasParent() {
+        return this.parent != null;
+    }
+
+    public EntityDescriptor getParent() {
+        return parent;
+    }
+
+    public void setParent(EntityDescriptor parent) {
+        this.parent = parent;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        EntityDescriptor that = (EntityDescriptor) o;
+        return Objects.equal(indexName, that.indexName)
+               && Objects.equal(typeName, that.typeName)
+               && Objects.equal(routing, that.routing);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(indexName, typeName, routing);
     }
 }
