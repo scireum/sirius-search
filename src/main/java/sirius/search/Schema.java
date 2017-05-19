@@ -29,7 +29,6 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
-import sirius.kernel.health.Log;
 import sirius.search.annotations.Indexed;
 import sirius.search.properties.PropertyFactory;
 
@@ -50,11 +49,6 @@ import java.util.concurrent.TimeUnit;
  * Describes the expected database schema based on all known subclasses of {@link Entity}.
  */
 public class Schema {
-
-    /**
-     * Logger used by this framework
-     */
-    public static final Log LOG = Log.get("index");
 
     /**
      * Contains all known property factories. These are used to transform fields defined by entity classes to
@@ -92,7 +86,7 @@ public class Schema {
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
 
             if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
-                LOG.WARN(
+                Index.LOG.WARN(
                         "LOAD: Class %s has subClassCode but no abstract parent class with the same index name, type name and routing could be found",
                         entityType.getName());
             }
@@ -144,7 +138,7 @@ public class Schema {
                                         Class<? extends Entity> parentClass,
                                         EntityDescriptor parentClassDescriptor) {
         if (parentClassDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
-            LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
+            Index.LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
                      subClass.getName(),
                      parentClassDescriptor.getSubClassDescriptors()
                                           .get(subClassDescriptor.getSubClassCode())

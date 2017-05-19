@@ -313,6 +313,18 @@ public class EntityDescriptor {
         for (Property p : getProperties()) {
             p.createMapping(builder);
         }
+        createSubClassCodeMapping(builder);
+        builder.endObject();
+        if (Strings.isFilled(routing)) {
+            builder.startObject("_routing");
+            builder.field("path", routing);
+            builder.endObject();
+        }
+
+        return builder.endObject().endObject();
+    }
+
+    private void createSubClassCodeMapping(XContentBuilder builder) throws IOException {
         builder.startObject(Index.SUBCLASSCODE_FIELD);
         builder.field("type", "string");
         builder.field("store", "yes");
@@ -322,14 +334,6 @@ public class EntityDescriptor {
         builder.endObject();
         builder.field("include_in_all", true);
         builder.endObject();
-        builder.endObject();
-        if (Strings.isFilled(routing)) {
-            builder.startObject("_routing");
-            builder.field("path", routing);
-            builder.endObject();
-        }
-
-        return builder.endObject().endObject();
     }
 
     /**
