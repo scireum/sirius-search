@@ -829,7 +829,7 @@ public class Index {
                  .get(10, TimeUnit.SECONDS);
         } catch (Exception ex) {
             Throwable cause = ex;
-            while (ex.getCause() != null && ex.getCause() != ex) {
+            while (cause.getCause() != null && cause.getCause() != ex) {
                 cause = ex.getCause();
             }
             throw Exceptions.handle()
