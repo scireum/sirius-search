@@ -29,6 +29,7 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
@@ -937,7 +938,7 @@ public class Index {
             entity.beforeSave();
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             descriptor.writeTo(entity, source);
-            if (Strings.isFilled(descriptor.getSubClassCode())) {
+            if (descriptor.isSubClassDescriptor()) {
                 source.put(SUBCLASSCODE_FIELD, descriptor.getSubClassCode());
             }
 
@@ -1576,16 +1577,16 @@ public class Index {
     }
 
     private static <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
-                                                    @Nonnull String id,
-                                                    long version,
-                                                    @Nonnull Map<String, Object> source)
+                                                     @Nonnull String id,
+                                                     long version,
+                                                     @Nonnull Map<String, Object> source)
             throws IllegalAccessException, InstantiationException {
         EntityDescriptor descriptor = getDescriptor(clazz);
         String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
         if (Modifier.isAbstract(clazz.getModifiers())) {
             return handleAbstractEntity(clazz, id, version, source, descriptor);
         }
-        if(Strings.isFilled(subClassCode) && !Strings.areEqual(descriptor.getSubClassCode(), subClassCode)) {
+        if (descriptor.isSubClassDescriptor() && !Strings.areEqual(descriptor.getSubClassCode(), subClassCode)) {
             return null;
         }
 

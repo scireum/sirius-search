@@ -14,6 +14,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
 import sirius.kernel.health.Exceptions;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
@@ -330,13 +331,42 @@ public class EntityDescriptor {
      * @throws IOException in case of an IO error during the JSON encoding
      */
     public XContentBuilder createMapping() throws IOException {
+        if (isSubClassDescriptor()) {
+            return null;
+        }
+
         XContentBuilder builder = XContentFactory.jsonBuilder().startObject().startObject(getType());
         builder.startObject("properties");
+
+        Map<String, Tuple<EntityDescriptor, Property>> addedProperties = new HashMap<>();
         for (Property p : getProperties()) {
             p.createMapping(builder);
+            addedProperties.put(p.getName(), Tuple.create(this, p));
         }
 
         if (isParentDescriptor()) {
+            for (EntityDescriptor subClassDescriptor : getSubClassDescriptors().values()) {
+                for (Property p : subClassDescriptor.getProperties()) {
+                    if (addedProperties.containsKey(p.getName())) {
+                        Tuple<EntityDescriptor, Property> existingProperty = addedProperties.get(p.getName());
+                        if (existingProperty.getFirst() != this && !p.equals(existingProperty.getSecond())) {
+                            throw Exceptions.createHandled()
+                                            .withSystemErrorMessage(
+                                                    "Duplicate subclass-property \"%s\" (type %s) in %s, has already been declared in %s with type %s!",
+                                                    p.getName(),
+                                                    p.getField().getType().getSimpleName(),
+                                                    subClassDescriptor.getType(),
+                                                    existingProperty.getFirst().getType(),
+                                                    existingProperty.getSecond().getField().getType().getSimpleName())
+                                            .to(Index.LOG)
+                                            .handle();
+                        }
+                    } else {
+                        p.createMapping(builder);
+                        addedProperties.put(p.getName(), Tuple.create(subClassDescriptor, p));
+                    }
+                }
+            }
             createSubClassCodeMapping(builder);
         }
 
