@@ -85,7 +85,7 @@ public class Schema {
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
 
-            if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
+            if (result.isSubClassDescriptor() && !findAbstractParentClass(entityType, result)) {
                 Index.LOG.WARN(
                         "LOAD: Class %s has subClassCode but no abstract parent class with the same index name, type name and routing could be found",
                         entityType.getName());
@@ -139,13 +139,13 @@ public class Schema {
                                         EntityDescriptor parentClassDescriptor) {
         if (parentClassDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
             Index.LOG.WARN("LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
-                     subClass.getName(),
-                     parentClassDescriptor.getSubClassDescriptors()
-                                          .get(subClassDescriptor.getSubClassCode())
-                                          .getEntityType()
-                                          .getName(),
-                     parentClass,
-                     subClassDescriptor.getSubClassCode());
+                           subClass.getName(),
+                           parentClassDescriptor.getSubClassDescriptors()
+                                                .get(subClassDescriptor.getSubClassCode())
+                                                .getEntityType()
+                                                .getName(),
+                           parentClass,
+                           subClassDescriptor.getSubClassCode());
         } else {
             parentClassDescriptor.getSubClassDescriptors()
                                  .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
@@ -232,6 +232,9 @@ public class Schema {
         }
         for (Map.Entry<Class<? extends Entity>, EntityDescriptor> e : descriptorTable.entrySet()) {
             try {
+                if (e.getValue().isSubClassDescriptor()) {
+                    continue;
+                }
                 if (Index.LOG.isFINE()) {
                     Index.LOG.FINE("MAPPING OF %s : %s",
                                    e.getValue().getType(),

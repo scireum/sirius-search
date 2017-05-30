@@ -14,6 +14,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
 import sirius.kernel.health.Exceptions;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
@@ -290,6 +291,16 @@ public class EntityDescriptor {
     }
 
     /**
+     * Returns true if this descriptor has a {@link #getSubClassCode() subClassCode} and a {@link #getParent() parent
+     * descriptor}.
+     *
+     * @return true if this descriptor is a subclass descriptor, false otherwise
+     */
+    public boolean isSubClassDescriptor() {
+        return Strings.isFilled(getSubClassCode());
+    }
+
+    /**
      * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only
      * used in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs
      * to an abstract parent class!
@@ -302,18 +313,63 @@ public class EntityDescriptor {
     }
 
     /**
-     * Creates the mapping required by ElasticSearch to store entities related to this descriptor.
+     * Returns true if this descriptor relates to an abstract {@link Entity} and has child descriptors from
+     * concrete subclasses.
      *
-     * @return a JSON structure defining the mapping of this descriptor
+     * @return true if this descriptor is a parent descriptor, false otherwise
+     */
+    public boolean isParentDescriptor() {
+        return !getSubClassDescriptors().isEmpty();
+    }
+
+    /**
+     * Creates the mapping required by ElasticSearch to store entities related to this descriptor. If this descriptor is
+     * a {@link #isSubClassDescriptor() subClass descriptor}, <tt>null</tt> is returned.
+     *
+     * @return a JSON structure defining the mapping of this descriptor or <tt>null</tt> if this descriptor is a {@link
+     * #isSubClassDescriptor() subClass descriptor}
      * @throws IOException in case of an IO error during the JSON encoding
      */
     public XContentBuilder createMapping() throws IOException {
+        if (isSubClassDescriptor()) {
+            return null;
+        }
+
         XContentBuilder builder = XContentFactory.jsonBuilder().startObject().startObject(getType());
         builder.startObject("properties");
+
+        Map<String, Tuple<EntityDescriptor, Property>> addedProperties = new HashMap<>();
         for (Property p : getProperties()) {
             p.createMapping(builder);
+            addedProperties.put(p.getName(), Tuple.create(this, p));
         }
-        createSubClassCodeMapping(builder);
+
+        if (isParentDescriptor()) {
+            for (EntityDescriptor subClassDescriptor : getSubClassDescriptors().values()) {
+                for (Property p : subClassDescriptor.getProperties()) {
+                    if (addedProperties.containsKey(p.getName())) {
+                        Tuple<EntityDescriptor, Property> existingProperty = addedProperties.get(p.getName());
+                        if (existingProperty.getFirst() != this && !p.equals(existingProperty.getSecond())) {
+                            throw Exceptions.createHandled()
+                                            .withSystemErrorMessage(
+                                                    "Duplicate subclass-property \"%s\" (type %s) in %s, has already been declared in %s with type %s!",
+                                                    p.getName(),
+                                                    p.getField().getType().getSimpleName(),
+                                                    subClassDescriptor.getType(),
+                                                    existingProperty.getFirst().getType(),
+                                                    existingProperty.getSecond().getField().getType().getSimpleName())
+                                            .to(Index.LOG)
+                                            .handle();
+                        }
+                    } else {
+                        p.createMapping(builder);
+                        addedProperties.put(p.getName(), Tuple.create(subClassDescriptor, p));
+                    }
+                }
+            }
+            createSubClassCodeMapping(builder);
+        }
+
         builder.endObject();
         if (Strings.isFilled(routing)) {
             builder.startObject("_routing");
@@ -327,7 +383,7 @@ public class EntityDescriptor {
     private void createSubClassCodeMapping(XContentBuilder builder) throws IOException {
         builder.startObject(Index.SUBCLASSCODE_FIELD);
         builder.field("type", "string");
-        builder.field("store", "yes");
+        builder.field("store", "no");
         builder.field("index", IndexMode.MODE_NOT_ANALYZED);
         builder.startObject("norms");
         builder.field("enabled", IndexMode.NORMS_DISABLED);
