@@ -36,6 +36,7 @@ import sirius.kernel.async.CallContext;
 import sirius.kernel.async.ExecutionPoint;
 import sirius.kernel.async.Future;
 import sirius.kernel.async.Operation;
+import sirius.kernel.async.Promise;
 import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
@@ -97,6 +98,7 @@ public class IndexAccess {
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
     private static final String CATEGORY_INDEX = "index";
     private static final String CONFIG_KEY_INDEX_TYPE = "index.type";
+    private static final String ASYNC_UPDATER = "async-updater";
 
     /**
      * Contains the database schema as expected by the java model
@@ -470,9 +472,8 @@ public class IndexAccess {
     }
 
     private void startClient() {
-        if (Sirius.getSettings().getConfig().hasPath(CONFIG_KEY_INDEX_TYPE) && !"server".equalsIgnoreCase(Sirius.getSettings().getConfig()
-                                                                                                  .getString(
-                                                                                                          CONFIG_KEY_INDEX_TYPE))) {
+        if (Sirius.getSettings().getConfig().hasPath(CONFIG_KEY_INDEX_TYPE)
+            && !"server".equalsIgnoreCase(Sirius.getSettings().getConfig().getString(CONFIG_KEY_INDEX_TYPE))) {
             LOG.WARN("Unsupported index.type='%s'. Use 'index.type=server' instead or remove this option.",
                      Sirius.getSettings().getConfig().getString(CONFIG_KEY_INDEX_TYPE));
         }
@@ -810,6 +811,23 @@ public class IndexAccess {
                                                     entity.getId())
                             .handle();
         }
+    }
+
+    /**
+     * Updates the entity in the database asynchronous using a dedicated thread pool.
+     *
+     * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to update
+     * @return a {@link Promise} handling the update process
+     */
+    public <E extends Entity> Promise<E> updateAsync(E entity) {
+        Promise<E> promise = new Promise<E>();
+        tasks.executor(ASYNC_UPDATER).start(() -> {
+            update(entity);
+            promise.success(entity);
+        });
+
+        return promise;
     }
 
     /**
