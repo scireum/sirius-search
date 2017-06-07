@@ -823,8 +823,12 @@ public class IndexAccess {
     public <E extends Entity> Promise<E> updateAsync(E entity) {
         Promise<E> promise = new Promise<E>();
         tasks.executor(ASYNC_UPDATER).start(() -> {
-            update(entity);
-            promise.success(entity);
+            try {
+                update(entity);
+                promise.success(entity);
+            } catch (Exception e) {
+                promise.fail(e);
+            }
         });
 
         return promise;
