@@ -35,8 +35,8 @@ public class StringListProperty extends StringProperty {
         @Override
         public boolean accepts(Field field) {
             return List.class.equals(field.getType())
-                   && field.isAnnotationPresent(ListType.class)
-                   && String.class.equals(field.getAnnotation(ListType.class).value());
+                    && field.isAnnotationPresent(ListType.class)
+                    && String.class.equals(field.getAnnotation(ListType.class).value());
         }
 
         @Override
@@ -55,6 +55,9 @@ public class StringListProperty extends StringProperty {
     @Override
     protected Object transformFromSource(Object value) {
         if (!(value instanceof List)) {
+            if (value instanceof String) {
+                return Lists.newArrayList(value);
+            }
             return new ArrayList<String>();
         } else {
             return value;
