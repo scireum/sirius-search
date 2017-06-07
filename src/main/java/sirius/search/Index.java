@@ -29,9 +29,11 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.elasticsearch.search.SearchHit;
 import sirius.kernel.Lifecycle;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
@@ -68,6 +70,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
@@ -97,6 +100,11 @@ public class Index {
      * Async executor category for integrity check tasks
      */
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
+
+    /**
+     * The field in which subClassCodes of Entities will be stored in ES
+     */
+    public static final String SUBCLASSCODE_FIELD = "subClassCode";
 
     /**
      * Contains the database schema as expected by the java model
@@ -201,14 +209,13 @@ public class Index {
     public static <E extends Entity> Tuple<E, Boolean> fetch(@Nullable String routing,
                                                              @Nonnull Class<E> type,
                                                              @Nullable String id,
-                                                             @Nonnull
-                                                             com.google.common.cache.Cache<String, Object> cache) {
+                                                             @Nonnull com.google.common.cache.Cache<String, Object> cache) {
         if (Strings.isEmpty(id)) {
             return Tuple.create(null, false);
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
+        E value = (E) cache.getIfPresent(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -226,7 +233,7 @@ public class Index {
             value = find(type, id);
         }
         if (value != null) {
-            cache.put(descriptor.getType() + "-" + id, value);
+            cache.put(descriptor.getEffectiveType() + "-" + id, value);
         }
         return Tuple.create(value, false);
     }
@@ -273,7 +280,7 @@ public class Index {
         }
         EntityDescriptor descriptor = Index.getDescriptor(type);
 
-        E value = (E) globalCache.get(descriptor.getType() + "-" + id);
+        E value = (E) globalCache.get(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
@@ -290,7 +297,7 @@ public class Index {
         } else {
             value = find(type, id);
         }
-        globalCache.put(descriptor.getType() + "-" + id, value);
+        globalCache.put(descriptor.getEffectiveType() + "-" + id, value);
         return Tuple.create(value, false);
     }
 
@@ -447,7 +454,7 @@ public class Index {
                         }
                     }
                 }
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 Exceptions.handle(LOG, e);
             }
         }
@@ -537,7 +544,7 @@ public class Index {
 
         @Override
         public void started() {
-            if (Strings.isEmpty(Sirius.getConfig().getString("index.type"))) {
+            if (Strings.isEmpty(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("ElasticSearch is disabled! (index.type is not set)");
                 return;
             }
@@ -545,7 +552,7 @@ public class Index {
             Operation.cover("index", () -> "IndexLifecycle.startClient", Duration.ofSeconds(15), this::startClient);
 
             // Setup index
-            indexPrefix = Sirius.getConfig().getString("index.prefix");
+            indexPrefix = Sirius.getSettings().getString("index.prefix");
             if (!indexPrefix.endsWith("-")) {
                 indexPrefix = indexPrefix + "-";
             }
@@ -566,8 +573,8 @@ public class Index {
         }
 
         private void updateMappings() {
-            boolean updateSchema = Sirius.getConfig().getBoolean("index.updateSchema")
-                                   || "in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"));
+            boolean updateSchema = Sirius.getSettings().getConfig().getBoolean("index.updateSchema") ||
+                    "in-memory".equalsIgnoreCase(Sirius.getSettings().getString("index.type"));
 
             if (updateSchema) {
                 for (String msg : schema.createMappings()) {
@@ -577,25 +584,44 @@ public class Index {
         }
 
         private void startClient() {
-            if ("embedded".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+            if ("embedded".equalsIgnoreCase(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("Starting Embedded Elasticsearch...");
-                client = NodeBuilder.nodeBuilder().data(true).local(true).build().client();
-            } else if ("in-memory".equalsIgnoreCase(Sirius.getConfig().getString("index.type"))) {
+                Settings settings = ImmutableSettings.settingsBuilder()
+                                                     .put("node.http.enabled", false)
+                                                     .put("path.home", determineDataPath())
+                                                     .put("index.gateway.type", "none")
+                                                     .put("gateway.type", "none")
+                                                     .put("index.number_of_shards", 1)
+                                                     .put("index.number_of_replicas", 0)
+                                                     .put("script.disable_dynamic", false)
+                                                     .build();
+                client = NodeBuilder.nodeBuilder().data(true).settings(settings).local(true).node().client();
+            } else if ("in-memory".equalsIgnoreCase(Sirius.getSettings().getString("index.type"))) {
                 LOG.INFO("Starting In-Memory Elasticsearch...");
                 generateEmptyInMemoryInstance();
             } else {
                 LOG.INFO("Connecting to Elasticsearch cluster '%s' via '%s'...",
-                         Sirius.getConfig().getString("index.cluster"),
-                         Sirius.getConfig().getString("index.host"));
+                         Sirius.getSettings().getString("index.cluster"),
+                         Sirius.getSettings().getString("index.host"));
                 Settings settings = ImmutableSettings.settingsBuilder()
-                                                     .put("cluster.name", Sirius.getConfig().getString("index.cluster"))
+                                                     .put("cluster.name", Sirius.getSettings().getString("index.cluster"))
                                                      .build();
                 TransportClient transportClient = new TransportClient(settings);
-                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getConfig()
+                transportClient.addTransportAddress(new InetSocketTransportAddress(Sirius.getSettings()
                                                                                          .getString("index.host"),
-                                                                                   Sirius.getConfig()
+                                                                                   Sirius.getSettings()
                                                                                          .getInt("index.port")));
                 client = transportClient;
+            }
+        }
+
+        private String determineDataPath() {
+            if (Sirius.getSettings().getConfig().hasPath("index.path")) {
+                return Sirius.getSettings().getString("index.path");
+            } else {
+                File homeDir = new File(new File("data"), "index");
+                homeDir.mkdirs();
+                return homeDir.getAbsolutePath();
             }
         }
 
@@ -656,7 +682,7 @@ public class Index {
                 Wait.randomMillis(-500, 500);
             } catch (HandledException e) {
                 throw e;
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 throw Exceptions.handle()
                                 .withSystemErrorMessage(
                                         "An unexpected exception occurred while executing a unit of work: %s (%s)")
@@ -701,10 +727,14 @@ public class Index {
     public static boolean existsIndex(String name) {
         String index = getIndexName(name);
         try {
-            IndicesExistsResponse res =
-                    Index.getClient().admin().indices().prepareExists(index).execute().get(10, TimeUnit.SECONDS);
+            IndicesExistsResponse res = Index.getClient()
+                                             .admin()
+                                             .indices()
+                                             .prepareExists(index)
+                                             .execute()
+                                             .get(10, TimeUnit.SECONDS);
             return res.isExists();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -742,7 +772,7 @@ public class Index {
                     Index.blockThreadForUpdate();
                 }
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -770,7 +800,7 @@ public class Index {
                                 .withSystemErrorMessage("Cannot delete index: %s", getIndexName(name))
                                 .handle();
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -798,13 +828,14 @@ public class Index {
                  .setSource(desc.createMapping())
                  .execute()
                  .get(10, TimeUnit.SECONDS);
-        } catch (Throwable ex) {
-            while (ex.getCause() != null && ex.getCause() != ex) {
-                ex = ex.getCause();
+        } catch (Exception ex) {
+            Throwable cause = ex;
+            while (cause.getCause() != null && cause.getCause() != ex) {
+                cause = ex.getCause();
             }
             throw Exceptions.handle()
                             .to(LOG)
-                            .error(ex)
+                            .error(cause)
                             .withSystemErrorMessage("Cannot create mapping %s in index: %s - %s (%s)",
                                                     type.getSimpleName(),
                                                     index)
@@ -907,13 +938,16 @@ public class Index {
             entity.beforeSave();
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             descriptor.writeTo(entity, source);
+            if (descriptor.isSubClassDescriptor()) {
+                source.put(SUBCLASSCODE_FIELD, descriptor.getSubClassCode());
+            }
 
             if (LOG.isFINE()) {
                 LOG.FINE("SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
                          forceCreate,
                          performVersionCheck,
                          getIndex(entity),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          Strings.join(source));
             }
 
@@ -925,7 +959,7 @@ public class Index {
                 id = entity.computePossibleId();
             }
 
-            IndexRequestBuilder irb = getClient().prepareIndex(getIndex(entity), descriptor.getType(), id)
+            IndexRequestBuilder irb = getClient().prepareIndex(getIndex(entity), descriptor.getEffectiveType(), id)
                                                  .setCreate(forceCreate)
                                                  .setSource(source);
             if (!entity.isNew() && performVersionCheck) {
@@ -950,7 +984,7 @@ public class Index {
             }
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -967,7 +1001,7 @@ public class Index {
         if (LOG.isFINE()) {
             LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
                      getIndex(entity),
-                     descriptor.getType(),
+                     descriptor.getEffectiveType(),
                      indexResponse.getId(),
                      indexResponse.getVersion());
         }
@@ -1048,6 +1082,12 @@ public class Index {
                 return null;
             }
             if (NEW.equals(id)) {
+                if (Modifier.isAbstract(clazz.getModifiers())) {
+                    if (LOG.isFINE()) {
+                        LOG.FINE("FIND: %s: IS ABSTRACT", clazz.getName());
+                    }
+                    return null;
+                }
                 E e = clazz.newInstance();
                 e.setId(NEW);
                 return e;
@@ -1059,29 +1099,25 @@ public class Index {
             }
             EntityDescriptor descriptor = getDescriptor(clazz);
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getType(), id);
+                LOG.FINE("FIND: %s.%s: %s", index, descriptor.getEffectiveType(), id);
             }
             Watch w = Watch.start();
             try {
                 verifyRoutingForFind(routing, clazz, id, descriptor);
-                GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
+                GetResponse res = getClient().prepareGet(index, descriptor.getEffectiveType(), id)
                                              .setPreference("_primary")
                                              .setRouting(routing)
                                              .execute()
                                              .actionGet();
                 if (!res.isExists()) {
                     if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
+                        LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getEffectiveType());
                     }
                     return null;
                 } else {
-                    E entity = clazz.newInstance();
-                    entity.initSourceTracing();
-                    entity.setId(res.getId());
-                    entity.setVersion(res.getVersion());
-                    descriptor.readSource(entity, res.getSource());
+                    E entity = createEntity(clazz, res);
                     if (LOG.isFINE()) {
-                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
+                        LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getEffectiveType(), Strings.join(res.getSource()));
                     }
                     return entity;
                 }
@@ -1089,7 +1125,7 @@ public class Index {
                 queryDuration.addValue(w.elapsedMillis());
                 w.submitMicroTiming("ES", "UPDATE " + clazz.getName());
             }
-        } catch (Throwable t) {
+        } catch (Exception t) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(t)
@@ -1106,17 +1142,17 @@ public class Index {
             Exceptions.handle()
                       .to(LOG)
                       .withSystemErrorMessage(
-                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! "
-                              + "This will most probably FAIL!",
+                              "Trying to FIND an entity of type %s (with id %s) without providing a routing! " +
+                                      "This will most probably FAIL!",
                               clazz.getName(),
                               id)
                       .handle();
         } else if (!descriptor.hasRouting() && routing != null) {
             Exceptions.handle()
                       .to(LOG)
-                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing "
-                                              + "- but entity has no routing attribute (in @Indexed)! "
-                                              + "This will most probably FAIL!", clazz.getName(), id)
+                      .withSystemErrorMessage("Trying to FIND an entity of type %s (with id %s) with a routing " +
+                                                      "- but entity has no routing attribute (in @Indexed)! " +
+                                                      "This will most probably FAIL!", clazz.getName(), id)
                       .handle();
         }
     }
@@ -1305,13 +1341,14 @@ public class Index {
                 LOG.FINE("DELETE[FORCE: %b]: %s.%s: %s",
                          force,
                          getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             entity.beforeDelete();
             Watch w = Watch.start();
-            DeleteRequestBuilder drb =
-                    getClient().prepareDelete(getIndex(entity), descriptor.getType(), entity.getId());
+            DeleteRequestBuilder drb = getClient().prepareDelete(getIndex(entity),
+                                                                 descriptor.getEffectiveType(),
+                                                                 entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }
@@ -1334,7 +1371,7 @@ public class Index {
             if (LOG.isFINE()) {
                 LOG.FINE("DELETE: %s.%s: %s SUCCESS",
                          getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             traceChange(entity);
@@ -1345,7 +1382,7 @@ public class Index {
             reportClash(entity);
             optimisticLockErrors.inc();
             throw new OptimisticLockException(e, entity);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw Exceptions.handle()
                             .to(LOG)
                             .error(e)
@@ -1479,10 +1516,9 @@ public class Index {
 
         Settings settings = ImmutableSettings.settingsBuilder()
                                              .put("node.http.enabled", false)
-                                             .put("path.data", tmpDir.getAbsolutePath())
+                                             .put("path.home", tmpDir.getAbsolutePath())
                                              .put("index.gateway.type", "none")
                                              .put("gateway.type", "none")
-                                             .put("index.store.type", "memory")
                                              .put("index.number_of_shards", 1)
                                              .put("index.number_of_replicas", 0)
                                              .put("script.disable_dynamic", false)
@@ -1530,7 +1566,7 @@ public class Index {
                     entity.setId(obj.getString("_id"));
                     descriptor.readSource(entity, obj);
                     update(entity);
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     throw new IllegalArgumentException("Cannot load: " + obj, e);
                 }
             }
@@ -1538,5 +1574,75 @@ public class Index {
         } catch (IOException e) {
             throw Exceptions.handle(e);
         }
+    }
+
+    private static <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
+                                                     @Nonnull String id,
+                                                     long version,
+                                                     @Nonnull Map<String, Object> source)
+            throws IllegalAccessException, InstantiationException {
+        EntityDescriptor descriptor = getDescriptor(clazz);
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+        if (Modifier.isAbstract(clazz.getModifiers())) {
+            return handleAbstractEntity(clazz, id, version, source, descriptor);
+        }
+        if (descriptor.isSubClassDescriptor() && !Strings.areEqual(descriptor.getSubClassCode(), subClassCode)) {
+            return null;
+        }
+
+        E entity = clazz.newInstance();
+        entity.initSourceTracing();
+        entity.setId(id);
+        entity.setVersion(version);
+        descriptor.readSource(entity, source);
+        return entity;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Entity> E handleAbstractEntity(@Nonnull Class<E> clazz,
+                                                             @Nonnull String id,
+                                                             long version,
+                                                             @Nonnull Map<String, Object> source,
+                                                             EntityDescriptor descriptor) {
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+        EntityDescriptor subclassDescriptor = descriptor.getSubClassDescriptors().get(subClassCode);
+        if (subclassDescriptor == null) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .withSystemErrorMessage(
+                                    "No descriptor found for subClassCode '%s' in document of abstract type %s with ID '%s'",
+                                    subClassCode,
+                                    clazz.getName(),
+                                    id)
+                            .handle();
+        }
+        try {
+            E subEntity = (E) subclassDescriptor.getEntityType().newInstance();
+            subEntity.initSourceTracing();
+            subEntity.setId(id);
+            subEntity.setVersion(version);
+            subclassDescriptor.readSource(subEntity, source);
+            return subEntity;
+        } catch (Exception e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage(
+                                    "Failed to instantiate subclass %s of abstract parent class %s for subClassCode '%s'",
+                                    subclassDescriptor.getEntityType().getName(),
+                                    clazz.getName(),
+                                    subclassDescriptor.getSubClassCode())
+                            .handle();
+        }
+    }
+
+    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull GetResponse res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
+    }
+
+    public static <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull SearchHit res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
     }
 }
