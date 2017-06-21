@@ -50,4 +50,14 @@ public @interface Indexed {
      * @return the framework which must be enabled in order to load this entity class
      */
     String framework() default "";
+
+    /**
+     * The code is used for storing subclasses of abstract {@link sirius.search.Entity Entities}. Set this field on the
+     * subclasses of the abstract {@link sirius.search.Entity Entity}. It will be stored among the other fields and is
+     * used to re-instantiate objects of this class. To make this work, this class must have an abstract parent class
+     * with the same {@link #index()}, {@link #type()} and {@link #routing()}.
+     *
+     * @return the subclass-code of this {@link sirius.search.Entity Entity}
+     */
+    String subClassCode() default "";
 }

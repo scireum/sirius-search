@@ -21,6 +21,7 @@ import sirius.web.security.UserContext;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 /**
  * A property describes how a field is persisted into the database and loaded back.
@@ -267,5 +268,25 @@ public class Property {
      */
     public String getFieldTitle() {
         return NLS.get(field.getDeclaringClass().getSimpleName() + "." + getName());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Property property = (Property) o;
+        return Objects.equals(getField().getType(), property.getField().getType())
+               && Objects.equals(getField().getName(), property.getField().getName())
+               && nullAllowed == property.nullAllowed
+               && excludeFromSource == excludeFromSource;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getField());
     }
 }

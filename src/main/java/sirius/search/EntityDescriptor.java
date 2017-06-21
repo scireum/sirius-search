@@ -14,7 +14,9 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Tuple;
 import sirius.kernel.health.Exceptions;
+import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefField;
 import sirius.search.annotations.RefType;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +44,10 @@ public class EntityDescriptor {
     private final String indexName;
     private String typeName;
     private String routing;
-    private final Class<?> clazz;
+    private String subClassCode;
+    private Map<String, EntityDescriptor> subClassDescriptors = new HashMap<>();
+    private EntityDescriptor parentDescriptor;
+    private final Class<? extends Entity> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
     protected List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
@@ -51,7 +57,7 @@ public class EntityDescriptor {
      *
      * @param clazz the entity class to be inspected
      */
-    public EntityDescriptor(Class<?> clazz) {
+    public EntityDescriptor(Class<? extends Entity> clazz) {
         this.clazz = clazz;
         if (!clazz.isAnnotationPresent(Indexed.class)) {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
@@ -59,6 +65,7 @@ public class EntityDescriptor {
         this.indexName = clazz.getAnnotation(Indexed.class).index();
         this.typeName = clazz.getAnnotation(Indexed.class).type();
         this.routing = clazz.getAnnotation(Indexed.class).routing();
+        this.subClassCode = clazz.getAnnotation(Indexed.class).subClassCode();
         if (Strings.isEmpty(routing)) {
             routing = null;
         }
@@ -234,6 +241,15 @@ public class EntityDescriptor {
     }
 
     /**
+     * Returns the class object of this descriptor's {@link Entity}
+     *
+     * @return the class object of this descriptor's {@link Entity}
+     */
+    public Class<? extends Entity> getEntityType() {
+        return clazz;
+    }
+
+    /**
      * Returns the name of the index which is used to store the data.
      * <p>
      * Note that this is an ElasticSearch index and not to be confused with a database index. This would be more or
@@ -257,12 +273,93 @@ public class EntityDescriptor {
     }
 
     /**
-     * Creates the mapping required by ElasticSearch to store entities related to this descriptor.
+     * If this descriptor has a parent descriptor, then this will return its parent's type. Otherwise this will return
+     * its own {@link #getType() type}.
      *
-     * @return a JSON structure defining the mapping of this descriptor
+     * @return the type name used to store entities related to this descriptor
+     * @see #getType()
+     */
+    public String getEffectiveType() {
+        return isSubClassDescriptor() ? getParentDescriptor().getType() : getType();
+    }
+
+    /**
+     * Returns the subclass-code of this descriptor.
+     * <p>
+     * With subclass-codes, it is possible to store different subclasses of an abstract parent class in the index. The
+     * subclass-code is herefore stored among the other fields of the subclass. When instantiating search hits, the
+     * {@link Index} class recognizes this and creates an instance of the specific subclass instead of the abstract
+     * parent class (which would fail anyway). The descriptor of the parent class stores its subclasses' descriptors in
+     * {@link #getSubClassDescriptors()}.
+     *
+     * @return this descriptors subClassCode, or an empty string if it does not have one
+     * @see #getSubClassDescriptors()
+     */
+    public String getSubClassCode() {
+        return subClassCode;
+    }
+
+    /**
+     * Returns true if this descriptor has a {@link #getSubClassCode() subClassCode} and a {@link #getParentDescriptor()
+     * parent descriptor}.
+     *
+     * @return true if this descriptor is a subclass descriptor, false otherwise
+     */
+    public boolean isSubClassDescriptor() {
+        return this.parentDescriptor != null;
+    }
+
+    /**
+     * Returns true if this descriptor relates to an abstract {@link Entity} and has child descriptors from
+     * concrete subclasses.
+     *
+     * @return true if this descriptor is a parent descriptor, false otherwise
+     */
+    public boolean isParentDescriptor() {
+        return !getSubClassDescriptors().isEmpty();
+    }
+
+    /**
+     * Returns the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}. This is only
+     * used in combination with <strong>subclass-codes</strong> and is therefore only filled if this descriptor belongs
+     * to an abstract parent class!
+     *
+     * @return the descriptors of subclasses of this descriptor's {@link #getEntityType() class object}
+     * @see #getSubClassCode()
+     */
+    public Map<String, EntityDescriptor> getSubClassDescriptors() {
+        return subClassDescriptors;
+    }
+
+    /**
+     * Returns the descriptor of the abstract parent class of this descriptor's {@link #getEntityType() class object}.
+     * This is only used in combination with <strong>subclass-codes</strong> and is therefore only filled if this
+     * descriptor belongs has a {@link #getSubClassCode() subClassCode}!
+     *
+     * @return he descriptor of the abstract parent class of this descriptor's {@link #getEntityType() class object}
+     * @see #getSubClassCode()
+     */
+    public EntityDescriptor getParentDescriptor() {
+        return parentDescriptor;
+    }
+
+    void setParentDescriptor(EntityDescriptor parentDescriptor) {
+        this.parentDescriptor = parentDescriptor;
+    }
+
+    /**
+     * Creates the mapping required by ElasticSearch to store entities related to this descriptor. If this descriptor is
+     * a {@link #isSubClassDescriptor() subClass descriptor}, <tt>null</tt> is returned.
+     *
+     * @return a JSON structure defining the mapping of this descriptor or <tt>null</tt> if this descriptor is a {@link
+     * #isSubClassDescriptor() subClass descriptor}
      * @throws IOException in case of an IO error during the JSON encoding
      */
     public XContentBuilder createMapping() throws IOException {
+        if (isSubClassDescriptor()) {
+            return null;
+        }
+
         String[] excludes = getProperties().stream()
                                            .filter(Property::isExcludeFromSource)
                                            .map(Property::getName)
@@ -278,8 +375,14 @@ public class EntityDescriptor {
             }
 
             builder.startObject("properties");
+            Map<String, Tuple<EntityDescriptor, Property>> addedProperties = new HashMap<>();
             for (Property p : getProperties()) {
                 p.createMapping(builder);
+                addedProperties.put(p.getName(), Tuple.create(this, p));
+            }
+            if (isParentDescriptor()) {
+                createSubClassFieldsMapping(builder, addedProperties);
+                createSubClassCodeMapping(builder);
             }
             builder.endObject();
 
@@ -291,6 +394,46 @@ public class EntityDescriptor {
 
             return builder.endObject().endObject();
         }
+    }
+
+    private void createSubClassFieldsMapping(XContentBuilder builder,
+                                             Map<String, Tuple<EntityDescriptor, Property>> addedProperties)
+            throws IOException {
+        for (EntityDescriptor subClassDescriptor : getSubClassDescriptors().values()) {
+            for (Property p : subClassDescriptor.getProperties()) {
+                if (!addedProperties.containsKey(p.getName())) {
+                    p.createMapping(builder);
+                    addedProperties.put(p.getName(), Tuple.create(subClassDescriptor, p));
+                } else {
+                    Tuple<EntityDescriptor, Property> existingProperty = addedProperties.get(p.getName());
+                    if (existingProperty.getFirst() != this && !p.equals(existingProperty.getSecond())) {
+                        // different subclasses must not declare properties with the same name but different types/settings
+                        throw Exceptions.createHandled()
+                                        .withSystemErrorMessage(
+                                                "Duplicate subclass-property \"%s\" (type %s) in %s, has already been declared in %s with type %s!",
+                                                p.getName(),
+                                                p.getField().getType().getSimpleName(),
+                                                subClassDescriptor.getType(),
+                                                existingProperty.getFirst().getType(),
+                                                existingProperty.getSecond().getField().getType().getSimpleName())
+                                        .to(IndexAccess.LOG)
+                                        .handle();
+                    }
+                }
+            }
+        }
+    }
+
+    private void createSubClassCodeMapping(XContentBuilder builder) throws IOException {
+        builder.startObject(IndexAccess.SUBCLASSCODE_FIELD);
+        builder.field("type", "string");
+        builder.field("store", "no");
+        builder.field("index", IndexMode.MODE_NOT_ANALYZED);
+        builder.startObject("norms");
+        builder.field("enabled", IndexMode.NORMS_DISABLED);
+        builder.endObject();
+        builder.field("include_in_all", true);
+        builder.endObject();
     }
 
     /**
@@ -347,5 +490,24 @@ public class EntityDescriptor {
      */
     public boolean hasForeignKeys() {
         return !foreignKeys.isEmpty();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        EntityDescriptor that = (EntityDescriptor) o;
+        return Objects.equal(indexName, that.indexName) && Objects.equal(typeName, that.typeName) && Objects.equal(
+                routing,
+                that.routing);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(indexName, typeName, routing);
     }
 }

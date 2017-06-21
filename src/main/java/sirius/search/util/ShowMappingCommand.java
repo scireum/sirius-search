@@ -47,7 +47,7 @@ public class ShowMappingCommand implements Command {
                                                .admin()
                                                .indices()
                                                .prepareGetMappings(index.getIndexName(ed.getIndex()))
-                                               .setTypes(ed.getType())
+                                               .setTypes(ed.getEffectiveType())
                                                .execute()
                                                .actionGet();
                 try {

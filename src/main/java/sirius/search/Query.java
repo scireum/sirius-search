@@ -129,6 +129,10 @@ public class Query<E extends Entity> {
      */
     protected Query(Class<E> clazz) {
         this.clazz = clazz;
+
+        if (indexAccess.getDescriptor(clazz).isSubClassDescriptor()) {
+            eq(IndexAccess.SUBCLASSCODE_FIELD, indexAccess.getDescriptor(clazz).getSubClassCode());
+        }
     }
 
     /**
@@ -793,7 +797,7 @@ public class Query<E extends Entity> {
             if (IndexAccess.LOG.isFINE()) {
                 IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: %s",
                                      indexAccess.getIndex(clazz),
-                                     indexAccess.getDescriptor(clazz).getType(),
+                                     indexAccess.getDescriptor(clazz).getEffectiveType(),
                                      buildQuery());
             }
             return transformFirst(srb);
@@ -818,7 +822,7 @@ public class Query<E extends Entity> {
                                               .prepareSearch(index != null ?
                                                              index :
                                                              indexAccess.getIndexName(ed.getIndex()))
-                                              .setTypes(ed.getType());
+                                              .setTypes(ed.getEffectiveType());
         srb.setVersion(true);
         if (primary) {
             srb.setPreference("_primary");
@@ -955,7 +959,7 @@ public class Query<E extends Entity> {
             if (IndexAccess.LOG.isFINE()) {
                 IndexAccess.LOG.FINE("SEARCH: %s.%s: %s",
                                      indexAccess.getIndex(clazz),
-                                     indexAccess.getDescriptor(clazz).getType(),
+                                     indexAccess.getDescriptor(clazz).getEffectiveType(),
                                      buildQuery());
             }
             ResultList<E> resultList = transform(srb);
@@ -992,7 +996,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH: %s.%s: %s",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  buildQuery());
         }
 
@@ -1002,7 +1006,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  response.getHits().totalHits(),
                                  response.getTookInMillis());
         }
@@ -1066,7 +1070,7 @@ public class Query<E extends Entity> {
             EntityDescriptor ed = indexAccess.getDescriptor(clazz);
             SearchRequestBuilder crb = indexAccess.getClient()
                                                   .prepareSearch(index != null ? index : indexAccess.getIndex(clazz))
-                                                  .setTypes(ed.getType());
+                                                  .setTypes(ed.getEffectiveType());
             crb.setSize(0);
             applyRouting(ed, crb::setRouting);
             QueryBuilder qb = buildQuery();
@@ -1074,7 +1078,10 @@ public class Query<E extends Entity> {
                 crb.setQuery(qb);
             }
             if (IndexAccess.LOG.isFINE()) {
-                IndexAccess.LOG.FINE("COUNT: %s.%s: %s", indexAccess.getIndex(clazz), ed.getType(), buildQuery());
+                IndexAccess.LOG.FINE("COUNT: %s.%s: %s",
+                                     indexAccess.getIndex(clazz),
+                                     ed.getEffectiveType(),
+                                     buildQuery());
             }
             return transformCount(crb);
         } catch (Exception t) {
@@ -1149,19 +1156,14 @@ public class Query<E extends Entity> {
         Watch w = Watch.start();
         SearchResponse searchResponse = builder.execute().actionGet();
         ResultList<E> result = new ResultList<>(termFacets, searchResponse);
-        EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
         for (SearchHit hit : searchResponse.getHits()) {
-            E entity = clazz.newInstance();
-            entity.initSourceTracing();
-            entity.setId(hit.getId());
-            entity.setVersion(hit.getVersion());
-            descriptor.readSource(entity, hit.getSource());
+            E entity = indexAccess.createEntity(clazz, hit);
             result.getResults().add(entity);
         }
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  searchResponse.getHits().totalHits(),
                                  searchResponse.getTookInMillis());
         }
@@ -1184,16 +1186,12 @@ public class Query<E extends Entity> {
         E result = null;
         if (searchResponse.getHits().hits().length > 0) {
             SearchHit hit = searchResponse.getHits().hits()[0];
-            result = clazz.newInstance();
-            result.initSourceTracing();
-            result.setId(hit.getId());
-            result.setVersion(hit.getVersion());
-            indexAccess.getDescriptor(clazz).readSource(result, hit.getSource());
+            result = indexAccess.createEntity(clazz, hit);
         }
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  searchResponse.getHits().totalHits(),
                                  searchResponse.getTookInMillis());
         }
@@ -1215,7 +1213,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("COUNT: %s.%s: SUCCESS: %d",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  res.getHits().getTotalHits());
         }
         if (Microtiming.isEnabled()) {
@@ -1333,11 +1331,7 @@ public class Query<E extends Entity> {
                                Limit lim,
                                SearchHit hit) {
         try {
-            E entity = clazz.newInstance();
-            entity.setId(hit.getId());
-            entity.initSourceTracing();
-            entity.setVersion(hit.getVersion());
-            entityDescriptor.readSource(entity, hit.getSource());
+            E entity = indexAccess.createEntity(clazz, hit);
 
             if (lim.nextRow()) {
                 if (!handler.handleRow(entity)) {
@@ -1397,7 +1391,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH-SCROLL: %s.%s: SUCCESS: %d/%d - %d ms",
                                  indexAccess.getIndex(clazz),
-                                 entityDescriptor.getType(),
+                                 entityDescriptor.getEffectiveType(),
                                  searchResponse.getHits().hits().length,
                                  searchResponse.getHits().totalHits(),
                                  searchResponse.getTookInMillis());
@@ -1423,7 +1417,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("ITERATE: %s.%s: %s",
                                  indexAccess.getIndex(clazz),
-                                 entityDescriptor.getType(),
+                                 entityDescriptor.getEffectiveType(),
                                  buildQuery());
         }
 
@@ -1495,7 +1489,7 @@ public class Query<E extends Entity> {
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("PAGED-SEARCH: %s.%s: %s",
                                  indexAccess.getIndex(clazz),
-                                 indexAccess.getDescriptor(clazz).getType(),
+                                 indexAccess.getDescriptor(clazz).getEffectiveType(),
                                  buildQuery());
         }
 

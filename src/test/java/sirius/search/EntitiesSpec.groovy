@@ -133,6 +133,72 @@ class EntitiesSpec extends BaseSpecification {
         index.refreshIfPossible(child).getParentName() == "Test1"
     }
 
+    def "abstract parent entity works"() {
+        given:
+        def routingEntity = new ParentEntity()
+        index.create(routingEntity)
+        def entity = new ConcreteChildEntity()
+        entity.getRouting().setValue(routingEntity)
+        entity.setName("Test")
+        entity.setSubname("Sub-Test")
+        def anotherEntity = new AnotherConcreteChildEntity()
+        anotherEntity.getRouting().setValue(routingEntity)
+        anotherEntity.setName("Another Test")
+        index.create(entity)
+        index.create(anotherEntity)
+        index.blockThreadForUpdate()
+        when:
+        def refreshedEntity = index.refreshOrFail(entity)
+        def foundEntity = index.find(routingEntity.getId(), AbstractParentEntity.class, entity.getId())
+        def foundChildEntity = index.find(routingEntity.getId(), ConcreteChildEntity.class, entity.getId())
+        def notFoundChildEntity = index.find(routingEntity.getId(), AnotherConcreteChildEntity.class, entity.getId())
+        then:
+        refreshedEntity.getName() == "Test"
+        refreshedEntity.getSubname() == "Sub-Test"
+        foundEntity != null
+        foundEntity.getName() == "Test"
+        foundEntity instanceof ConcreteChildEntity
+        foundEntity.getSubname() == "Sub-Test"
+        foundChildEntity != null
+        foundChildEntity.getName() == "Test"
+        foundChildEntity instanceof ConcreteChildEntity
+        foundChildEntity.getSubname() == "Sub-Test"
+        notFoundChildEntity == null
+
+        when:
+        def selectedEntities = index.select(AbstractParentEntity.class).routing(routingEntity.getId()).queryList()
+        def selectedConreteChildEntities = index.select(ConcreteChildEntity.class).routing(routingEntity.getId()).eq("subClassCode", "concrete").queryList()
+        then:
+        selectedEntities.size() == 2
+        selectedEntities.any { selectedEntity -> selectedEntity.getName() == "Test" }
+        selectedEntities.any { selectedEntity -> selectedEntity.getName() == "Another Test" }
+        selectedEntities.any { selectedEntity -> selectedEntity instanceof ConcreteChildEntity }
+        selectedEntities.any { selectedEntity -> selectedEntity instanceof AnotherConcreteChildEntity }
+        selectedConreteChildEntities.size() == 1
+        selectedConreteChildEntities[0].getName() == "Test"
+        selectedConreteChildEntities[0] instanceof ConcreteChildEntity
+
+        when:
+        index.delete(refreshedEntity)
+        index.blockThreadForUpdate()
+        def deletedEntity = index.select(ConcreteChildEntity.class).routing(routingEntity.getId()).queryFirst()
+        then:
+        deletedEntity == null
+        index.refreshOrNull(anotherEntity) != null
+    }
+
+    def "abstract parent entity works in loadDataset"() {
+        when:
+        index.loadDataset("/datasets/entities.json")
+        index.blockThreadForUpdate()
+        def foundEntity1 = index.find("routing-id", AbstractParentEntity.class, "concrete")
+        def foundEntity2 = index.find("routing-id", ConcreteChildEntity.class, "concrete")
+        then:
+        foundEntity1 != null
+        foundEntity1 instanceof ConcreteChildEntity
+        foundEntity2 != null
+    }
+
     def "test including and excluding from _all"() {
         when:
         def stringProp = new StringPropertiesEntity()
