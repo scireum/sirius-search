@@ -9,7 +9,6 @@
 package sirius.search;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
@@ -44,7 +43,7 @@ public class EntityDescriptor {
     private final Class<?> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
-    protected List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
+    protected List<ForeignKey> remoteForeignKeys = new ArrayList<>();
 
     /**
      * Creates a new EntityDescriptor for the given entity class.
@@ -56,8 +55,12 @@ public class EntityDescriptor {
         if (!clazz.isAnnotationPresent(Indexed.class)) {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
         }
-        this.indexName =
-                Strings.firstFilled(clazz.getAnnotation(Indexed.class).index(), clazz.getSimpleName().toLowerCase());
+
+        if (clazz.getAnnotation(Indexed.class).index().isEmpty()) {
+            this.indexName = clazz.getSimpleName().toLowerCase();
+        } else {
+            this.indexName = clazz.getAnnotation(Indexed.class).index() + " - " + clazz.getSimpleName().toLowerCase();
+        }
         this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
         this.routing = clazz.getAnnotation(Indexed.class).routing();
         if (Strings.isEmpty(routing)) {
