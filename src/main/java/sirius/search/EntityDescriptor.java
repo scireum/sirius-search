@@ -56,14 +56,12 @@ public class EntityDescriptor {
         if (!clazz.isAnnotationPresent(Indexed.class)) {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
         }
-        this.indexName = clazz.getAnnotation(Indexed.class).index();
-        this.typeName = clazz.getAnnotation(Indexed.class).type();
+        this.indexName =
+                Strings.firstFilled(clazz.getAnnotation(Indexed.class).index(), clazz.getSimpleName().toLowerCase());
+        this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
         this.routing = clazz.getAnnotation(Indexed.class).routing();
         if (Strings.isEmpty(routing)) {
             routing = null;
-        }
-        if (Strings.isEmpty(typeName)) {
-            typeName = clazz.getSimpleName();
         }
     }
 
