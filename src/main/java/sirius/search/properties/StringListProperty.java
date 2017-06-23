@@ -55,6 +55,9 @@ public class StringListProperty extends StringProperty {
     @Override
     protected Object transformFromSource(Object value) {
         if (!(value instanceof List)) {
+            if (value instanceof String) {
+                return Lists.newArrayList(value);
+            }
             return new ArrayList<String>();
         } else {
             return value;
