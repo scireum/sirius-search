@@ -35,8 +35,8 @@ public class StringListProperty extends StringProperty {
         @Override
         public boolean accepts(Field field) {
             return List.class.equals(field.getType())
-                    && field.isAnnotationPresent(ListType.class)
-                    && String.class.equals(field.getAnnotation(ListType.class).value());
+                   && field.isAnnotationPresent(ListType.class)
+                   && String.class.equals(field.getAnnotation(ListType.class).value());
         }
 
         @Override
