@@ -59,7 +59,7 @@ public class EntityDescriptor {
         if (clazz.getAnnotation(Indexed.class).index().isEmpty()) {
             this.indexName = clazz.getSimpleName().toLowerCase();
         } else {
-            this.indexName = clazz.getAnnotation(Indexed.class).index() + " - " + clazz.getSimpleName().toLowerCase();
+            this.indexName = clazz.getAnnotation(Indexed.class).index() + "-" + clazz.getSimpleName().toLowerCase();
         }
         this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
         this.routing = clazz.getAnnotation(Indexed.class).routing();
