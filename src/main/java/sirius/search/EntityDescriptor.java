@@ -38,6 +38,7 @@ import java.util.Map;
 public class EntityDescriptor {
 
     private final String indexName;
+    private final String annotatedIndexName;
     private String typeName;
     private String routing;
     private final Class<?> clazz;
@@ -56,10 +57,11 @@ public class EntityDescriptor {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
         }
 
-        if (clazz.getAnnotation(Indexed.class).index().isEmpty()) {
+        this.annotatedIndexName = clazz.getAnnotation(Indexed.class).index();
+        if (annotatedIndexName.isEmpty()) {
             this.indexName = clazz.getSimpleName().toLowerCase();
         } else {
-            this.indexName = clazz.getAnnotation(Indexed.class).index() + "-" + clazz.getSimpleName().toLowerCase();
+            this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
         }
         this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
         this.routing = clazz.getAnnotation(Indexed.class).routing();
@@ -244,6 +246,15 @@ public class EntityDescriptor {
      */
     public String getIndex() {
         return indexName;
+    }
+
+    /**
+     * Returns the name of the index field that was given in the {@link Indexed annotation}.
+     *
+     * @return the name of the index field that was given in the {@link Indexed annotation}.
+     */
+    public String getAnnotatedIndex() {
+        return annotatedIndexName;
     }
 
     /**
