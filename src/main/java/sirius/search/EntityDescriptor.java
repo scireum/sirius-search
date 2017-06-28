@@ -9,7 +9,6 @@
 package sirius.search;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.commons.Reflection;
@@ -39,12 +38,13 @@ import java.util.Map;
 public class EntityDescriptor {
 
     private final String indexName;
+    private final String annotatedIndexName;
     private String typeName;
     private String routing;
     private final Class<?> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
-    protected List<ForeignKey> remoteForeignKeys = Lists.newArrayList();
+    protected List<ForeignKey> remoteForeignKeys = new ArrayList<>();
 
     /**
      * Creates a new EntityDescriptor for the given entity class.
@@ -56,14 +56,17 @@ public class EntityDescriptor {
         if (!clazz.isAnnotationPresent(Indexed.class)) {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
         }
-        this.indexName = clazz.getAnnotation(Indexed.class).index();
-        this.typeName = clazz.getAnnotation(Indexed.class).type();
+
+        this.annotatedIndexName = clazz.getAnnotation(Indexed.class).index();
+        if (annotatedIndexName.isEmpty()) {
+            this.indexName = clazz.getSimpleName().toLowerCase();
+        } else {
+            this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
+        }
+        this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
         this.routing = clazz.getAnnotation(Indexed.class).routing();
         if (Strings.isEmpty(routing)) {
             routing = null;
-        }
-        if (Strings.isEmpty(typeName)) {
-            typeName = clazz.getSimpleName();
         }
     }
 
@@ -243,6 +246,15 @@ public class EntityDescriptor {
      */
     public String getIndex() {
         return indexName;
+    }
+
+    /**
+     * Returns the name of the index field that was given in the {@link Indexed annotation}.
+     *
+     * @return the name of the index field that was given in the {@link Indexed annotation}.
+     */
+    public String getAnnotatedIndex() {
+        return annotatedIndexName;
     }
 
     /**
