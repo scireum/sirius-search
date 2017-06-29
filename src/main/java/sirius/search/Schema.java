@@ -311,27 +311,26 @@ public class Schema {
 
     private XContentBuilder createIndexSettings(EntityDescriptor ed) throws IOException {
         try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
+
             builder.startObject().startObject("index");
-            builder.field("number_of_shards",
-                          Sirius.getSettings()
-                                .getConfig()
-                                .getInt(Sirius.getSettings()
-                                              .getConfig()
-                                              .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
-                                                       + ed.getIndex()
-                                                       + ".numberOfShards") ?
-                                        CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfShards" :
-                                        "index.settings.default.numberOfShards"));
-            builder.field("number_of_replicas",
-                          Sirius.getSettings()
-                                .getConfig()
-                                .getInt(Sirius.getSettings()
-                                              .getConfig()
-                                              .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
-                                                       + ed.getIndex()
-                                                       + ".numberOfReplicas") ?
-                                        CONFIG_PREFIX_INDEX_SETTINGS + ed.getIndex() + ".numberOfReplicas" :
-                                        "index.settings.default.numberOfReplicas"));
+            String numberOfShardsKey = "index.settings.default.numberOfShards";
+            if (!ed.getAnnotatedIndex().isEmpty() && Sirius.getSettings()
+                                                           .getConfig()
+                                                           .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
+                                                                    + ed.getAnnotatedIndex()
+                                                                    + ".numberOfShards")) {
+                numberOfShardsKey = CONFIG_PREFIX_INDEX_SETTINGS + ed.getAnnotatedIndex() + ".numberOfShards";
+            }
+            String numberOfReplicasKey = "index.settings.default.numberOfReplicas";
+            if (!ed.getAnnotatedIndex().isEmpty() && Sirius.getSettings()
+                                                           .getConfig()
+                                                           .hasPath(CONFIG_PREFIX_INDEX_SETTINGS
+                                                                    + ed.getAnnotatedIndex()
+                                                                    + ".numberOfReplicas")) {
+                numberOfReplicasKey = CONFIG_PREFIX_INDEX_SETTINGS + ed.getAnnotatedIndex() + ".numberOfReplicas";
+            }
+            builder.field("number_of_shards", Sirius.getSettings().getConfig().getInt(numberOfShardsKey));
+            builder.field("number_of_replicas", Sirius.getSettings().getConfig().getInt(numberOfReplicasKey));
 
             builder.startObject("analysis");
             buildCustomAnalyzers(builder);
