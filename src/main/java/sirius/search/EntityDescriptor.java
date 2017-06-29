@@ -444,7 +444,7 @@ public class EntityDescriptor {
         builder.startObject("norms");
         builder.field("enabled", IndexMode.NORMS_DISABLED);
         builder.endObject();
-        builder.field("include_in_all", true);
+        builder.field("include_in_all", false);
         builder.endObject();
     }
 
