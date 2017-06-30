@@ -231,6 +231,9 @@ public class IndexAccess {
         try {
             String type = obj.getString("_type");
             Class<? extends Entity> entityClass = getType(type);
+            if (entityClass == null) {
+                throw new IllegalArgumentException("No Entity found with type \"" + type + "\"");
+            }
             EntityDescriptor descriptor = getDescriptor(entityClass);
             Entity entity = entityClass.newInstance();
             entity.setId(obj.getString("_id"));
