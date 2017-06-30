@@ -97,7 +97,7 @@ public class Schema {
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
 
-            if (result.isSubClassDescriptor() && !findAbstractParentClass(entityType, result)) {
+            if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
                 IndexAccess.LOG.WARN(
                         "LOAD: Class %s has subClassCode but there is no abstract parent class with the same index name, type name and routing!",
                         entityType.getName());
@@ -126,7 +126,7 @@ public class Schema {
                         descriptorTable.getOrDefault(parentEntityType, new EntityDescriptor(parentEntityType));
 
                 // index name, type name and routing must be equal
-                if (Strings.areEqual(parentDescriptor.getIndex(), subClassDescriptor.getIndex()) && Strings.areEqual(
+                if (Strings.areEqual(parentDescriptor.getAnnotatedIndex(), subClassDescriptor.getAnnotatedIndex()) && Strings.areEqual(
                         parentDescriptor.getRouting(),
                         subClassDescriptor.getRouting())) {
                     addAbstractParentClass(subClass, subClassDescriptor, parentEntityType, parentDescriptor);

@@ -261,7 +261,11 @@ public class EntityDescriptor {
      * @return the name of the ES index used to store entities
      */
     public String getIndex() {
-        return indexName;
+        if (isSubClassDescriptor()) {
+            return getParentDescriptor().getIndex();
+        } else {
+            return indexName;
+        }
     }
 
     /**

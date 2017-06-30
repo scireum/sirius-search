@@ -1,11 +1,11 @@
 [
   {
     "_id": "concrete",
-    "_type": "test-ConcreteChildEntity",
+    "_type": "test-concretechildentity-ConcreteChildEntity",
     "routing": "routing-id"
   },
   {
     "_id": "routing-id",
-    "_type": "test-ParentEntity"
+    "_type": "test-parententity-ParentEntity"
   }
 ]
