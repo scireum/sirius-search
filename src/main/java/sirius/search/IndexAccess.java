@@ -235,7 +235,7 @@ public class IndexAccess {
             Entity entity = entityClass.newInstance();
             entity.setId(obj.getString("_id"));
             descriptor.readSource(entity, obj);
-            update(entity);
+            create(entity);
         } catch (Exception e) {
             throw new IllegalArgumentException("Cannot load: " + obj, e);
         }
