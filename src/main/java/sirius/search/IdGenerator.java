@@ -49,7 +49,7 @@ public class IdGenerator {
                                 seq = new Sequence();
                                 seq.setId(sequence);
                                 seq.setNext(1);
-                                seq = index.tryUpdate(seq);
+                                seq = index.create(seq);
                             }
                             int result = seq.getNext();
                             seq.setNext(result + 1);
