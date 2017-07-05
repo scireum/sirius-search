@@ -1,5 +1,5 @@
 @args org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse clusterHealth, org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse clusterStats
-@extends(view.wondergem.template.html, title: ("Cluster/Node/Index State"))
+@extends(view.wondergem.template.html, title: ("Elasticsearch State"))
 
 @section(head) {
     <style>
@@ -19,7 +19,7 @@
 }
 
 @section(breadcrumbs) {
-    <li><a href="@prefix/system/index">Cluster State</a></li>
+    <li><a href="@prefix/system/index">Elasticsearch State</a></li>
 }
 
 @{ String clusterStateTmp = "";
@@ -29,7 +29,8 @@
 @pageHeader() {
     <span class="@clusterState">Index State</span> <small>@clusterHealth.getClusterName()</small>
     <div class="pull-right">
-        <a class="btn btn-default" href="@prefix/system/index"><i class="fa fa-refresh"></i></a>
+        <a class="btn btn-default" href="/assets/es-head/index.html">HEAD</a>
+        <a class="btn btn-default" href="/system/index"><i class="fa fa-refresh"></i></a>
     </div>
     <div class="clearfix"></div>
 }
