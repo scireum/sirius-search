@@ -20,11 +20,13 @@ import sirius.kernel.di.PartCollection;
 import sirius.kernel.di.std.Parts;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.HandledException;
+import sirius.search.annotations.Indexed;
 import sirius.search.properties.PropertyFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -84,6 +86,9 @@ public class Schema {
 
     /*
      * Adds a known entity class
+     *
+     * @param entityType class to add
+     * @param <E>        type of the class to add
      */
     private <E extends Entity> void addKnownClass(Class<E> entityType) {
         EntityDescriptor result = descriptorTable.get(entityType);
@@ -91,10 +96,80 @@ public class Schema {
             result = new EntityDescriptor(entityType);
             descriptorTable.put(entityType, result);
             nameTable.put(result.getIndex() + "-" + result.getType(), entityType);
+
+            if (Strings.isFilled(result.getSubClassCode()) && !findAbstractParentClass(entityType, result)) {
+                IndexAccess.LOG.WARN(
+                        "LOAD: Class %s has subClassCode but there is no abstract parent class with the same index name, type name and routing!",
+                        entityType.getName());
+            }
         }
     }
 
-    /*
+    /**
+     * Searches for the first abstract parent class in the class hierarchy with the same {@link Indexed} annotation and
+     * creates a {@link EntityDescriptor} for it.
+     *
+     * @param subClass           the subclass
+     * @param subClassDescriptor descriptor of the subclass
+     * @param <E>                type of the subclass
+     * @return whether a matching parent class could be found
+     */
+    @SuppressWarnings("unchecked")
+    private <E extends Entity> boolean findAbstractParentClass(Class<E> subClass, EntityDescriptor subClassDescriptor) {
+        // iterate recursively over all parent classes until the Entity class
+        for (Class<? extends Entity> parentEntityType = (Class<? extends Entity>) subClass.getSuperclass();
+             parentEntityType != null && Entity.class.isAssignableFrom(parentEntityType);
+             parentEntityType = (Class<? extends Entity>) parentEntityType.getSuperclass()) {
+            if (Modifier.isAbstract(parentEntityType.getModifiers())
+                && parentEntityType.isAnnotationPresent(Indexed.class)) {
+                EntityDescriptor parentDescriptor =
+                        descriptorTable.getOrDefault(parentEntityType, new EntityDescriptor(parentEntityType));
+
+                // index name, type name and routing must be equal
+                if (Strings.areEqual(parentDescriptor.getAnnotatedIndex(), subClassDescriptor.getAnnotatedIndex()) && Strings.areEqual(
+                        parentDescriptor.getRouting(),
+                        subClassDescriptor.getRouting())) {
+                    addAbstractParentClass(subClass, subClassDescriptor, parentEntityType, parentDescriptor);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Links the <tt>subClassDescriptor</tt> to the <tt>parentClassDescriptor</tt> and stores the latter for later use.
+     *
+     * @param subClass              type of the subclass
+     * @param subClassDescriptor    descriptor of the subclass
+     * @param parentClass           type of the parent class
+     * @param parentClassDescriptor descriptor of the parent class
+     */
+    private void addAbstractParentClass(Class<? extends Entity> subClass,
+                                        EntityDescriptor subClassDescriptor,
+                                        Class<? extends Entity> parentClass,
+                                        EntityDescriptor parentClassDescriptor) {
+        if (parentClassDescriptor.getSubClassDescriptors().containsKey(subClassDescriptor.getSubClassCode())) {
+            IndexAccess.LOG.WARN(
+                    "LOAD: Classes %s and %s have the same parent class %s and the same subclass-code \"%s\"!",
+                    subClass.getName(),
+                    parentClassDescriptor.getSubClassDescriptors()
+                                         .get(subClassDescriptor.getSubClassCode())
+                                         .getEntityType()
+                                         .getName(),
+                    parentClass,
+                    subClassDescriptor.getSubClassCode());
+        } else {
+            parentClassDescriptor.getSubClassDescriptors()
+                                 .put(subClassDescriptor.getSubClassCode(), subClassDescriptor);
+            subClassDescriptor.setParentDescriptor(parentClassDescriptor);
+            descriptorTable.put(parentClass, parentClassDescriptor);
+            nameTable.put(parentClassDescriptor.getIndex() + "-" + parentClassDescriptor.getType(), parentClass);
+        }
+    }
+
+    /**
      * Links the schema and builds up foreign keys, etc.
      */
     private void linkSchema() {
@@ -188,6 +263,10 @@ public class Schema {
 
         for (Map.Entry<Class<? extends Entity>, EntityDescriptor> e : descriptorTable.entrySet()) {
             try {
+                if (e.getValue().isSubClassDescriptor()) {
+                    continue;
+                }
+
                 if (IndexAccess.LOG.isFINE()) {
                     IndexAccess.LOG.FINE("MAPPING OF %s : %s",
                                          e.getValue().getType(),

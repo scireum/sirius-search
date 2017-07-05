@@ -29,6 +29,7 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import sirius.kernel.Sirius;
 import sirius.kernel.async.Barrier;
@@ -63,6 +64,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Modifier;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
@@ -91,6 +93,11 @@ public class IndexAccess {
      * Contains the name of the ID field
      */
     public static final String ID_FIELD = "_id";
+
+    /**
+     * The field in which subClassCodes of Entities will be stored in ES
+     */
+    public static final String SUBCLASSCODE_FIELD = "subClassCode";
 
     /**
      * Async executor category for integrity check tasks
@@ -351,7 +358,7 @@ public class IndexAccess {
             getClient().admin()
                        .indices()
                        .preparePutMapping(index)
-                       .setType(desc.getType())
+                       .setType(desc.getEffectiveType())
                        .setSource(desc.createMapping())
                        .execute()
                        .get(10, TimeUnit.SECONDS);
@@ -517,13 +524,13 @@ public class IndexAccess {
         }
         EntityDescriptor descriptor = getDescriptor(type);
 
-        E value = (E) cache.getIfPresent(descriptor.getType() + "-" + id);
+        E value = (E) cache.getIfPresent(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
         value = fetchFromIndex(routing, type, id, descriptor);
         if (value != null) {
-            cache.put(descriptor.getType() + "-" + id, value);
+            cache.put(descriptor.getEffectiveType() + "-" + id, value);
         }
         return Tuple.create(value, false);
     }
@@ -591,13 +598,13 @@ public class IndexAccess {
         }
         EntityDescriptor descriptor = getDescriptor(type);
 
-        E value = (E) globalCache.get(descriptor.getType() + "-" + id);
+        E value = (E) globalCache.get(descriptor.getEffectiveType() + "-" + id);
         if (value != null) {
             return Tuple.create(value, true);
         }
         value = fetchFromIndex(routing, type, id, descriptor);
 
-        globalCache.put(descriptor.getType() + "-" + id, value);
+        globalCache.put(descriptor.getEffectiveType() + "-" + id, value);
         return Tuple.create(value, false);
     }
 
@@ -949,13 +956,16 @@ public class IndexAccess {
             entity.beforeSave();
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             descriptor.writeTo(entity, source);
+            if (descriptor.isSubClassDescriptor()) {
+                source.put(SUBCLASSCODE_FIELD, descriptor.getSubClassCode());
+            }
 
             if (LOG.isFINE()) {
                 LOG.FINE("SAVE[CREATE: %b, LOCK: %b]: %s.%s: %s",
                          forceCreate,
                          performVersionCheck,
                          schema.getIndex(entity),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          Strings.join(source));
             }
 
@@ -967,9 +977,10 @@ public class IndexAccess {
                 id = entity.computePossibleId();
             }
 
-            IndexRequestBuilder irb = getClient().prepareIndex(schema.getIndex(entity), descriptor.getType(), id)
-                                                 .setCreate(forceCreate)
-                                                 .setSource(source);
+            IndexRequestBuilder irb =
+                    getClient().prepareIndex(schema.getIndex(entity), descriptor.getEffectiveType(), id)
+                               .setCreate(forceCreate)
+                               .setSource(source);
             if (!entity.isNew() && performVersionCheck) {
                 irb.setVersion(entity.getVersion());
             }
@@ -1021,7 +1032,7 @@ public class IndexAccess {
                              forceCreate,
                              performVersionCheck,
                              schema.getIndex(entity),
-                             descriptor.getType(),
+                             descriptor.getEffectiveType(),
                              Strings.join(source));
                 }
 
@@ -1033,9 +1044,10 @@ public class IndexAccess {
                     id = entity.computePossibleId();
                 }
 
-                IndexRequestBuilder irb = getClient().prepareIndex(schema.getIndex(entity), descriptor.getType(), id)
-                                                     .setCreate(forceCreate)
-                                                     .setSource(source);
+                IndexRequestBuilder irb =
+                        getClient().prepareIndex(schema.getIndex(entity), descriptor.getEffectiveType(), id)
+                                   .setCreate(forceCreate)
+                                   .setSource(source);
                 if (!entity.isNew() && performVersionCheck) {
                     irb.setVersion(entity.getVersion());
                 }
@@ -1074,7 +1086,7 @@ public class IndexAccess {
         if (LOG.isFINE()) {
             LOG.FINE("SAVE: %s.%s: %s (%d) SUCCEEDED",
                      schema.getIndex(entity),
-                     descriptor.getType(),
+                     descriptor.getEffectiveType(),
                      indexResponse.getId(),
                      indexResponse.getVersion());
         }
@@ -1160,6 +1172,10 @@ public class IndexAccess {
                 return null;
             }
             if (NEW.equals(id)) {
+                if (Modifier.isAbstract(clazz.getModifiers())) {
+                    LOG.WARN("FIND: Cannot create new instance of abstract type %s", clazz.getName());
+                    return null;
+                }
                 E e = clazz.newInstance();
                 e.setId(NEW);
                 return e;
@@ -1173,7 +1189,7 @@ public class IndexAccess {
             }
             EntityDescriptor descriptor = getDescriptor(clazz);
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: %s", indexName, descriptor.getType(), id);
+                LOG.FINE("FIND: %s.%s: %s", indexName, descriptor.getEffectiveType(), id);
             }
             Watch w = Watch.start();
             try {
@@ -1197,24 +1213,20 @@ public class IndexAccess {
                                              @Nonnull Class<E> clazz,
                                              String id,
                                              EntityDescriptor descriptor) throws Exception {
-        GetResponse res = getClient().prepareGet(index, descriptor.getType(), id)
+        GetResponse res = getClient().prepareGet(index, descriptor.getEffectiveType(), id)
                                      .setPreference("_primary")
                                      .setRouting(routing)
                                      .execute()
                                      .actionGet();
         if (!res.isExists()) {
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getType());
+                LOG.FINE("FIND: %s.%s: NOT FOUND", index, descriptor.getEffectiveType());
             }
             return null;
         } else {
-            E entity = clazz.newInstance();
-            entity.initSourceTracing();
-            entity.setId(res.getId());
-            entity.setVersion(res.getVersion());
-            descriptor.readSource(entity, res.getSource());
+            E entity = createEntity(clazz, res);
             if (LOG.isFINE()) {
-                LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getType(), Strings.join(res.getSource()));
+                LOG.FINE("FIND: %s.%s: FOUND: %s", index, descriptor.getEffectiveType(), Strings.join(res.getSource()));
             }
             return entity;
         }
@@ -1388,13 +1400,13 @@ public class IndexAccess {
                 LOG.FINE("DELETE[FORCE: %b]: %s.%s: %s",
                          force,
                          schema.getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             entity.beforeDelete();
             Watch w = Watch.start();
             DeleteRequestBuilder drb =
-                    getClient().prepareDelete(schema.getIndex(entity), descriptor.getType(), entity.getId());
+                    getClient().prepareDelete(schema.getIndex(entity), descriptor.getEffectiveType(), entity.getId());
             if (!force) {
                 drb.setVersion(entity.getVersion());
             }
@@ -1409,7 +1421,7 @@ public class IndexAccess {
             if (LOG.isFINE()) {
                 LOG.FINE("DELETE: %s.%s: %s SUCCESS",
                          schema.getIndex(entity.getClass()),
-                         descriptor.getType(),
+                         descriptor.getEffectiveType(),
                          entity.getId());
             }
             traceChange(entity);
@@ -1496,5 +1508,77 @@ public class IndexAccess {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    private <E extends Entity> E createEntity(@Nonnull Class<E> clazz,
+                                              @Nonnull String id,
+                                              long version,
+                                              @Nonnull Map<String, Object> source)
+            throws IllegalAccessException, InstantiationException {
+        EntityDescriptor descriptor = getDescriptor(clazz);
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+        if (Modifier.isAbstract(clazz.getModifiers())) {
+            // searching for abstract parent class: create instance of correct subclass
+            return handleAbstractEntity(clazz, id, version, source, descriptor);
+        }
+        if (descriptor.isSubClassDescriptor() && !Strings.areEqual(descriptor.getSubClassCode(), subClassCode)) {
+            // searching for subclass, but the result belongs to another subclass
+            return null;
+        }
+
+        E entity = clazz.newInstance();
+        entity.initSourceTracing();
+        entity.setId(id);
+        entity.setVersion(version);
+        descriptor.readSource(entity, source);
+        return entity;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <E extends Entity> E handleAbstractEntity(@Nonnull Class<E> clazz,
+                                                      @Nonnull String id,
+                                                      long version,
+                                                      @Nonnull Map<String, Object> source,
+                                                      EntityDescriptor descriptor) {
+        String subClassCode = (String) source.get(SUBCLASSCODE_FIELD);
+        EntityDescriptor subclassDescriptor = descriptor.getSubClassDescriptors().get(subClassCode);
+        if (subclassDescriptor == null) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .withSystemErrorMessage(
+                                    "No descriptor found for subClassCode '%s' in document of abstract type %s with ID '%s'",
+                                    subClassCode,
+                                    clazz.getName(),
+                                    id)
+                            .handle();
+        }
+        try {
+            E subEntity = (E) subclassDescriptor.getEntityType().newInstance();
+            subEntity.initSourceTracing();
+            subEntity.setId(id);
+            subEntity.setVersion(version);
+            subclassDescriptor.readSource(subEntity, source);
+            return subEntity;
+        } catch (Exception e) {
+            throw Exceptions.handle()
+                            .to(LOG)
+                            .error(e)
+                            .withSystemErrorMessage(
+                                    "Failed to instantiate subclass %s of abstract parent class %s for subClassCode '%s'",
+                                    subclassDescriptor.getEntityType().getName(),
+                                    clazz.getName(),
+                                    subclassDescriptor.getSubClassCode())
+                            .handle();
+        }
+    }
+
+    public <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull GetResponse res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
+    }
+
+    public <E extends Entity> E createEntity(@Nonnull Class<E> clazz, @Nonnull SearchHit res)
+            throws IllegalAccessException, InstantiationException {
+        return createEntity(clazz, res.getId(), res.getVersion(), res.getSource());
     }
 }

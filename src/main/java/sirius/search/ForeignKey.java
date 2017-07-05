@@ -404,7 +404,7 @@ public class ForeignKey {
      */
     public String getLocalType() {
         if (localType == null) {
-            localType = index.getDescriptor(getLocalClass()).getType();
+            localType = index.getDescriptor(getLocalClass()).getEffectiveType();
         }
         return localType;
     }
@@ -416,7 +416,7 @@ public class ForeignKey {
      */
     public String getOtherType() {
         if (otherType == null) {
-            otherType = index.getDescriptor(getReferencedClass()).getType();
+            otherType = index.getDescriptor(getReferencedClass()).getEffectiveType();
         }
         return otherType;
     }

@@ -50,8 +50,10 @@ class ReIndexTask implements Runnable {
         executeAndReCreateBulk();
         try {
             for (EntityDescriptor ed : schema.descriptorTable.values()) {
-                IndexAccess.LOG.INFO("Re-Indexing: " + newPrefix + ed.getIndex() + "." + ed.getType());
-                reIndexEntitiesOfDescriptor(ed);
+                if (!ed.isSubClassDescriptor()) {
+                    IndexAccess.LOG.INFO("Re-Indexing: " + newPrefix + ed.getIndex() + "." + ed.getType());
+                    reIndexEntitiesOfDescriptor(ed);
+                }
             }
         } finally {
             executeAndReCreateBulk();
@@ -62,7 +64,7 @@ class ReIndexTask implements Runnable {
     private void reIndexEntitiesOfDescriptor(EntityDescriptor ed) {
         try {
             SearchRequestBuilder srb =
-                    index.getClient().prepareSearch(index.getIndexName(ed.getIndex())).setTypes(ed.getType());
+                    index.getClient().prepareSearch(index.getIndexName(ed.getIndex())).setTypes(ed.getEffectiveType());
             srb.addSort("_doc", SortOrder.ASC);
 
             // Limit to 10 per shard
@@ -90,7 +92,7 @@ class ReIndexTask implements Runnable {
                                              .actionGet();
         for (SearchHit hit : searchResponse.getHits()) {
             bulk.add(index.getClient()
-                          .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
+                          .prepareIndex(newPrefix + ed.getIndex(), ed.getEffectiveType())
                           .setId(hit.getId())
                           .setSource(hit.source())
                           .request());
