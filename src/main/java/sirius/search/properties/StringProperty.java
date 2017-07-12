@@ -12,6 +12,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.search.annotations.Analyzed;
+import sirius.search.annotations.IndexMode;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -25,9 +26,33 @@ import static sirius.search.properties.ESOption.TRUE;
  */
 public class StringProperty extends Property {
 
-    private final String indexOptions;
+    /**
+     * Determines whether this property should be analyzed
+     *
+     * @see Analyzed
+     */
     private final boolean analyzed;
+
+    /**
+     * Determines the analyzer for this property
+     *
+     * @see Analyzed#analyzer()
+     */
     private final String analyzer;
+
+    /**
+     * Determines the index_options for this property
+     *
+     * @see Analyzed#indexOptions()
+     */
+    private final String indexOptions;
+
+    /**
+     * Determines whether norms should be enabled for the property
+     *
+     * @see IndexMode#normsEnabled()
+     */
+    private final ESOption normsEnabled;
 
     /**
      * Factory for generating properties based on their field type
@@ -55,20 +80,7 @@ public class StringProperty extends Property {
         this.analyzed = field.isAnnotationPresent(Analyzed.class);
         this.analyzer = analyzed ? field.getAnnotation(Analyzed.class).analyzer() : "";
         this.indexOptions = analyzed ? field.getAnnotation(Analyzed.class).indexOptions() : "";
-    }
-
-    @Override
-    protected String getMappingType() {
-        return analyzed ? "text" : "keyword";
-    }
-
-    @Override
-    protected ESOption isDefaultIncludeInAll() {
-        return TRUE;
-    }
-
-    protected String getIndexOptions() {
-        return indexOptions;
+        this.normsEnabled = readAnnotationValue(IndexMode.class, IndexMode::normsEnabled, this::isDefaultNormsEnabled);
     }
 
     public boolean isAnalyzed() {
@@ -77,6 +89,52 @@ public class StringProperty extends Property {
 
     public String getAnalyzer() {
         return analyzer;
+    }
+
+    protected String getIndexOptions() {
+        return indexOptions;
+    }
+
+    /**
+     * Determines whether <tt>norms</tt> should be enabled for this property.
+     * <p>
+     * Subclasses may override this method to ignore the value from the {@link IndexMode} annotation.
+     *
+     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
+     */
+    public ESOption isNormsEnabled() {
+        return normsEnabled;
+    }
+
+    /**
+     * Analyzed string fields do not allow the option "doc_values"
+     *
+     * @return <tt>true</tt> if <tt>doc_values</tt> should be enabled for this property, <tt>false</tt> otherwise.
+     */
+    @Override
+    public ESOption isDocValuesEnabled() {
+        return analyzed ? ES_DEFAULT : super.isDocValuesEnabled();
+    }
+
+    @Override
+    protected ESOption isDefaultIncludeInAll() {
+        return TRUE;
+    }
+
+    /**
+     * Determines whether <tt>norms</tt> should be enabled for this property.
+     * <p>
+     * Subclasses may override this method to set the default value for their specific property type.
+     *
+     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
+     */
+    protected ESOption isDefaultNormsEnabled() {
+        return ES_DEFAULT;
+    }
+
+    @Override
+    protected String getMappingType() {
+        return analyzed ? "text" : "keyword";
     }
 
     @Override

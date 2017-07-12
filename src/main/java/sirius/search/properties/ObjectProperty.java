@@ -67,7 +67,7 @@ public class ObjectProperty extends Property {
         super.addMappingProperties(builder);
 
         builder.startObject("properties");
-        addNestedMappingProperties(builder, field.getAnnotation(NestedObject.class).value());
+        addNestedMappingProperties(builder, getField().getAnnotation(NestedObject.class).value());
         builder.endObject();
     }
 
@@ -76,7 +76,7 @@ public class ObjectProperty extends Property {
         Map<String, Object> valueMap = new HashMap<>();
 
         if (o != null) {
-            Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
+            Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
                 transformField(o, valueMap, innerField);
             }
@@ -114,7 +114,7 @@ public class ObjectProperty extends Property {
     @Override
     protected Object transformFromSource(Object value) {
         try {
-            Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
+            Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             Object obj = targetClass.newInstance();
 
             if (value instanceof Map) {

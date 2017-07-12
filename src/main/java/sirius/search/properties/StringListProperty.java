@@ -54,7 +54,7 @@ public class StringListProperty extends StringProperty {
 
     @Override
     public void init(Entity entity) throws IllegalAccessException {
-        field.set(entity, new ArrayList<String>());
+        getField().set(entity, new ArrayList<String>());
     }
 
     @Override
@@ -78,7 +78,7 @@ public class StringListProperty extends StringProperty {
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            List<Object> list = (List<Object>) field.get(entity);
+            List<Object> list = (List<Object>) getField().get(entity);
             if (list == null) {
                 list = Lists.newArrayList();
             } else {

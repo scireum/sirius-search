@@ -62,7 +62,7 @@ public class ObjectListProperty extends Property {
 
     @Override
     public void init(Entity entity) throws IllegalAccessException {
-        field.set(entity, new ArrayList<>());
+        getField().set(entity, new ArrayList<>());
     }
 
     @Override
@@ -80,7 +80,7 @@ public class ObjectListProperty extends Property {
         super.addMappingProperties(builder);
 
         builder.startObject("properties");
-        addNestedMappingProperties(builder, field.getAnnotation(ListType.class).value());
+        addNestedMappingProperties(builder, getField().getAnnotation(ListType.class).value());
         builder.endObject();
     }
 
@@ -93,7 +93,7 @@ public class ObjectListProperty extends Property {
                 if (object instanceof Map) {
                     try {
                         Map<String, String> values = (Map<String, String>) object;
-                        Class<?> targetClass = field.getAnnotation(ListType.class).value();
+                        Class<?> targetClass = getField().getAnnotation(ListType.class).value();
                         Object obj = targetClass.newInstance();
 
                         for (Field innerField : targetClass.getDeclaredFields()) {
@@ -140,7 +140,7 @@ public class ObjectListProperty extends Property {
             for (Object obj : (List<?>) o) {
                 if (obj != null) {
                     Map<String, String> valueMap = new HashMap<>();
-                    Class<?> targetClass = field.getAnnotation(ListType.class).value();
+                    Class<?> targetClass = getField().getAnnotation(ListType.class).value();
                     for (Field innerField : targetClass.getDeclaredFields()) {
                         if (!innerField.isAnnotationPresent(Transient.class)
                             && !Modifier.isStatic(innerField.getModifiers())) {

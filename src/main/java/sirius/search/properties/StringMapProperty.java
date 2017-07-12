@@ -68,7 +68,7 @@ public class StringMapProperty extends StringProperty {
 
     @Override
     public void init(Entity entity) throws IllegalAccessException {
-        field.set(entity, new HashMap<>());
+        getField().set(entity, new HashMap<>());
     }
 
     @Override
@@ -135,7 +135,7 @@ public class StringMapProperty extends StringProperty {
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            field.set(entity, transformFromRequest(getName(), ctx));
+            getField().set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }

@@ -52,7 +52,7 @@ public class EntityListProperty extends Property {
     @Override
     @SuppressWarnings("unchecked")
     public void init(Entity entity) throws IllegalAccessException {
-        field.set(entity, new EntityRefList<>((Class<Entity>) field.getAnnotation(RefType.class).type()));
+        getField().set(entity, new EntityRefList<>((Class<Entity>) getField().getAnnotation(RefType.class).type()));
     }
 
     @Override
@@ -70,7 +70,7 @@ public class EntityListProperty extends Property {
     @SuppressWarnings("unchecked")
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            ((EntityRefList<?>) field.get(entity)).setIds((List<String>) transformFromRequest(getName(), ctx));
+            ((EntityRefList<?>) getField().get(entity)).setIds((List<String>) transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
@@ -85,7 +85,7 @@ public class EntityListProperty extends Property {
     @SuppressWarnings("unchecked")
     public void readFromSource(Entity entity, Object value) {
         try {
-            ((EntityRefList<?>) field.get(entity)).setIds((List<String>) value);
+            ((EntityRefList<?>) getField().get(entity)).setIds((List<String>) value);
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }

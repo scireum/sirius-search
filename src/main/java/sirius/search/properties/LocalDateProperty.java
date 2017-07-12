@@ -68,7 +68,7 @@ public class LocalDateProperty extends Property {
             UserContext.setFieldError(name, value.get());
             throw Exceptions.createHandled()
                             .withNLSKey("Property.invalidInput")
-                            .set("field", NLS.get(field.getDeclaringClass().getSimpleName() + "." + name))
+                            .set("field", NLS.get(getField().getDeclaringClass().getSimpleName() + "." + name))
                             .set("value", value.asString())
                             .handle();
         }

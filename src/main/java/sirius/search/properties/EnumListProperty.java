@@ -60,7 +60,7 @@ public class EnumListProperty extends Property {
         try {
             if (value instanceof List) {
                 for (Object element : (List<?>) value) {
-                    Object enumValue = Value.of(element).coerce(field.getAnnotation(ListType.class).value(), null);
+                    Object enumValue = Value.of(element).coerce(getField().getAnnotation(ListType.class).value(), null);
                     if (enumValue != null) {
                         result.add(enumValue);
                     }
@@ -89,7 +89,7 @@ public class EnumListProperty extends Property {
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            field.set(entity, transformFromRequest(getName(), ctx));
+            getField().set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }

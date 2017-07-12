@@ -51,37 +51,32 @@ public abstract class Property {
     /**
      * Contains the underlying field for which the property was created
      */
-    protected Field field;
+    private final Field field;
 
     /**
      * Determines if <tt>null</tt> is accepted as a value for this property
      */
-    protected final boolean nullAllowed;
+    private final boolean nullAllowed;
 
     /**
      * Determines whether the property should be exclude from the _source field
      */
-    protected final boolean excludeFromSource;
+    private final boolean excludeFromSource;
 
     /**
      * Determines whether the property should be stored separately
      */
-    protected final ESOption stored;
+    private final ESOption stored;
 
     /**
      * Determines whether the property is indexed (e.g. searchable)
      */
-    protected final ESOption indexed;
+    private final ESOption indexed;
 
     /**
      * Determines whether the property should be included into the _all field
      */
     protected final ESOption includeInAll;
-
-    /**
-     * Determines whether norms should be enabled for the property
-     */
-    protected final ESOption normsEnabled;
 
     /**
      * Determines whether doc_values should be enabled for the property
@@ -113,7 +108,6 @@ public abstract class Property {
         this.indexed = readAnnotationValue(IndexMode.class, IndexMode::indexed, this::isDefaultIndexed);
         this.stored = readAnnotationValue(IndexMode.class, IndexMode::stored, this::isDefaultStored);
         this.includeInAll = readAnnotationValue(IndexMode.class, IndexMode::includeInAll, this::isDefaultIncludeInAll);
-        this.normsEnabled = readAnnotationValue(IndexMode.class, IndexMode::normsEnabled, this::isDefaultNormsEnabled);
         this.docValuesEnabled =
                 readAnnotationValue(IndexMode.class, IndexMode::docValues, this::isDefaultDocValuesEnabled);
     }
@@ -229,17 +223,6 @@ public abstract class Property {
     }
 
     /**
-     * Determines whether <tt>norms</tt> should be enabled for this property.
-     * <p>
-     * Subclasses may override this method to ignore the value from the {@link IndexMode} annotation.
-     *
-     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
-     */
-    public ESOption isNormsEnabled() {
-        return normsEnabled;
-    }
-
-    /**
      * Determines whether <tt>doc_values</tt> should be enabled for this property.
      * <p>
      * Subclasses may override this method to ignore the value from the {@link IndexMode} annotation.
@@ -307,17 +290,6 @@ public abstract class Property {
      */
     protected ESOption isDefaultIncludeInAll() {
         return FALSE;
-    }
-
-    /**
-     * Determines whether <tt>norms</tt> should be enabled for this property.
-     * <p>
-     * Subclasses may override this method to set the default value for their specific property type.
-     *
-     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
-     */
-    protected ESOption isDefaultNormsEnabled() {
-        return ES_DEFAULT;
     }
 
     /**

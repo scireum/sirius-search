@@ -51,7 +51,7 @@ public class EntityProperty extends Property {
     @Override
     @SuppressWarnings("unchecked")
     public void init(Entity entity) throws IllegalAccessException {
-        field.set(entity, new EntityRef<>((Class<Entity>) field.getAnnotation(RefType.class).type()));
+        getField().set(entity, new EntityRef<>((Class<Entity>) getField().getAnnotation(RefType.class).type()));
     }
 
     @Override
@@ -74,7 +74,7 @@ public class EntityProperty extends Property {
             if (ctx.get(getName()).isNull()) {
                 return;
             }
-            ((EntityRef<?>) field.get(entity)).setId(ctx.get(getName()).asString());
+            ((EntityRef<?>) getField().get(entity)).setId(ctx.get(getName()).asString());
         } catch (IllegalAccessException e) {
             throw Exceptions.handle(IndexAccess.LOG, e);
         }
@@ -83,7 +83,7 @@ public class EntityProperty extends Property {
     @Override
     public void readFromSource(Entity entity, Object value) {
         try {
-            EntityRef<?> entityRef = (EntityRef<?>) field.get(entity);
+            EntityRef<?> entityRef = (EntityRef<?>) getField().get(entity);
             entityRef.setId((String) value);
             entityRef.clearDirty();
         } catch (IllegalAccessException e) {
