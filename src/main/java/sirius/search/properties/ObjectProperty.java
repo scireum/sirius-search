@@ -54,7 +54,7 @@ public class ObjectProperty extends Property {
      */
     public ObjectProperty(Field field) {
         super(field);
-        setNested(true);
+        setInnerProperty(true);
     }
 
     @Override

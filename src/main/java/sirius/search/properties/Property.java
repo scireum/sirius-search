@@ -83,10 +83,10 @@ public abstract class Property {
     protected final ESOption normsEnabled;
 
     /**
-     * Determines whether the property is a nested property (e.g. {@link #indexed} and {@link #stored} should not be
+     * Determines whether the property is an inner property (e.g. {@link #indexed} and {@link #stored} should not be
      * written to the mapping)
      */
-    private boolean nested;
+    private boolean innerProperty;
 
     /**
      * Generates a new property for the given field
@@ -157,12 +157,12 @@ public abstract class Property {
         return field.getName();
     }
 
-    public boolean isNested() {
-        return nested;
+    public boolean isInnerProperty() {
+        return innerProperty;
     }
 
-    public void setNested(boolean nested) {
-        this.nested = nested;
+    public void setInnerProperty(boolean innerProperty) {
+        this.innerProperty = innerProperty;
     }
 
     /**
@@ -314,7 +314,7 @@ public abstract class Property {
 
     protected void addMappingProperties(XContentBuilder builder) throws IOException {
         builder.field("type", getMappingType());
-        if (!isNested()) {
+        if (!isInnerProperty()) {
             if (isStored() != ES_DEFAULT) {
                 builder.field("store", isStored());
             }
@@ -462,9 +462,9 @@ public abstract class Property {
      */
     protected void addNestedMappingProperties(XContentBuilder builder, Class<?> nestedClass) throws IOException {
         if (nestedClass.isAnnotationPresent(Indexed.class)) {
-            for (Property innerProperty : new EntityDescriptor(nestedClass).getProperties()) {
-                builder.startObject(innerProperty.getName());
-                innerProperty.addMappingProperties(builder);
+            for (Property property : new EntityDescriptor(nestedClass).getProperties()) {
+                builder.startObject(property.getName());
+                property.addMappingProperties(builder);
                 builder.endObject();
             }
         } else {
@@ -473,7 +473,7 @@ public abstract class Property {
                     for (PropertyFactory f : Injector.context().getPartCollection(PropertyFactory.class)) {
                         if (f.accepts(innerField)) {
                             Property p = f.create(innerField);
-                            p.setNested(true);
+                            p.setInnerProperty(true);
                             p.createMapping(builder);
                             continue;
                         }

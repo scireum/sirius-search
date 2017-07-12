@@ -3,6 +3,7 @@ package sirius.search;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.ListType;
+import sirius.search.annotations.MapType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ public class StringPropertiesEntity extends Entity {
     @ListType(String.class)
     private List<String> stringListExcluded = new ArrayList<>();
 
-    @ListType(String.class)
+    @MapType(String.class)
     private Map<String, String> stringMap = new HashMap<>();
 
     public String getSoloStringIncluded() {

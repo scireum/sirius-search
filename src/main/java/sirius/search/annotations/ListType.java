@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 /**
  * Specifies the type used in {@link java.util.List} fields.
  * <p>
- * The most common example would by a list of strings. As generics a removed at compile time, this annotation is
+ * The most common example would by a list of strings. As generics are removed at compile time, this annotation is
  * required to provide the type of the list to select the matching {@link sirius.search.properties.PropertyFactory}
  */
 @Retention(RetentionPolicy.RUNTIME)

@@ -57,7 +57,7 @@ public class ObjectListProperty extends Property {
      */
     private ObjectListProperty(Field field) {
         super(field);
-        setNested(true);
+        setInnerProperty(true);
     }
 
     @Override

@@ -14,7 +14,7 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
-import sirius.search.annotations.ListType;
+import sirius.search.annotations.MapType;
 import sirius.web.http.WebContext;
 
 import java.io.IOException;
@@ -36,6 +36,8 @@ public class StringMapProperty extends StringProperty {
     public static final String KEY = "key";
     public static final String VALUE = "value";
 
+    private final boolean nested;
+
     /**
      * Factory for generating properties based on their field type
      */
@@ -44,9 +46,8 @@ public class StringMapProperty extends StringProperty {
 
         @Override
         public boolean accepts(Field field) {
-            return Map.class.equals(field.getType())
-                   && field.isAnnotationPresent(ListType.class)
-                   && String.class.equals(field.getAnnotation(ListType.class).value());
+            return Map.class.equals(field.getType()) && field.isAnnotationPresent(MapType.class) && String.class.equals(
+                    field.getAnnotation(MapType.class).value());
         }
 
         @Override
@@ -60,7 +61,9 @@ public class StringMapProperty extends StringProperty {
      */
     private StringMapProperty(Field field) {
         super(field);
-        setNested(true);
+        setInnerProperty(true);
+
+        this.nested = field.getAnnotation(MapType.class).nested();
     }
 
     @Override
@@ -80,7 +83,7 @@ public class StringMapProperty extends StringProperty {
 
     @Override
     protected String getMappingType() {
-        return "nested";
+        return nested ? "nested" : "object";
     }
 
     /**
