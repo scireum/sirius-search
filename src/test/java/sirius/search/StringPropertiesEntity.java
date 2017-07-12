@@ -1,26 +1,36 @@
 package sirius.search;
 
-import com.google.common.collect.Lists;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.ListType;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static sirius.search.properties.ESOption.FALSE;
+import static sirius.search.properties.ESOption.TRUE;
 
 @Indexed(index = "test")
 public class StringPropertiesEntity extends Entity {
 
+    @IndexMode(includeInAll = TRUE)
     private String soloStringIncluded;
 
-    @IndexMode(includeInAll = false)
+    @IndexMode(includeInAll = FALSE)
     private String soloStringExcluded;
 
+    @IndexMode(includeInAll = TRUE)
     @ListType(String.class)
-    private List<String> stringListIncluded = Lists.newArrayList();
+    private List<String> stringListIncluded = new ArrayList<>();
 
-    @IndexMode(includeInAll = false)
+    @IndexMode(includeInAll = FALSE)
     @ListType(String.class)
-    private List<String> stringListExcluded = Lists.newArrayList();
+    private List<String> stringListExcluded = new ArrayList<>();
+
+    @ListType(String.class)
+    private Map<String, String> stringMap = new HashMap<>();
 
     public String getSoloStringIncluded() {
         return soloStringIncluded;
@@ -44,5 +54,9 @@ public class StringPropertiesEntity extends Entity {
 
     public List<String> getStringListExcluded() {
         return stringListExcluded;
+    }
+
+    public Map<String, String> getStringMap() {
+        return stringMap;
     }
 }

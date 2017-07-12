@@ -8,7 +8,7 @@
 
 package sirius.search;
 
-public class NestedObject {
+public class POJO {
     public static final String NUMBER_VAR = "numberVar";
     private Long numberVar;
 
