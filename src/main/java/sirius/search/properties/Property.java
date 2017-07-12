@@ -77,10 +77,16 @@ public abstract class Property {
      * Determines whether the property should be included into the _all field
      */
     protected final ESOption includeInAll;
+
     /**
-     * Determines whether the property should be included into the _all field
+     * Determines whether norms should be enabled for the property
      */
     protected final ESOption normsEnabled;
+
+    /**
+     * Determines whether doc_values should be enabled for the property
+     */
+    protected final ESOption docValuesEnabled;
 
     /**
      * Determines whether the property is an inner property (e.g. {@link #indexed} and {@link #stored} should not be
@@ -108,6 +114,8 @@ public abstract class Property {
         this.stored = readAnnotationValue(IndexMode.class, IndexMode::stored, this::isDefaultStored);
         this.includeInAll = readAnnotationValue(IndexMode.class, IndexMode::includeInAll, this::isDefaultIncludeInAll);
         this.normsEnabled = readAnnotationValue(IndexMode.class, IndexMode::normsEnabled, this::isDefaultNormsEnabled);
+        this.docValuesEnabled =
+                readAnnotationValue(IndexMode.class, IndexMode::docValues, this::isDefaultDocValuesEnabled);
     }
 
     /**
@@ -221,14 +229,25 @@ public abstract class Property {
     }
 
     /**
-     * Determines whether norms should be enabled for this property.
+     * Determines whether <tt>norms</tt> should be enabled for this property.
      * <p>
      * Subclasses may override this method to ignore the value from the {@link IndexMode} annotation.
      *
-     * @return <tt>true</tt> if norms should be enabled for this property, <tt>false</tt> otherwise.
+     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
      */
     public ESOption isNormsEnabled() {
         return normsEnabled;
+    }
+
+    /**
+     * Determines whether <tt>doc_values</tt> should be enabled for this property.
+     * <p>
+     * Subclasses may override this method to ignore the value from the {@link IndexMode} annotation.
+     *
+     * @return <tt>true</tt> if <tt>doc_values</tt> should be enabled for this property, <tt>false</tt> otherwise.
+     */
+    public ESOption isDocValuesEnabled() {
+        return docValuesEnabled;
     }
 
     /**
@@ -280,8 +299,7 @@ public abstract class Property {
     }
 
     /**
-     * Determines if this value should not be included in the _all field by default (if the {@link IndexMode}
-     * annotation is not present).
+     * Determines whether <tt>norms</tt> should be enabled for this property.
      * <p>
      * Subclasses may override this method to set the default value for their specific property type.
      *
@@ -292,14 +310,28 @@ public abstract class Property {
     }
 
     /**
-     * Determines if this value should not be included in the _all field by default (if the {@link IndexMode}
-     * annotation is not present).
+     * Determines whether <tt>norms</tt> should be enabled for this property.
      * <p>
      * Subclasses may override this method to set the default value for their specific property type.
      *
-     * @return <tt>true</tt> if the value should not be included in the all field, <tt>false</tt> otherwise.
+     * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
      */
     protected ESOption isDefaultNormsEnabled() {
+        return ES_DEFAULT;
+    }
+
+    /**
+     * Determines whether <tt>doc_values</tt> should be enabled for this property.
+     * <p>
+     * Subclasses may override this method to set the default value for their specific property type.
+     *
+     * @return <tt>true</tt> if <tt>doc_values</tt> should be enabled for this property, <tt>false</tt> otherwise.
+     */
+    protected ESOption isDefaultDocValuesEnabled() {
+        // disable doc_values in not indexed properties by default
+        if (isIndexed() == FALSE) {
+            return FALSE;
+        }
         return ES_DEFAULT;
     }
 
@@ -325,6 +357,9 @@ public abstract class Property {
         }
         if (isIncludeInAll() != ES_DEFAULT) {
             builder.field("include_in_all", isIncludeInAll());
+        }
+        if (isDocValuesEnabled() != ES_DEFAULT) {
+            builder.field("doc_values", isDocValuesEnabled());
         }
     }
 

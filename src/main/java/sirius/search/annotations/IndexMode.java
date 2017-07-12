@@ -40,8 +40,7 @@ public @interface IndexMode {
      * Only for {@link String} and {@link java.util.List}&lt;{@link String}&gt; fields.
      * Permits to specify if norms are enabled for this field or not.
      *
-     * @return whether norms are enabled or not. If an empty string is specified, the default values of elasticsearch
-     * will be applied (<tt>true</tt> for fields with the {@link Analyzed} annotation, <tt>false</tt> otherwise).
+     * @return whether norms are enabled or not.
      */
     ESOption normsEnabled() default ESOption.DEFAULT;
 
@@ -49,10 +48,17 @@ public @interface IndexMode {
      * Permits to specify if the contents of this field are included in the _all field.
      *
      * @return <tt>"true"</tt> if the contents of this field should be included in the <tt>_all</tt> field,
-     * <tt>"false"</tt> otherwise. If an empty string is specified, the default values of elasticsearch will be applied
-     * (the same value as {@link #indexed()}).
+     * <tt>"false"</tt> otherwise.
      */
     ESOption includeInAll() default ESOption.DEFAULT;
+
+    /**
+     * Permits to specify if the contents of this field are stored on disk in a column-stride fashion.
+     *
+     * @return <tt>"true"</tt> if the contents of this field should be stored on disk in a column-stride fashion,
+     * <tt>"false"</tt> otherwise.
+     */
+    ESOption docValues() default ESOption.DEFAULT;
 
     /**
      * Permits to exclude the contents of this field from the _source field. This should be used with care!
