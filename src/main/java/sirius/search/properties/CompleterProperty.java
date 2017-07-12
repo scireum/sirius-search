@@ -11,8 +11,8 @@ package sirius.search.properties;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Register;
+import sirius.search.annotations.Analyzed;
 import sirius.search.annotations.FastCompletion;
-import sirius.search.annotations.IndexMode;
 import sirius.search.suggestion.AutoCompletion;
 
 import java.io.IOException;
@@ -64,16 +64,20 @@ public class CompleterProperty extends ObjectProperty {
                                       field.getAnnotation(FastCompletion.class).contextTypes()[i]));
         }
 
-        analyzer = field.isAnnotationPresent(IndexMode.class) ?
-                   field.getAnnotation(IndexMode.class).analyzer() :
-                   "whitespace";
+        analyzer = field.isAnnotationPresent(Analyzed.class) ?
+                   field.getAnnotation(Analyzed.class).analyzer() :
+                   Analyzed.ANALYZER_WHITESPACE;
 
         maxInputLength = field.getAnnotation(FastCompletion.class).maxInputLength();
     }
 
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
+    protected String getMappingType() {
+        return "completion";
+    }
+
+    @Override
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
         builder.field("type", getMappingType());
         builder.field("analyzer", analyzer);
         builder.field("max_input_length", maxInputLength);
@@ -90,11 +94,5 @@ public class CompleterProperty extends ObjectProperty {
 
             builder.endArray();
         }
-        builder.endObject();
-    }
-
-    @Override
-    protected String getMappingType() {
-        return "completion";
     }
 }

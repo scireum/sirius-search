@@ -14,7 +14,6 @@ import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
-import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.Transient;
 import sirius.web.http.WebContext;
@@ -58,6 +57,31 @@ public class ObjectListProperty extends Property {
      */
     private ObjectListProperty(Field field) {
         super(field);
+        setNested(true);
+    }
+
+    @Override
+    public void init(Entity entity) throws IllegalAccessException {
+        field.set(entity, new ArrayList<>());
+    }
+
+    @Override
+    public boolean acceptsSetter() {
+        return false;
+    }
+
+    @Override
+    protected String getMappingType() {
+        return "nested";
+    }
+
+    @Override
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
+        super.addMappingProperties(builder);
+
+        builder.startObject("properties");
+        addNestedMappingProperties(builder, field.getAnnotation(ListType.class).value());
+        builder.endObject();
     }
 
     @SuppressWarnings("unchecked")
@@ -152,69 +176,5 @@ public class ObjectListProperty extends Property {
     @Override
     protected Object transformFromRequest(String name, WebContext ctx) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void init(Entity entity) throws Exception {
-        field.set(entity, new ArrayList<>());
-    }
-
-    @Override
-    protected String getMappingType() {
-        return field.getAnnotation(ListType.class).nested() ? "nested" : "object";
-    }
-
-    @Override
-    public boolean acceptsSetter() {
-        return false;
-    }
-
-    /**
-     * Generates the mapping used by this property
-     *
-     * @param builder the builder used to generate JSON
-     * @throws IOException in case of an io error while generating the mapping
-     */
-    @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-
-        builder.field("type", getMappingType());
-        if (isIgnoreFromAll()) {
-            builder.field("include_in_all", false);
-        }
-
-        builder.startObject("properties");
-
-        for (Field innerField : field.getAnnotation(ListType.class).value().getDeclaredFields()) {
-            if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
-                builder.startObject(innerField.getName());
-
-                if (innerField.getType().equals(Long.class)) {
-                    builder.field("type", "long");
-                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
-                } else if (innerField.getType().equals(String.class)) {
-                    builder.field("type", "string");
-                    builder.field("index",
-                                  innerField.isAnnotationPresent(IndexMode.class) ?
-                                  innerField.getAnnotation(IndexMode.class).indexMode() :
-                                  IndexMode.MODE_NOT_ANALYZED);
-                } else if (innerField.getType().equals(Boolean.class)) {
-                    builder.field("type", "boolean");
-                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
-                } else {
-                    throw Exceptions.handle()
-                                    .to(IndexAccess.LOG)
-                                    .withSystemErrorMessage("Unsupported field type - long, string and boolean allowed")
-                                    .handle();
-                }
-
-                builder.endObject();
-            }
-        }
-
-        builder.endObject();
-
-        builder.endObject();
     }
 }

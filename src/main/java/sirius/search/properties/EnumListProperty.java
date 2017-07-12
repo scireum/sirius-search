@@ -23,8 +23,7 @@ import java.util.List;
 
 /**
  * Represents a property which contains a list of strings. Such fields must wear a {@link
- * sirius.search.annotations.ListType} annotation with
- * <tt>String</tt> as their value.
+ * sirius.search.annotations.ListType} annotation with an <tt>Enum</tt> as their value.
  */
 public class EnumListProperty extends Property {
 
@@ -99,15 +98,5 @@ public class EnumListProperty extends Property {
     @Override
     protected Object transformFromRequest(String name, WebContext ctx) {
         return transformFromSource(ctx.getParameters(name));
-    }
-
-    @Override
-    public void init(Entity entity) throws Exception {
-        field.set(entity, new ArrayList());
-    }
-
-    @Override
-    public boolean acceptsSetter() {
-        return false;
     }
 }

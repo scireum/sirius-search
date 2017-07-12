@@ -11,11 +11,13 @@ package sirius.search.properties;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
-import sirius.search.annotations.IndexMode;
-import sirius.search.annotations.Stored;
+import sirius.search.annotations.Analyzed;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+
+import static sirius.search.properties.ESOption.ES_DEFAULT;
+import static sirius.search.properties.ESOption.TRUE;
 
 /**
  * Contains a string property. If the field wears an {@link sirius.search.annotations.IndexMode} annotation, the
@@ -23,11 +25,9 @@ import java.lang.reflect.Field;
  */
 public class StringProperty extends Property {
 
-    private final String indexMode;
-    private final String norms;
-    private final String options;
+    private final String indexOptions;
+    private final boolean analyzed;
     private final String analyzer;
-    private final boolean includeInAll;
 
     /**
      * Factory for generating properties based on their field type
@@ -47,53 +47,50 @@ public class StringProperty extends Property {
     }
 
     /*
-     * Instances are only created by the factory
+     * Instances are only created by the factory or by subclasses
      */
     protected StringProperty(Field field) {
         super(field);
-        this.indexMode = field.isAnnotationPresent(IndexMode.class) ?
-                         field.getAnnotation(IndexMode.class).indexMode() :
-                         IndexMode.MODE_NOT_ANALYZED;
-        this.norms =
-                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).normEnabled() : "";
-        this.options =
-                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).indexOptions() : "";
-        this.analyzer =
-                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).analyzer() : "";
-        this.includeInAll =
-                field.isAnnotationPresent(IndexMode.class) ? field.getAnnotation(IndexMode.class).includeInAll() : true;
+
+        this.analyzed = field.isAnnotationPresent(Analyzed.class);
+        this.analyzer = analyzed ? field.getAnnotation(Analyzed.class).analyzer() : "";
+        this.indexOptions = analyzed ? field.getAnnotation(Analyzed.class).indexOptions() : "";
     }
 
     @Override
-    protected boolean isStored() {
-        return field.isAnnotationPresent(Stored.class);
+    protected String getMappingType() {
+        return analyzed ? "text" : "keyword";
     }
 
     @Override
-    protected boolean isIgnoreFromAll() {
-        return !includeInAll;
+    protected ESOption isDefaultIncludeInAll() {
+        return TRUE;
+    }
+
+    protected String getIndexOptions() {
+        return indexOptions;
+    }
+
+    public boolean isAnalyzed() {
+        return analyzed;
+    }
+
+    public String getAnalyzer() {
+        return analyzer;
     }
 
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
-        builder.field("store", isStored() ? "yes" : "no");
-        builder.field("index", indexMode);
-        if (Strings.isFilled(options)) {
-            builder.field("index_options", options);
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
+        super.addMappingProperties(builder);
+
+        if (Strings.isFilled(getIndexOptions())) {
+            builder.field("index_options", getIndexOptions());
         }
-        if (Strings.isFilled(analyzer)) {
-            builder.field("analyzer", analyzer);
+        if (isAnalyzed() && Strings.isFilled(getAnalyzer())) {
+            builder.field("analyzer", getAnalyzer());
         }
-        if (Strings.isFilled(norms)) {
-            builder.startObject("norms");
-            builder.field("enabled", norms);
-            builder.endObject();
+        if (isNormsEnabled() != ES_DEFAULT) {
+            builder.field("norms", isNormsEnabled());
         }
-        if (!includeInAll) {
-            builder.field("include_in_all", false);
-        }
-        builder.endObject();
     }
 }

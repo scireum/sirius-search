@@ -29,6 +29,4 @@ public @interface ListType {
      * @return the element class of the annotated list field
      */
     Class<?> value();
-
-    boolean nested() default true;
 }

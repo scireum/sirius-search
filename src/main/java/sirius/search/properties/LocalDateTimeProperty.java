@@ -45,6 +45,13 @@ public class LocalDateTimeProperty extends Property {
         }
     }
 
+    /*
+     * Instances are only created by the factory
+     */
+    private LocalDateTimeProperty(Field field) {
+        super(field);
+    }
+
     @Override
     protected String getMappingType() {
         return "date";
@@ -88,12 +95,5 @@ public class LocalDateTimeProperty extends Property {
             return null;
         }
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(((LocalDateTime) o).atZone(ZoneId.systemDefault()));
-    }
-
-    /*
-     * Instances are only created by the factory
-     */
-    private LocalDateTimeProperty(Field field) {
-        super(field);
     }
 }

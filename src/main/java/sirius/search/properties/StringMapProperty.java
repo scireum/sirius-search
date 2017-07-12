@@ -13,7 +13,6 @@ import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
-import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.ListType;
 import sirius.web.http.WebContext;
 
@@ -79,7 +78,7 @@ public class StringMapProperty extends Property {
     }
 
     @Override
-    public void init(Entity entity) throws Exception {
+    public void init(Entity entity) throws IllegalAccessException {
         field.set(entity, new HashMap<>());
     }
 
@@ -100,12 +99,9 @@ public class StringMapProperty extends Property {
      * @throws IOException in case of an io error while generating the mapping
      */
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
         builder.startObject(getName());
         builder.field("type", getMappingType());
-        if (isIgnoreFromAll()) {
-            builder.field("include_in_all", false);
-        }
         builder.endObject();
     }
 
@@ -119,9 +115,8 @@ public class StringMapProperty extends Property {
                 builder.field("match_mapping_type", "string");
                 builder.startObject("mapping");
                 {
-                    builder.field("type", "string");
+                    builder.field("type", "keyword");
                     builder.field("store", "no");
-                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
                     builder.field("include_in_all", false);
                 }
                 builder.endObject();

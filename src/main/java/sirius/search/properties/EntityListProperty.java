@@ -51,7 +51,7 @@ public class EntityListProperty extends Property {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void init(Entity entity) throws Exception {
+    public void init(Entity entity) throws IllegalAccessException {
         field.set(entity, new EntityRefList<>((Class<Entity>) field.getAnnotation(RefType.class).type()));
     }
 

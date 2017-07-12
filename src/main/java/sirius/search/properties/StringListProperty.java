@@ -53,6 +53,16 @@ public class StringListProperty extends StringProperty {
     }
 
     @Override
+    public void init(Entity entity) throws IllegalAccessException {
+        field.set(entity, new ArrayList<String>());
+    }
+
+    @Override
+    public boolean acceptsSetter() {
+        return false;
+    }
+
+    @Override
     protected Object transformFromSource(Object value) {
         if (!(value instanceof List)) {
             if (value instanceof String) {
@@ -62,11 +72,6 @@ public class StringListProperty extends StringProperty {
         } else {
             return value;
         }
-    }
-
-    @Override
-    protected boolean isIgnoreFromAll() {
-        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -88,15 +93,5 @@ public class StringListProperty extends StringProperty {
     @Override
     protected Object transformFromRequest(String name, WebContext ctx) {
         return ctx.getParameters(name);
-    }
-
-    @Override
-    public void init(Entity entity) throws Exception {
-        field.set(entity, Lists.newArrayList());
-    }
-
-    @Override
-    public boolean acceptsSetter() {
-        return false;
     }
 }

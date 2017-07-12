@@ -54,6 +54,7 @@ public class ObjectProperty extends Property {
      */
     public ObjectProperty(Field field) {
         super(field);
+        setNested(true);
     }
 
     @Override
@@ -62,9 +63,11 @@ public class ObjectProperty extends Property {
     }
 
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
+        super.addMappingProperties(builder);
+
+        builder.startObject("properties");
+        addNestedMappingProperties(builder, field.getAnnotation(NestedObject.class).value());
         builder.endObject();
     }
 
