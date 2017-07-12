@@ -86,6 +86,7 @@ public @interface Analyzed {
      *
      * @return the name of the analyzer to use for this field. If left empty, no value will be sent to elasticsearch
      * so that it will use its default analyzer.
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analyzer.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/analyzer.html</a>
      */
     String analyzer() default "";
 
@@ -94,6 +95,7 @@ public @interface Analyzed {
      *
      * @return additional options sent to elasticsearch (use a constant defined by this annotation). If empty, nothing
      * will be sent to elasticsearch (which will then apply its default value).
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-options.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/index-options.html</a>
      */
     String indexOptions() default "";
 }
