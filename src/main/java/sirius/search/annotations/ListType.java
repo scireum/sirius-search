@@ -29,4 +29,11 @@ public @interface ListType {
      * @return the element class of the annotated list field
      */
     Class<?> value();
+
+    /**
+     * Determines the mapping type in elasticsearch. Ignored if {@link #value()} == {@link String String.class}
+     *
+     * @return whether to use "nested" or "object" as mapping type
+     */
+    boolean nested() default false;
 }

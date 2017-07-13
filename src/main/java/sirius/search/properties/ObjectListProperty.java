@@ -32,6 +32,8 @@ import java.util.Map;
  */
 public class ObjectListProperty extends Property {
 
+    private final boolean nested;
+
     /**
      * Factory for generating properties based on their field type
      */
@@ -58,6 +60,8 @@ public class ObjectListProperty extends Property {
     private ObjectListProperty(Field field) {
         super(field);
         setInnerProperty(true);
+
+        this.nested = field.getAnnotation(ListType.class).nested();
     }
 
     @Override
@@ -72,7 +76,7 @@ public class ObjectListProperty extends Property {
 
     @Override
     protected String getMappingType() {
-        return "nested";
+        return nested ? "nested" : "object";
     }
 
     @Override
