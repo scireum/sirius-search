@@ -4,29 +4,27 @@ import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.ListType;
 import sirius.search.annotations.MapType;
+import sirius.search.properties.ESOption;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static sirius.search.properties.ESOption.FALSE;
-import static sirius.search.properties.ESOption.TRUE;
-
 @Indexed(index = "test")
 public class StringPropertiesEntity extends Entity {
 
-    @IndexMode(includeInAll = TRUE)
+    @IndexMode(includeInAll = ESOption.TRUE)
     private String soloStringIncluded;
 
-    @IndexMode(includeInAll = FALSE)
+    @IndexMode(includeInAll = ESOption.FALSE)
     private String soloStringExcluded;
 
-    @IndexMode(includeInAll = TRUE)
+    @IndexMode(includeInAll = ESOption.TRUE)
     @ListType(String.class)
     private List<String> stringListIncluded = new ArrayList<>();
 
-    @IndexMode(includeInAll = FALSE)
+    @IndexMode(includeInAll = ESOption.FALSE)
     @ListType(String.class)
     private List<String> stringListExcluded = new ArrayList<>();
 

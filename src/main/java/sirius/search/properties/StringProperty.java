@@ -17,9 +17,6 @@ import sirius.search.annotations.IndexMode;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
-import static sirius.search.properties.ESOption.ES_DEFAULT;
-import static sirius.search.properties.ESOption.TRUE;
-
 /**
  * Contains a string property. If the field wears an {@link sirius.search.annotations.IndexMode} annotation, the
  * contents of the field will be analyzed and tokenized by ElasticSearch.
@@ -113,12 +110,12 @@ public class StringProperty extends Property {
      */
     @Override
     public ESOption isDocValuesEnabled() {
-        return analyzed ? ES_DEFAULT : super.isDocValuesEnabled();
+        return analyzed ? ESOption.ES_DEFAULT : super.isDocValuesEnabled();
     }
 
     @Override
     protected ESOption isDefaultIncludeInAll() {
-        return TRUE;
+        return ESOption.TRUE;
     }
 
     /**
@@ -129,7 +126,7 @@ public class StringProperty extends Property {
      * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
      */
     protected ESOption isDefaultNormsEnabled() {
-        return ES_DEFAULT;
+        return ESOption.ES_DEFAULT;
     }
 
     @Override
@@ -147,7 +144,7 @@ public class StringProperty extends Property {
         if (isAnalyzed() && Strings.isFilled(getAnalyzer())) {
             builder.field("analyzer", getAnalyzer());
         }
-        if (isNormsEnabled() != ES_DEFAULT) {
+        if (isNormsEnabled() != ESOption.ES_DEFAULT) {
             builder.field("norms", isNormsEnabled());
         }
     }

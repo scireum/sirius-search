@@ -25,8 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static sirius.search.properties.ESOption.FALSE;
-
 /**
  * Represents a property which contains a map of strings to strings. Such fields must wear a {@link
  * sirius.search.annotations.ListType} annotation with <tt>String</tt> as their value.
@@ -78,7 +76,7 @@ public class StringMapProperty extends StringProperty {
 
     @Override
     protected ESOption isDefaultIncludeInAll() {
-        return FALSE;
+        return ESOption.FALSE;
     }
 
     @Override

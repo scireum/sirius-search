@@ -30,8 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static sirius.search.properties.ESOption.*;
-
 /**
  * A property describes how a field is persisted into the database and loaded back.
  * <p>
@@ -266,7 +264,7 @@ public abstract class Property {
      * @return <tt>true</tt> if the raw values is stored as extra field in ElasticSearch, <tt>false</tt> otherwise
      */
     protected ESOption isDefaultStored() {
-        return FALSE;
+        return ESOption.FALSE;
     }
 
     /**
@@ -278,7 +276,7 @@ public abstract class Property {
      * @return <tt>true</tt> if the raw values is stored as extra field in ElasticSearch, <tt>false</tt> otherwise
      */
     protected ESOption isDefaultIndexed() {
-        return TRUE;
+        return ESOption.TRUE;
     }
 
     /**
@@ -289,7 +287,7 @@ public abstract class Property {
      * @return <tt>true</tt> if the value should not be included in the all field, <tt>false</tt> otherwise.
      */
     protected ESOption isDefaultIncludeInAll() {
-        return FALSE;
+        return ESOption.FALSE;
     }
 
     /**
@@ -301,10 +299,10 @@ public abstract class Property {
      */
     protected ESOption isDefaultDocValuesEnabled() {
         // disable doc_values in not indexed properties by default
-        if (isIndexed() == FALSE) {
-            return FALSE;
+        if (isIndexed() == ESOption.FALSE) {
+            return ESOption.FALSE;
         }
-        return ES_DEFAULT;
+        return ESOption.ES_DEFAULT;
     }
 
     /**
@@ -319,18 +317,18 @@ public abstract class Property {
     protected void addMappingProperties(XContentBuilder builder) throws IOException {
         builder.field("type", getMappingType());
         if (!isInnerProperty()) {
-            if (isStored() != ES_DEFAULT) {
+            if (isStored() != ESOption.ES_DEFAULT) {
                 builder.field("store", isStored());
             }
 
-            if (isIndexed() != ES_DEFAULT) {
+            if (isIndexed() != ESOption.ES_DEFAULT) {
                 builder.field("index", isIndexed());
             }
         }
-        if (isIncludeInAll() != ES_DEFAULT) {
+        if (isIncludeInAll() != ESOption.ES_DEFAULT) {
             builder.field("include_in_all", isIncludeInAll());
         }
-        if (isDocValuesEnabled() != ES_DEFAULT) {
+        if (isDocValuesEnabled() != ESOption.ES_DEFAULT) {
             builder.field("doc_values", isDocValuesEnabled());
         }
     }
@@ -457,7 +455,7 @@ public abstract class Property {
             return defaultSupplier.get();
         }
         ESOption value = annotationField.apply(field.getAnnotation(annotation));
-        return value == DEFAULT ? defaultSupplier.get() : value;
+        return value == ESOption.DEFAULT ? defaultSupplier.get() : value;
     }
 
     /**
@@ -482,7 +480,7 @@ public abstract class Property {
                             Property p = f.create(innerField);
                             p.setInnerProperty(true);
                             p.createMapping(builder);
-                            continue;
+                            break;
                         }
                     }
                     IndexAccess.LOG.WARN("Cannot create property %s in type %s",

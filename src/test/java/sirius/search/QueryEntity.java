@@ -11,8 +11,7 @@ package sirius.search;
 import sirius.search.annotations.Analyzed;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
-
-import static sirius.search.properties.ESOption.TRUE;
+import sirius.search.properties.ESOption;
 
 @Indexed(index = "test")
 public class QueryEntity extends Entity {
@@ -20,7 +19,7 @@ public class QueryEntity extends Entity {
     public static final String CONTENT = "content";
 
     @Analyzed(analyzer = Analyzed.ANALYZER_WHITESPACE)
-    @IndexMode(normsEnabled = TRUE)
+    @IndexMode(normsEnabled = ESOption.TRUE)
     private String content;
 
     public static final String RANKING = "ranking";
