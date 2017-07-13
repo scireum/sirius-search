@@ -35,5 +35,5 @@ public @interface ListType {
      *
      * @return whether to use "nested" or "object" as mapping type
      */
-    boolean nested() default false;
+    boolean nested() default true;
 }
