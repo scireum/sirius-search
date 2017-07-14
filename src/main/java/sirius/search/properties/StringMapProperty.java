@@ -80,6 +80,12 @@ public class StringMapProperty extends StringProperty {
     }
 
     @Override
+    protected ESOption isDefaultNormsEnabled() {
+        // "nested" and "object" do not have this option
+        return ESOption.ES_DEFAULT;
+    }
+
+    @Override
     protected String getMappingType() {
         return nested ? "nested" : "object";
     }
