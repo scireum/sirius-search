@@ -54,6 +54,11 @@ public class EnumListProperty extends Property {
     }
 
     @Override
+    public void init(Entity entity) throws IllegalAccessException {
+        getField().set(entity, new ArrayList<String>());
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public Object transformFromSource(Object value) {
         List<Object> result = new ArrayList<>();
