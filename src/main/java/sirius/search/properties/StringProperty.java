@@ -126,7 +126,7 @@ public class StringProperty extends Property {
      * @return <tt>true</tt> if <tt>norms</tt> should be enabled for this property, <tt>false</tt> otherwise.
      */
     protected ESOption isDefaultNormsEnabled() {
-        return ESOption.ES_DEFAULT;
+        return ESOption.FALSE;
     }
 
     @Override
