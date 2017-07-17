@@ -12,6 +12,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.SpanQueryBuilder;
 import sirius.kernel.commons.Strings;
+import sirius.kernel.commons.Value;
 import sirius.search.Entity;
 import sirius.search.EntityRef;
 import sirius.search.IndexAccess;
@@ -61,6 +62,9 @@ public class FieldEqual implements Constraint, SpanConstraint {
         }
         if (value instanceof EntityRef) {
             return ((EntityRef<?>) value).getId();
+        }
+        if (value instanceof Value) {
+            return ((Value) value).asString();
         }
         if (value instanceof Instant) {
             value = LocalDateTime.ofInstant((Instant) value, ZoneId.systemDefault());
