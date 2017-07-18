@@ -119,7 +119,7 @@ class QueriesSpec extends BaseSpecification {
         entities.add(e2)
         index.updateBulk(entities)
         then:
-        entities.findAll {x -> x.version == -1L}.collect().size() == 1
+        entities.findAll { x -> x.version == -1L }.collect().size() == 1
     }
 
     def "fine grained scoring works"() {

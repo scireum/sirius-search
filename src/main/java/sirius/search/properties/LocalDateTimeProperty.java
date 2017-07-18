@@ -45,6 +45,13 @@ public class LocalDateTimeProperty extends Property {
         }
     }
 
+    /*
+     * Instances are only created by the factory
+     */
+    private LocalDateTimeProperty(Field field) {
+        super(field);
+    }
+
     @Override
     protected String getMappingType() {
         return "date";
@@ -63,7 +70,7 @@ public class LocalDateTimeProperty extends Property {
             UserContext.setFieldError(name, value.get());
             throw Exceptions.createHandled()
                             .withNLSKey("Property.invalidInput")
-                            .set("field", NLS.get(field.getDeclaringClass().getSimpleName() + "." + name))
+                            .set("field", NLS.get(getField().getDeclaringClass().getSimpleName() + "." + name))
                             .set("value", value.asString())
                             .handle();
         }
@@ -88,12 +95,5 @@ public class LocalDateTimeProperty extends Property {
             return null;
         }
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(((LocalDateTime) o).atZone(ZoneId.systemDefault()));
-    }
-
-    /*
-     * Instances are only created by the factory
-     */
-    private LocalDateTimeProperty(Field field) {
-        super(field);
     }
 }

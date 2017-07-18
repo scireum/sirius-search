@@ -133,7 +133,7 @@ class EntitiesSpec extends BaseSpecification {
         index.refreshIfPossible(child).getParentName() == "Test1"
     }
 
-    def "test including and excluding from _all"() {
+    def "test StringProperty and StringListProperty and including/excluding from _all"() {
         when:
         def stringProp = new StringPropertiesEntity()
         stringProp.setSoloStringIncluded("soloStringIncluded")
@@ -143,9 +143,7 @@ class EntitiesSpec extends BaseSpecification {
         index.create(stringProp)
         index.blockThreadForUpdate()
         then:
-        List<StringPropertiesEntity> resultList = index.select(StringPropertiesEntity.class).queryList()
-        resultList.size() == 1
-        StringPropertiesEntity result = resultList.get(0)
+        StringPropertiesEntity result = index.find(StringPropertiesEntity.class, stringProp.getId())
         result.getSoloStringIncluded() == "soloStringIncluded"
         result.getSoloStringExcluded() == "soloStringExcluded"
         result.getStringListIncluded().size() == 2
@@ -162,13 +160,45 @@ class EntitiesSpec extends BaseSpecification {
         index.select(StringPropertiesEntity.class).query("stringListExcludedElement2").count() == 0
     }
 
-    def "test list of objects property"() {
+    def "test StringMapProperty"() {
         when:
-        index.select(EntityWithListOfNestedObjects.class).delete()
+        def stringProp = new StringPropertiesEntity()
+        stringProp.getStringMap().put("SCHLÜSSEL1", "WERT1")
+        stringProp.getStringMap().put("SCHLÜSSEL2", "WERT2")
+        index.create(stringProp)
+        index.blockThreadForUpdate()
+        then:
+        StringPropertiesEntity result = index.find(StringPropertiesEntity.class, stringProp.getId())
+        result.getStringMap().size() == 2
+        result.getStringMap().get("SCHLÜSSEL1") == "WERT1"
+        result.getStringMap().get("SCHLÜSSEL2") == "WERT2"
+    }
+
+    def "test ObjectProperty"() {
+        when:
+        def nested = new POJO()
+        nested.setBoolVar(true)
+        nested.setStringVar("test")
+        nested.setNumberVar(42)
+        def entity = new NestedObjectEntity()
+        entity.setNestedObject(nested)
+        index.create(entity)
+        index.blockThreadForUpdate()
+        then:
+        NestedObjectEntity result = index.find(NestedObjectEntity.class, entity.getId())
+        assert result.getNestedObject() != null
+        assert result.getNestedObject().getBoolVar() == true
+        assert result.getNestedObject().getNumberVar() == 42
+        assert result.getNestedObject().getStringVar() == "test"
+    }
+
+    def "test ObjectListProperty"() {
+        when:
+        index.select(NestedObjectsListEntity.class).delete()
         waitForCompletion()
-        def entityWithListOfObjects = new EntityWithListOfNestedObjects()
-        def nested1 = new NestedObject()
-        def nested2 = new NestedObject()
+        def entityWithListOfObjects = new NestedObjectsListEntity()
+        def nested1 = new POJO()
+        def nested2 = new POJO()
         nested1.setBoolVar(false)
         nested1.setStringVar("test")
         nested1.setNumberVar(42)
@@ -180,7 +210,7 @@ class EntitiesSpec extends BaseSpecification {
         index.create(entityWithListOfObjects)
         index.blockThreadForUpdate()
         then:
-        List<EntityWithListOfNestedObjects> resultList = index.select(EntityWithListOfNestedObjects.class).queryList()
+        List<NestedObjectsListEntity> resultList = index.select(NestedObjectsListEntity.class).queryList()
         resultList.size() == 1
         resultList.get(0).getNestedObjects().size() == 2
         resultList.get(0).getNestedObjects().get(0).getBoolVar() == false

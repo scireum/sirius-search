@@ -8,16 +8,18 @@
 
 package sirius.search;
 
-import sirius.search.annotations.*;
+import sirius.search.annotations.FastCompletion;
+import sirius.search.annotations.Indexed;
+import sirius.search.annotations.NestedObject;
 import sirius.search.suggestion.AutoCompletion;
 
 @Indexed(index = "test")
 public class AutoCompletionPropertyEntity extends Entity {
 
-    public static final String COMPLETE = "complete";
     @FastCompletion(contextNames = "filter")
-    @sirius.search.annotations.NestedObject(sirius.search.suggestion.AutoCompletion.class)
+    @NestedObject(AutoCompletion.class)
     private AutoCompletion complete;
+    public static final String COMPLETE = "complete";
 
     public AutoCompletion getComplete() {
         return complete;

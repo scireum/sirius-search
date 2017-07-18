@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Indexed(index = "test")
-public class EntityWithListOfNestedObjects extends Entity{
+public class NestedObjectsListEntity extends Entity {
 
+    @ListType(POJO.class)
+    private List<POJO> nestedObjects = new ArrayList<>();
     public static final String NESTED_OBJECTS = "nestedObjects";
-    @ListType(value = NestedObject.class, nested = true)
-    private List<NestedObject> nestedObjects = new ArrayList<>();
 
-    public List<NestedObject> getNestedObjects() {
+    public List<POJO> getNestedObjects() {
         return nestedObjects;
     }
 }
