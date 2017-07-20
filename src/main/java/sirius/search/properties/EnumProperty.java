@@ -48,11 +48,11 @@ public class EnumProperty extends Property {
     public Object transformFromSource(Object value) {
         try {
             return Value.of(value)
-                        .coerce((Class<Object>) field.getType(),
-                                isNullAllowed() ? null : field.getType().getEnumConstants()[0]);
+                        .coerce((Class<Object>) getField().getType(),
+                                isNullAllowed() ? null : getField().getType().getEnumConstants()[0]);
         } catch (IllegalArgumentException e) {
             Exceptions.ignore(e);
-            return isNullAllowed() ? null : field.getType().getEnumConstants()[0];
+            return isNullAllowed() ? null : getField().getType().getEnumConstants()[0];
         }
     }
 

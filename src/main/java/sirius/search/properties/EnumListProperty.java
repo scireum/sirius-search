@@ -23,8 +23,7 @@ import java.util.List;
 
 /**
  * Represents a property which contains a list of strings. Such fields must wear a {@link
- * sirius.search.annotations.ListType} annotation with
- * <tt>String</tt> as their value.
+ * sirius.search.annotations.ListType} annotation with an <tt>Enum</tt> as their value.
  */
 public class EnumListProperty extends Property {
 
@@ -55,13 +54,18 @@ public class EnumListProperty extends Property {
     }
 
     @Override
+    public void init(Entity entity) throws IllegalAccessException {
+        getField().set(entity, new ArrayList<String>());
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public Object transformFromSource(Object value) {
         List<Object> result = new ArrayList<>();
         try {
             if (value instanceof List) {
                 for (Object element : (List<?>) value) {
-                    Object enumValue = Value.of(element).coerce(field.getAnnotation(ListType.class).value(), null);
+                    Object enumValue = Value.of(element).coerce(getField().getAnnotation(ListType.class).value(), null);
                     if (enumValue != null) {
                         result.add(enumValue);
                     }
@@ -90,7 +94,7 @@ public class EnumListProperty extends Property {
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
-            field.set(entity, transformFromRequest(getName(), ctx));
+            getField().set(entity, transformFromRequest(getName(), ctx));
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
@@ -99,15 +103,5 @@ public class EnumListProperty extends Property {
     @Override
     protected Object transformFromRequest(String name, WebContext ctx) {
         return transformFromSource(ctx.getParameters(name));
-    }
-
-    @Override
-    public void init(Entity entity) throws Exception {
-        field.set(entity, new ArrayList());
-    }
-
-    @Override
-    public boolean acceptsSetter() {
-        return false;
     }
 }

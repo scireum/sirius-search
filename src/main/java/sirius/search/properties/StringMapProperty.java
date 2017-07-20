@@ -9,25 +9,32 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import sirius.kernel.commons.Context;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
-import sirius.search.annotations.IndexMode;
-import sirius.search.annotations.ListType;
+import sirius.search.annotations.MapType;
 import sirius.web.http.WebContext;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * Represents a property which contains a map of strings to strings. Such fields must wear a {@link
- * sirius.search.annotations.ListType} annotation with
- * <tt>String</tt> as their value.
+ * sirius.search.annotations.ListType} annotation with <tt>String</tt> as their value.
  */
-public class StringMapProperty extends Property {
+public class StringMapProperty extends StringProperty {
+
+    public static final String KEY = "key";
+    public static final String VALUE = "value";
+
+    private final boolean nested;
 
     /**
      * Factory for generating properties based on their field type
@@ -37,9 +44,8 @@ public class StringMapProperty extends Property {
 
         @Override
         public boolean accepts(Field field) {
-            return Map.class.equals(field.getType())
-                   && field.isAnnotationPresent(ListType.class)
-                   && String.class.equals(field.getAnnotation(ListType.class).value());
+            return Map.class.equals(field.getType()) && field.isAnnotationPresent(MapType.class) && String.class.equals(
+                    field.getAnnotation(MapType.class).value());
         }
 
         @Override
@@ -53,44 +59,35 @@ public class StringMapProperty extends Property {
      */
     private StringMapProperty(Field field) {
         super(field);
+        setInnerProperty(true);
+
+        this.nested = field.getAnnotation(MapType.class).nested();
     }
 
     @Override
-    protected Object transformFromSource(Object value) {
-        if (!(value instanceof Map)) {
-            return new HashMap<>();
-        } else {
-            return value;
-        }
-    }
-
-    @Override
-    public void readFromRequest(Entity entity, WebContext ctx) {
-        try {
-            field.set(entity, transformFromRequest(getName(), ctx));
-        } catch (IllegalAccessException e) {
-            Exceptions.handle(IndexAccess.LOG, e);
-        }
-    }
-
-    @Override
-    protected Object transformFromRequest(String name, WebContext ctx) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void init(Entity entity) throws Exception {
-        field.set(entity, new HashMap<>());
-    }
-
-    @Override
-    protected String getMappingType() {
-        return "object";
+    public void init(Entity entity) throws IllegalAccessException {
+        getField().set(entity, new HashMap<>());
     }
 
     @Override
     public boolean acceptsSetter() {
         return false;
+    }
+
+    @Override
+    protected ESOption isDefaultIncludeInAll() {
+        return ESOption.FALSE;
+    }
+
+    @Override
+    protected ESOption isDefaultNormsEnabled() {
+        // "nested" and "object" do not have this option
+        return ESOption.ES_DEFAULT;
+    }
+
+    @Override
+    protected String getMappingType() {
+        return nested ? "nested" : "object";
     }
 
     /**
@@ -100,34 +97,56 @@ public class StringMapProperty extends Property {
      * @throws IOException in case of an io error while generating the mapping
      */
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
-        if (isIgnoreFromAll()) {
-            builder.field("include_in_all", false);
-        }
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
+        super.addMappingProperties(builder);
+
+        builder.startObject("properties");
+
+        builder.startObject(KEY);
+        builder.field("type", "keyword");
+        builder.endObject();
+
+        builder.startObject(VALUE);
+        builder.field("type", super.getMappingType());
+        builder.endObject();
+
         builder.endObject();
     }
 
     @Override
-    public void createDynamicTemplates(XContentBuilder builder) throws IOException {
-        builder.startObject();
-        {
-            builder.startObject(getName() + "_strings");
-            {
-                builder.field("path_match", getName() + ".*");
-                builder.field("match_mapping_type", "string");
-                builder.startObject("mapping");
-                {
-                    builder.field("type", "string");
-                    builder.field("store", "no");
-                    builder.field("index", IndexMode.MODE_NOT_ANALYZED);
-                    builder.field("include_in_all", false);
-                }
-                builder.endObject();
-            }
-            builder.endObject();
+    @SuppressWarnings("unchecked")
+    protected Object transformFromSource(Object value) {
+        Map<String, String> result = new HashMap<>();
+        if (value instanceof Collection) {
+            ((Collection<Map<String, String>>) value).forEach(entry -> result.put(entry.get(KEY), entry.get(VALUE)));
         }
-        builder.endObject();
+        return result;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected Object transformToSource(Object o) {
+        List<Map<String, Object>> valueList = new ArrayList<>();
+
+        if (o instanceof Map) {
+            ((Map<String, String>) o).forEach((key, value) -> valueList.add(Context.create()
+                                                                                   .set(KEY, key)
+                                                                                   .set(VALUE, value)));
+        }
+        return valueList;
+    }
+
+    @Override
+    public void readFromRequest(Entity entity, WebContext ctx) {
+        try {
+            getField().set(entity, transformFromRequest(getName(), ctx));
+        } catch (IllegalAccessException e) {
+            Exceptions.handle(IndexAccess.LOG, e);
+        }
+    }
+
+    @Override
+    protected Object transformFromRequest(String name, WebContext ctx) {
+        throw new UnsupportedOperationException();
     }
 }

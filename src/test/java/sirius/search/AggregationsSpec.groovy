@@ -25,11 +25,11 @@ class AggregationsSpec extends BaseSpecification {
 
     def "test nested, min, max, filter and term aggregations"() {
         when:
-        index.select(EntityWithListOfNestedObjects.class).delete()
-        def entityWithListOfObjects = new EntityWithListOfNestedObjects()
-        def nested1 = new NestedObject()
-        def nested2 = new NestedObject()
-        def nested3 = new NestedObject()
+        index.select(NestedObjectsListEntity.class).delete()
+        def entityWithListOfObjects = new NestedObjectsListEntity()
+        def nested1 = new POJO()
+        def nested2 = new POJO()
+        def nested3 = new POJO()
         nested1.setBoolVar(false)
         nested1.setStringVar("feature 1")
         nested1.setNumberVar(42)
@@ -45,13 +45,13 @@ class AggregationsSpec extends BaseSpecification {
         index.create(entityWithListOfObjects)
         index.blockThreadForUpdate()
         then:
-        ResultList<EntityWithListOfNestedObjects> resultList = index.select(EntityWithListOfNestedObjects.class).limit(0)
-                .addAggregation(Nested.on("nested1", EntityWithListOfNestedObjects.NESTED_OBJECTS)
-                .addSubAggregation(Filter.on(EntityWithListOfNestedObjects.NESTED_OBJECTS + "." + NestedObject.BOOL_VAR, "filtered").withValue("true")
-                .addSubAggregation(Term.on(EntityWithListOfNestedObjects.NESTED_OBJECTS + "." + NestedObject.STRING_VAR, "terms"))))
-                .addAggregation(Nested.on("nested2", EntityWithListOfNestedObjects.NESTED_OBJECTS)
-                .addSubAggregation(Max.on(EntityWithListOfNestedObjects.NESTED_OBJECTS + "." + NestedObject.NUMBER_VAR, "max"))
-                .addSubAggregation(Min.on(EntityWithListOfNestedObjects.NESTED_OBJECTS + "." + NestedObject.NUMBER_VAR, "min"))).queryResultList()
+        ResultList<NestedObjectsListEntity> resultList = index.select(NestedObjectsListEntity.class).limit(0)
+                .addAggregation(Nested.on("nested1", NestedObjectsListEntity.NESTED_OBJECTS)
+                .addSubAggregation(Filter.on(NestedObjectsListEntity.NESTED_OBJECTS + "." + POJO.BOOL_VAR, "filtered").withValue("true")
+                .addSubAggregation(Term.on(NestedObjectsListEntity.NESTED_OBJECTS + "." + POJO.STRING_VAR, "terms"))))
+                .addAggregation(Nested.on("nested2", NestedObjectsListEntity.NESTED_OBJECTS)
+                .addSubAggregation(Max.on(NestedObjectsListEntity.NESTED_OBJECTS + "." + POJO.NUMBER_VAR, "max"))
+                .addSubAggregation(Min.on(NestedObjectsListEntity.NESTED_OBJECTS + "." + POJO.NUMBER_VAR, "min"))).queryResultList()
 
         for (Terms.Bucket bucket : ((Terms) ((org.elasticsearch.search.aggregations.bucket.filter.Filter) ((InternalNested) resultList
                 .getAggregations().get("nested1")).getAggregations().get("filtered")).getAggregations().get("terms")).getBuckets()) {

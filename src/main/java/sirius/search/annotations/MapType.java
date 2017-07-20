@@ -14,14 +14,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies the type used in {@link java.util.List} fields.
+ * Specifies the type used in {@link java.util.Map} fields.
  * <p>
- * The most common example would by a list of strings. As generics are removed at compile time, this annotation is
- * required to provide the type of the list to select the matching {@link sirius.search.properties.PropertyFactory}
+ * The most common example would by a map that maps strings to strings. As generics are removed at compile time, this
+ * annotation is required to provide the type of the list to select the matching {@link
+ * sirius.search.properties.PropertyFactory}
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-public @interface ListType {
+public @interface MapType {
 
     /**
      * Contains the class of the elements kept in the list field
@@ -31,9 +32,10 @@ public @interface ListType {
     Class<?> value();
 
     /**
-     * Determines the mapping type in elasticsearch. Ignored if {@link #value()} == {@link String String.class}
+     * Determines the mapping type in elasticsearch. "object" (<tt>false</tt>) is faster than "nested", but does not
+     * allow searching for key-value pairs (it would match documents where the key <strong>or</strong> the value match).
      *
      * @return whether to use "nested" or "object" as mapping type
      */
-    boolean nested() default true;
+    boolean nested() default false;
 }

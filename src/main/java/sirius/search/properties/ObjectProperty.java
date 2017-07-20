@@ -54,6 +54,7 @@ public class ObjectProperty extends Property {
      */
     public ObjectProperty(Field field) {
         super(field);
+        setInnerProperty(true);
     }
 
     @Override
@@ -62,9 +63,11 @@ public class ObjectProperty extends Property {
     }
 
     @Override
-    public void createMapping(XContentBuilder builder) throws IOException {
-        builder.startObject(getName());
-        builder.field("type", getMappingType());
+    public void addMappingProperties(XContentBuilder builder) throws IOException {
+        super.addMappingProperties(builder);
+
+        builder.startObject("properties");
+        addNestedMappingProperties(builder, getField().getAnnotation(NestedObject.class).value());
         builder.endObject();
     }
 
@@ -73,7 +76,7 @@ public class ObjectProperty extends Property {
         Map<String, Object> valueMap = new HashMap<>();
 
         if (o != null) {
-            Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
+            Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
                 transformField(o, valueMap, innerField);
             }
@@ -111,7 +114,7 @@ public class ObjectProperty extends Property {
     @Override
     protected Object transformFromSource(Object value) {
         try {
-            Class<?> targetClass = field.getAnnotation(NestedObject.class).value();
+            Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             Object obj = targetClass.newInstance();
 
             if (value instanceof Map) {

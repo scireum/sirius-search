@@ -54,9 +54,9 @@ public class BooleanProperty extends Property {
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
             if (ctx.get(getName()).isNull()) {
-                field.set(entity, false);
+                getField().set(entity, false);
             } else {
-                field.set(entity, transformFromRequest(getName(), ctx));
+                getField().set(entity, transformFromRequest(getName(), ctx));
             }
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);

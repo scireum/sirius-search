@@ -14,12 +14,12 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.di.std.Part
 import sirius.search.suggestion.AutoCompletion
 
-class SuggestSpec extends BaseSpecification{
+class SuggestSpec extends BaseSpecification {
 
     @Part
     private static IndexAccess index
 
-    def "test completion suggester with context"(){
+    def "test completion suggester with context"() {
         when:
         HashMap<String, List<? extends ToXContent>> qryMap = new HashMap()
         qryMap.put("filter", Arrays.asList(CategoryQueryContext.builder().setCategory("1").build()))
