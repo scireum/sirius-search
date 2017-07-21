@@ -8,25 +8,29 @@
 
 package sirius.search.util;
 
-import sirius.kernel.commons.Context;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
 import sirius.search.IndexAccess;
-import sirius.web.templates.ContentContextExtender;
+import sirius.web.templates.GlobalContextExtender;
 
-import javax.annotation.Nonnull;
+import java.util.function.BiConsumer;
 
 /**
  * Provides access to {@link IndexAccess} as "index" in scripts.
  */
 @Register
-public class SearchContextExtender implements ContentContextExtender {
+public class SearchContextExtender implements GlobalContextExtender {
 
     @Part
     private IndexAccess index;
 
     @Override
-    public void extend(@Nonnull Context context) {
-        context.put("index", index);
+    public void collectTemplate(BiConsumer<String, Object> globalParameterCollector) {
+        // Nothing provided
+    }
+
+    @Override
+    public void collectScripting(BiConsumer<String, Object> globalParameterCollector) {
+        globalParameterCollector.accept("index", index);
     }
 }

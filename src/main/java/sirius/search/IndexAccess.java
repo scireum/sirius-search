@@ -56,8 +56,8 @@ import sirius.kernel.health.HandledException;
 import sirius.kernel.health.Log;
 import sirius.search.suggestion.Complete;
 import sirius.search.suggestion.Suggest;
-import sirius.web.templates.Resource;
-import sirius.web.templates.Resources;
+import sirius.web.resources.Resource;
+import sirius.web.resources.Resources;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

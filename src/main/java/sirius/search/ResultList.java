@@ -13,7 +13,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import sirius.kernel.commons.Monoflop;
-import sirius.search.aggregation.Aggregation;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
@@ -111,7 +110,7 @@ public class ResultList<T> implements Iterable<T> {
                         if (bucket.getDocCount() > 0) {
                             DateRange dateRange = ((DateFacet) facet).getRangeByName(bucket.getKeyAsString());
                             if (dateRange != null) {
-                                facet.addItem(dateRange.getKey(), dateRange.getName(), bucket.getDocCount());
+                                facet.addItem(dateRange.getKey(), dateRange.getName(), (int)bucket.getDocCount());
                             }
                         }
                     }
@@ -119,7 +118,7 @@ public class ResultList<T> implements Iterable<T> {
                     Terms terms = response.getAggregations().get(facet.getName());
                     for (Terms.Bucket bucket : terms.getBuckets()) {
                         String key = bucket.getKeyAsString();
-                        facet.addItem(key, key, bucket.getDocCount());
+                        facet.addItem(key, key, (int)bucket.getDocCount());
                     }
                 }
             }
