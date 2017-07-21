@@ -25,12 +25,12 @@
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>6.10.1</version>
+            <version>6.11</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>6.10.1</version>
+            <version>6.11</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
