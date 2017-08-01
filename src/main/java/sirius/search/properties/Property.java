@@ -473,17 +473,26 @@ public abstract class Property {
                 builder.endObject();
             }
         } else {
-            for (Field innerField : nestedClass.getDeclaredFields()) {
-                if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
-                    for (PropertyFactory f : Injector.context().getPartCollection(PropertyFactory.class)) {
-                        if (f.accepts(innerField)) {
-                            Property p = f.create(innerField);
-                            p.setInnerProperty(true);
-                            p.createMapping(builder);
-                            break;
-                        }
+            createFieldMappings(builder, nestedClass);
+        }
+    }
+
+    private void createFieldMappings(XContentBuilder builder, Class<?> nestedClass) throws IOException {
+        for (Field innerField : nestedClass.getDeclaredFields()) {
+            if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                boolean accepted = false;
+                for (PropertyFactory f : Injector.context().getPartCollection(PropertyFactory.class)) {
+                    if (f.accepts(innerField)) {
+                        Property p = f.create(innerField);
+                        p.setInnerProperty(true);
+                        p.createMapping(builder);
+                        accepted = true;
+                        break;
                     }
-                    IndexAccess.LOG.WARN("Cannot create property %s in type %s",
+                }
+
+                if (!accepted) {
+                    IndexAccess.LOG.WARN("Cannot create property %s in type %s - found no matching property factory",
                                          innerField.getName(),
                                          innerField.getDeclaringClass().getSimpleName());
                 }
