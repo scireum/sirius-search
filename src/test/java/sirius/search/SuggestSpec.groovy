@@ -12,6 +12,7 @@ import org.elasticsearch.common.xcontent.ToXContent
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext
 import sirius.kernel.BaseSpecification
 import sirius.kernel.di.std.Part
+import sirius.search.entities.AutoCompletionPropertyEntity
 import sirius.search.suggestion.AutoCompletion
 
 class SuggestSpec extends BaseSpecification {

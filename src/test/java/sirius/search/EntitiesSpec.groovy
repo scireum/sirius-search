@@ -13,13 +13,14 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.async.Tasks
 import sirius.kernel.di.std.Part
 import sirius.kernel.health.HandledException
+import sirius.search.entities.*
 
 class EntitiesSpec extends BaseSpecification {
 
     @Part
     private static IndexAccess index
 
-    def "cascase delete works"() {
+    def "cascade delete works"() {
         given:
         def parent = new ParentEntity()
         parent.setName("Test")
@@ -37,7 +38,7 @@ class EntitiesSpec extends BaseSpecification {
 
     }
 
-    def "cascase delete works for a EntityRefList"() {
+    def "cascade delete works for a EntityRefList"() {
         given:
         def parent1 = new ParentEntity()
         def parent2 = new ParentEntity()
@@ -133,92 +134,32 @@ class EntitiesSpec extends BaseSpecification {
         index.refreshIfPossible(child).getParentName() == "Test1"
     }
 
-    def "test StringProperty and StringListProperty and including/excluding from _all"() {
+    def "test including/excluding from _all"() {
         when:
-        def stringProp = new StringPropertiesEntity()
-        stringProp.setSoloStringIncluded("soloStringIncluded")
-        stringProp.setSoloStringExcluded("soloStringExcluded")
-        stringProp.getStringListIncluded().addAll(Lists.newArrayList("stringListIncludedElement1", "stringListIncludedElement2"))
-        stringProp.getStringListExcluded().addAll(Lists.newArrayList("stringListExcludedElement1", "stringListExcludedElement2"))
-        index.create(stringProp)
-        index.blockThreadForUpdate()
-        then:
-        StringPropertiesEntity result = index.find(StringPropertiesEntity.class, stringProp.getId())
-        result.getSoloStringIncluded() == "soloStringIncluded"
-        result.getSoloStringExcluded() == "soloStringExcluded"
-        result.getStringListIncluded().size() == 2
-        result.getStringListIncluded().get(0) == "stringListIncludedElement1"
-        result.getStringListIncluded().get(1) == "stringListIncludedElement2"
-        result.getStringListExcluded().size() == 2
-        result.getStringListExcluded().get(0) == "stringListExcludedElement1"
-        result.getStringListExcluded().get(1) == "stringListExcludedElement2"
-        index.select(StringPropertiesEntity.class).query("soloStringIncluded").count() == 1
-        index.select(StringPropertiesEntity.class).query("soloStringExcluded").count() == 0
-        index.select(StringPropertiesEntity.class).query("stringListIncludedElement1").count() == 1
-        index.select(StringPropertiesEntity.class).query("stringListIncludedElement2").count() == 1
-        index.select(StringPropertiesEntity.class).query("stringListExcludedElement1").count() == 0
-        index.select(StringPropertiesEntity.class).query("stringListExcludedElement2").count() == 0
-    }
-
-    def "test StringMapProperty"() {
-        when:
-        def stringProp = new StringPropertiesEntity()
-        stringProp.getStringMap().put("SCHLÜSSEL1", "WERT1")
-        stringProp.getStringMap().put("SCHLÜSSEL2", "WERT2")
-        index.create(stringProp)
-        index.blockThreadForUpdate()
-        then:
-        StringPropertiesEntity result = index.find(StringPropertiesEntity.class, stringProp.getId())
-        result.getStringMap().size() == 2
-        result.getStringMap().get("SCHLÜSSEL1") == "WERT1"
-        result.getStringMap().get("SCHLÜSSEL2") == "WERT2"
-    }
-
-    def "test ObjectProperty"() {
-        when:
-        def nested = new POJO()
-        nested.setBoolVar(true)
-        nested.setStringVar("test")
-        nested.setNumberVar(42)
-        def entity = new NestedObjectEntity()
-        entity.setNestedObject(nested)
+        def entity = new IncludeExcludeEntity()
+        entity.setStringIncluded("stringIncluded")
+        entity.setStringExcluded("stringExcluded")
+        entity.getStringListIncluded().addAll(Lists.newArrayList("stringListIncludedElement1", "stringListIncludedElement2"))
+        entity.getStringListExcluded().addAll(Lists.newArrayList("stringListExcludedElement1", "stringListExcludedElement2"))
+        entity.getStringMapIncluded().put("stringMapIncludedKey", "stringMapIncludedValue")
+        entity.getStringMapExcluded().put("stringMapExcludedKey", "stringMapExcludedValue")
+        entity.setIntIncluded(44)
+        entity.setIntExcluded(43)
         index.create(entity)
         index.blockThreadForUpdate()
         then:
-        NestedObjectEntity result = index.find(NestedObjectEntity.class, entity.getId())
-        assert result.getNestedObject() != null
-        assert result.getNestedObject().getBoolVar() == true
-        assert result.getNestedObject().getNumberVar() == 42
-        assert result.getNestedObject().getStringVar() == "test"
-    }
-
-    def "test ObjectListProperty"() {
-        when:
-        index.select(NestedObjectsListEntity.class).delete()
-        waitForCompletion()
-        def entityWithListOfObjects = new NestedObjectsListEntity()
-        def nested1 = new POJO()
-        def nested2 = new POJO()
-        nested1.setBoolVar(false)
-        nested1.setStringVar("test")
-        nested1.setNumberVar(42)
-        nested2.setBoolVar(true)
-        nested2.setStringVar("test - 2")
-        nested2.setNumberVar(0)
-        entityWithListOfObjects.getNestedObjects().add(nested1)
-        entityWithListOfObjects.getNestedObjects().add(nested2)
-        index.create(entityWithListOfObjects)
-        index.blockThreadForUpdate()
-        then:
-        List<NestedObjectsListEntity> resultList = index.select(NestedObjectsListEntity.class).queryList()
-        resultList.size() == 1
-        resultList.get(0).getNestedObjects().size() == 2
-        resultList.get(0).getNestedObjects().get(0).getBoolVar() == false
-        resultList.get(0).getNestedObjects().get(0).getNumberVar() == 42
-        resultList.get(0).getNestedObjects().get(0).getStringVar() == "test"
-        resultList.get(0).getNestedObjects().get(1).getBoolVar() == true
-        resultList.get(0).getNestedObjects().get(1).getNumberVar() == 0
-        resultList.get(0).getNestedObjects().get(1).getStringVar() == "test - 2"
+        index.select(IncludeExcludeEntity.class).query("stringIncluded").count() == 1
+        index.select(IncludeExcludeEntity.class).query("stringExcluded").count() == 0
+        index.select(IncludeExcludeEntity.class).query("stringListIncludedElement1").count() == 1
+        index.select(IncludeExcludeEntity.class).query("stringListIncludedElement2").count() == 1
+        index.select(IncludeExcludeEntity.class).query("stringListExcludedElement1").count() == 0
+        index.select(IncludeExcludeEntity.class).query("stringListExcludedElement2").count() == 0
+        index.select(IncludeExcludeEntity.class).query("stringMapIncludedKey").count() == 1
+        index.select(IncludeExcludeEntity.class).query("stringMapIncludedValue").count() == 1
+        index.select(IncludeExcludeEntity.class).query("stringMapExcludedKey").count() == 0
+        index.select(IncludeExcludeEntity.class).query("stringMapExcludedValue").count() == 0
+        index.select(IncludeExcludeEntity.class).query("44").count() == 1
+        index.select(IncludeExcludeEntity.class).query("43").count() == 0
     }
 
     @Part
@@ -235,5 +176,4 @@ class EntitiesSpec extends BaseSpecification {
         }
         index.blockThreadForUpdate()
     }
-
 }

@@ -6,15 +6,18 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.entities;
 
+import sirius.search.Cascade;
+import sirius.search.Entity;
+import sirius.search.EntityRefList;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefType;
 
 @Indexed(index = "test")
-public class SetNullManyChildEntity extends Entity {
+public class RejectManyChildEntity extends Entity {
 
-    @RefType(type = ParentEntity.class, cascade = Cascade.SET_NULL)
+    @RefType(type = ParentEntity.class, cascade = Cascade.REJECT)
     private EntityRefList<ParentEntity> parents;
 
     public EntityRefList<ParentEntity> getParents() {

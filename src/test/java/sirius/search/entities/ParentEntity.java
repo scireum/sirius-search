@@ -6,8 +6,9 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.entities;
 
+import sirius.search.Entity;
 import sirius.search.annotations.Indexed;
 
 @Indexed(index = "test")
