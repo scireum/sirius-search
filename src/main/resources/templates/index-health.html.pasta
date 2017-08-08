@@ -1,0 +1,477 @@
+<i:arg name="clusterHealth" type="org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse"/>
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+<i:arg name="nodesInfo" type="org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse"/>
+<i:arg name="nodesStats" type="org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse"/>
+<i:arg name="indicesStats" type="org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse"/>
+<i:arg name="clusterStateString" type="String"/>
+<i:arg name="allShardRoutings" type="java.util.Map"/>
+<i:arg name="nodeStatsMap" type="java.util.Map"/>
+<i:arg name="indexMetaData" type="java.util.Map"/>
+<i:arg name="indexStatusMap" type="java.util.Map"/>
+<i:arg name="nodeInfoMap" type="java.util.Map"/>
+<i:arg name="clusterState" type="String"/>
+<i:arg name="toXContent" type="sirius.search.controller.IndexHealthController$XContentWriter"/>
+
+<w:page titleKey="IndexHealth.elasticsearchState">
+
+    <i:block name="head">
+        <style>
+            .GRAY {
+                color: #555555;
+            }
+            .GREEN {
+                color: #168d12;
+            }
+            .RED {
+                color: #9f3d33;
+            }
+            .YELLOW {
+                color: rgb(209, 170, 0);
+            }
+            .STARTED {
+                background-color: #99dd88;
+            }
+            .UNASSIGNED {
+                background-color: #999;
+            }
+            .RELOCATING {
+                background-color: #dc88dd;
+            }
+            INITIALIZING {
+                background-color: #dddc88;
+            }
+        </style>
+    </i:block>
+
+    <i:block name="breadcrumbs">
+        <li><a href="/system/index">@i18n('IndexHealth.elasticsearchState')</a></li>
+    </i:block>
+
+    <w:pageHeader>
+        <span class="@clusterState">Cluster State</span>
+        <small>@clusterHealth.getClusterName()</small>
+        <div class="pull-right">
+            <div class="dropdown" style="display:inline-block">
+                <button id="clusterInfoButton" class="btn btn-default dropdown-toggle" type="button"
+                        data-toggle="dropdown">
+                    Cluster Info
+                </button>
+                <ul class="dropdown-menu" id="clusterInfoDropdown">
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterState">Cluster
+                        State</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterHealth">Cluster Health</a>
+                    <li/>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesStats">Nodes
+                        Stats</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesInfo">Nodes
+                        Info</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#indicesStats">Indices
+                        Stats</a></li>
+                </ul>
+            </div>
+            <a class="btn btn-default" href="/assets/es-head/index.html">HEAD</a>
+            <a class="btn btn-default" href="/system/index"><i class="fa fa-refresh"></i></a>
+        </div>
+        <div class="clearfix"></div>
+    </w:pageHeader>
+
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterState"
+              titleKey="IndexHealth.clusterState"
+              content="@clusterStateString"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterHealth"
+              titleKey="IndexHealth.clusterHealth"
+              content="@toXContent.clusterHealthToXContent(clusterHealth)"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesStats"
+              titleKey="IndexHealth.nodesInfo"
+              content="@nodesInfo.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesInfo"
+              titleKey="IndexHealth.nodesStats"
+              content="@nodesStats.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="indicesStats"
+              titleKey="IndexHealth.indicesStats"
+              content="@indicesStats.toString()"/>
+
+    <h2>General</h2>
+    <table class="table table-striped">
+        <tr>
+            <td style="overflow: hidden">
+                Cluster Status
+            </td>
+            <td class="@clusterState align-right" style="overflow: hidden">
+                @clusterHealth.getStatus()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Cluster Docs
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @numberFormat(clusterStats.getIndicesStats().getDocs().getCount())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Indexsize
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getIndicesStats().getStore().size().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                # Nodes
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getNumberOfNodes()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Active Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getActiveShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Active Primary Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getActivePrimaryShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Initializing Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getInitializingShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Relocating Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getRelocatingShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Unassigned Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getUnassignedShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Delayed Unassigned Shards
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getDelayedUnassignedShards()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Pending Tasks
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterHealth.getNumberOfPendingTasks()
+            </td>
+        </tr>
+    </table>
+
+    <h2>Nodes</h2>
+    <table class="table table-striped">
+        <i:for type="org.elasticsearch.action.admin.cluster.node.stats.NodeStats" var="nodeStats"
+               items="@nodesStats.getNodes()">
+            <tr>
+                <i:local name="nodeStatId" value="@toUserString(call.generateLocalId())"/>
+                <i:local name="nodeInfoId" value="@toUserString(call.generateLocalId())"/>
+                <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeStatId"
+                          titleKey="IndexHealth.nodeStats"
+                          content="@nodeStatsMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+                <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeInfoId"
+                          titleKey="IndexHealth.nodeInfo"
+                          content="@nodeInfoMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+
+                <td style="vertical-align:middle">
+                    @nodeStats.getNode().getName()
+                </td>
+                <td class="align-right">
+                    <div class="dropdown" style="display:inline-block">
+                        <button class="btn btn-default dropdown-toggle" type="button"
+                                data-toggle="dropdown">
+                            Node Info
+                        </button>
+                        <ul id="nodeInfoDropdown" class="dropdown-menu">
+                            <li><a style="cursor:pointer" data-toggle="modal" data-target="#@nodeStatId">@i18n('IndexHealth.nodeStats')</a>
+                            </li>
+                            <li><a style="cursor:pointer" data-toggle="modal" data-target="#@nodeInfoId">@i18n('IndexHealth.nodeInfo')</a>
+                            </li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+        </i:for>
+    </table>
+
+    <table class="table table-striped">
+        <tr>
+            <td style="overflow: hidden">
+                Versions
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                <i:for type="String" var="version" items="clusterStats.getNodesStats().getVersions()">
+                    @version
+                </i:for>
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Available Processors
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterStats.getNodesStats().getOs().getAvailableProcessors()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                CPU Percent
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterStats.getNodesStats().getProcess().getCpuPercent()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Average open file descriptors
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterStats.getNodesStats().getProcess().getAvgOpenFileDescriptors()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                JVM-threads
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterStats.getNodesStats().getJvm().getThreads()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Max-Uptime
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @clusterStats.getNodesStats().getJvm().getMaxUpTime().toString()
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Used Heap
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getNodesStats().getJvm().getHeapUsed().getBytes())
+            </td>
+        </tr>
+    </table>
+
+    <h2>Indices</h2>
+    <i:for type="org.elasticsearch.cluster.health.ClusterIndexHealth" var="indexHealth"
+           items="@clusterHealth.getIndices().as(java.util.Map.class).values().as(java.util.Collection.class)">
+        <table class="table table-striped">
+            <tr>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()"
+                    style="vertical-align:middle">
+                    @indexHealth.getIndex()
+                </td>
+                <td>
+                    <i:for type="java.util.Map$Entry"
+                           var="shardRouting"
+                           items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).as(java.util.Map.class).entrySet()">
+                        <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
+                               items="@shardRouting.getValue().as(java.util.List.class)">
+                            <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
+                            <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@shardId"
+                                      titleKey="IndexHealth.shardRouting"
+                                      content="@toXContent.routingToXContent(routing)"/>
+                            <a class="@routing.state().toString()" style="width:40px; height:40px; border: 3px solid black; display:inline-block; text-align:center;
+                                      cursor:pointer" data-toggle="modal" data-target="#@shardId.as(String.class)">
+                                <p style="font-size:35px; position:relative; bottom:8px; color: #000000;">
+                                    @shardRouting.getKey()</p>
+                            </a>
+                        </i:for>
+                    </i:for>
+                </td>
+                <i:local name="statusId" value="@toUserString(call.generateLocalId())"/>
+                <i:local name="metaDataId" value="@toUserString(call.generateLocalId())"/>
+                <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@statusId"
+                          titleKey="IndexHealth.indexStatus"
+                          content="@indexStatusMap.get(indexHealth.getIndex()).as(String.class)"/>
+                <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@metaDataId"
+                          titleKey="IndexHealth.indexMetadata"
+                          content="@indexMetaData.get(indexHealth.getIndex()).as(String.class)"/>
+                <td class="align-right" style="vertical-align:middle">
+                    <div class="dropdown" style="float:right">
+                        <button class="btn btn-default dropdown-toggle" type="button"
+                                data-toggle="dropdown">
+                            Index Info
+                        </button>
+                        <ul class="dropdown-menu" id="indexInfoDropdown">
+                            <li><a style="cursor:pointer" data-toggle="modal" data-target="#@statusId">Index
+                                Status</a></li>
+                            <li><a style="cursor:pointer" data-toggle="modal" data-target="#@metaDataId">Index
+                                Metadata</a>
+                            </li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="overflow: hidden">
+                    Status
+                </td>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                    style="overflow: hidden">
+                    @clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="overflow: hidden">
+                    # Shards
+                </td>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                    style="overflow: hidden">
+                    @indexHealth.getNumberOfShards()
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="overflow: hidden">
+                    # Replicas
+                </td>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                    style="overflow: hidden">
+                    @indexHealth.getNumberOfReplicas()
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="overflow: hidden">
+                    # Docs
+                </td>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                    style="overflow: hidden">
+                    @numberFormat(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getDocs().getCount())
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="overflow: hidden">
+                    Size
+                </td>
+                <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                    style="overflow: hidden">
+                    @formatSize(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getTotalMemory().getBytes())
+                </td>
+            </tr>
+        </table>
+    </i:for>
+
+    <h2>Memory</h2>
+    <table class="table table-striped">
+        <tr>
+            <td style="overflow: hidden">
+                Total Disk Space
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getNodesStats().getFs().getTotal().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Available Disk Space
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getNodesStats().getFs().getAvailable().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Free Disk Space
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getNodesStats().getFs().getFree().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Fielddata
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getIndicesStats().getFieldData().getMemorySize().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Segments (#@clusterStats.getIndicesStats().getSegments().getCount())
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getIndicesStats().getSegments().getMemory().getBytes())
+                per segment
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Completion
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getIndicesStats().getCompletion().getSize().getBytes())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Query Cache
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @formatSize(clusterStats.getIndicesStats().getQueryCache().getMemorySize().getBytes())
+            </td>
+        </tr>
+    </table>
+
+    <h2>Cache</h2>
+    <table class="table table-striped">
+        <tr>
+            <td style="overflow: hidden">
+                Query Cache Size
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @numberFormat(clusterStats.getIndicesStats().getQueryCache().getCacheSize())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Query Cache Lookups
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @numberFormat(clusterStats.getIndicesStats().getQueryCache().getTotalCount())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Query Cache Hits
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @numberFormat(clusterStats.getIndicesStats().getQueryCache().getHitCount())
+            </td>
+        </tr>
+        <tr>
+            <td style="overflow: hidden">
+                Query Cache Misses
+            </td>
+            <td class="align-right" style="overflow: hidden">
+                @numberFormat(clusterStats.getIndicesStats().getQueryCache().getMissCount())
+            </td>
+        </tr>
+    </table>
+</w:page>

@@ -18,6 +18,7 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse;
 import org.elasticsearch.action.admin.indices.stats.IndexStats;
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.cluster.health.ClusterIndexHealth;
 import org.elasticsearch.cluster.health.ClusterShardHealth;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
@@ -33,9 +34,9 @@ import sirius.web.controller.BasicController;
 import sirius.web.controller.Controller;
 import sirius.web.controller.Routed;
 import sirius.web.http.WebContext;
+import sirius.web.security.Permission;
 
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,26 +55,21 @@ public class IndexHealthController extends BasicController {
     @Part
     private IndexAccess index;
 
+    @Permission(PERMISSION_SYSTEM_STATE)
     @Routed("/system/index")
     public void index(WebContext ctx) {
-        ClusterHealthResponse clusterHealthResponse =
-                index.getClient().admin().cluster().prepareHealth().get();
-        ClusterStatsResponse clusterStatsResponse =
-                index.getClient().admin().cluster().prepareClusterStats().get();
+        ClusterHealthResponse clusterHealthResponse = index.getClient().admin().cluster().prepareHealth().get();
+        ClusterStatsResponse clusterStatsResponse = index.getClient().admin().cluster().prepareClusterStats().get();
         NodesInfoResponse nodesInfoResponse = index.getClient().admin().cluster().prepareNodesInfo().get();
-        NodesStatsResponse nodesStatsResponse =
-                index.getClient().admin().cluster().prepareNodesStats().get();
-        ClusterStateResponse clusterStateResponse =
-                index.getClient().admin().cluster().prepareState().get();
-        IndicesStatsResponse indicesStatsResponse =
-                index.getClient().admin().indices().prepareStats().all().get();
-
+        NodesStatsResponse nodesStatsResponse = index.getClient().admin().cluster().prepareNodesStats().get();
+        ClusterStateResponse clusterStateResponse = index.getClient().admin().cluster().prepareState().get();
+        IndicesStatsResponse indicesStatsResponse = index.getClient().admin().indices().prepareStats().all().get();
 
         String clusterState = getClusterState(clusterStateResponse);
+        String clusterStateName = getClusterStateName(clusterHealthResponse);
 
         Map<String, String> nodeStatsMap = getNodesStats(nodesStatsResponse);
         Map<String, String> nodeInfoMap = getNodesInfos(nodesInfoResponse);
-
 
         Map<String, String> indexMetaData = getIndicesMetadata(clusterStateResponse);
         Map<String, String> indexStatusMap = getIndicesStatus(indicesStatsResponse);
@@ -81,10 +77,10 @@ public class IndexHealthController extends BasicController {
         Map<String, Map<Integer, List<ShardRouting>>> indexShardRoutingsMap =
                 getIndexShardRoutings(clusterHealthResponse, clusterStateResponse);
 
-        NumberFormatter nf = new NumberFormatter();
+        XContentWriter toXContent = new XContentWriter();
 
         ctx.respondWith()
-           .template("view/index-health.html",
+           .template("templates/index-health.html.pasta",
                      clusterHealthResponse,
                      clusterStatsResponse,
                      nodesInfoResponse,
@@ -99,25 +95,44 @@ public class IndexHealthController extends BasicController {
                      indexStatusMap,
                      nodeInfoMap,
 
-                     nf);
+                     clusterStateName,
+
+                     toXContent);
     }
 
-    public static class NumberFormatter {
-        private DecimalFormat formatter;
-        public NumberFormatter() {
-            formatter = new DecimalFormat();
-            formatter.setGroupingUsed(true);
-            formatter.setMaximumFractionDigits(2);
+    public class XContentWriter {
+        public String routingToXContent(ShardRouting routing) {
+            try (XContentBuilder builder = XContentFactory.jsonBuilder().prettyPrint()) {
+                return routing.toXContent(builder, ToXContent.EMPTY_PARAMS).string();
+            } catch (IOException e) {
+                Exceptions.handle(e);
+            }
+            return "";
         }
-        public String formatLong(long number) {
-            return formatter.format(number);
+
+        public String clusterHealthToXContent(ClusterHealthResponse healthResponse) {
+            try (XContentBuilder builder = XContentFactory.jsonBuilder().prettyPrint()) {
+                return healthResponse.toXContent(builder, ToXContent.EMPTY_PARAMS).string();
+            } catch (IOException e) {
+                Exceptions.handle(e);
+            }
+            return "";
         }
+    }
+
+    private String getClusterStateName(ClusterHealthResponse clusterHealthResponse) {
+        try {
+            return ClusterHealthStatus.fromValue(clusterHealthResponse.getStatus().value()).name();
+        } catch (IOException e) {
+            Exceptions.handle(e);
+        }
+        return "";
     }
 
     private Map<String, String> getNodesInfos(NodesInfoResponse nodesInfoResponse) {
         Map<String, String> nodeInfoMap = new HashMap<>();
         for (NodeInfo nodeInfo : nodesInfoResponse.getNodes()) {
-            try (XContentBuilder builder = XContentFactory.jsonBuilder()){
+            try (XContentBuilder builder = XContentFactory.jsonBuilder()) {
                 builder.humanReadable(true).prettyPrint();
                 builder.startObject();
                 nodeInfo.getSettings().toXContent(builder, ToXContent.EMPTY_PARAMS);
@@ -140,7 +155,7 @@ public class IndexHealthController extends BasicController {
 
     private String getClusterState(ClusterStateResponse clusterStateResponse) {
         String state = "";
-        try (XContentBuilder clusterStateBuilder = XContentFactory.jsonBuilder()){
+        try (XContentBuilder clusterStateBuilder = XContentFactory.jsonBuilder()) {
             clusterStateBuilder.humanReadable(true).prettyPrint().startObject();
             clusterStateResponse.getState().toXContent(clusterStateBuilder, ToXContent.EMPTY_PARAMS);
             clusterStateBuilder.endObject();
@@ -190,7 +205,7 @@ public class IndexHealthController extends BasicController {
     private Map<String, String> getIndicesStatus(IndicesStatsResponse indicesStatsResponse) {
         Map<String, String> indexStatusMap = new HashMap<>();
         for (Map.Entry<String, IndexStats> indexStat : indicesStatsResponse.getIndices().entrySet()) {
-            try (XContentBuilder indexStatsBuilder = XContentFactory.jsonBuilder()){
+            try (XContentBuilder indexStatsBuilder = XContentFactory.jsonBuilder()) {
                 indexStatsBuilder.humanReadable(true).prettyPrint().startObject();
                 indicesStatsResponse.getIndex(indexStat.getKey())
                                     .getTotal()
@@ -207,7 +222,7 @@ public class IndexHealthController extends BasicController {
     private Map<String, Map<Integer, List<ShardRouting>>> getIndexShardRoutings(ClusterHealthResponse clusterHealthResponse,
                                                                                 ClusterStateResponse clusterStateResponse) {
         Map<String, Map<Integer, List<ShardRouting>>> indexShardRoutings = new HashMap<>();
-        try (XContentBuilder xContentBuilder = XContentFactory.jsonBuilder()){
+        try (XContentBuilder xContentBuilder = XContentFactory.jsonBuilder()) {
             for (Map.Entry<String, ClusterIndexHealth> indexHealth : clusterHealthResponse.getIndices().entrySet()) {
 
                 String indexName = indexHealth.getValue().getIndex();
@@ -219,9 +234,8 @@ public class IndexHealthController extends BasicController {
         return indexShardRoutings;
     }
 
-
-    private Map<Integer, List<ShardRouting>> getShardRoutings(ClusterStateResponse clusterStateResponse, Map.Entry<String,
-            ClusterIndexHealth> index) {
+    private Map<Integer, List<ShardRouting>> getShardRoutings(ClusterStateResponse clusterStateResponse,
+                                                              Map.Entry<String, ClusterIndexHealth> index) {
         Map<Integer, List<ShardRouting>> shardRoutings = new HashMap<>();
         for (Map.Entry<Integer, ClusterShardHealth> shard : index.getValue().getShards().entrySet()) {
 

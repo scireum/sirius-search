@@ -1,0 +1,12 @@
+<i:arg name="id" type="String"/>
+<i:arg name="titleKey" type="String"/>
+<i:arg name="content" type="String"/>
+
+<w:modal name="@id" titleKey="@titleKey">
+    <w:modalBody>
+        <pre>@content</pre>
+    </w:modalBody>
+    <w:modalFooter>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    </w:modalFooter>
+</w:modal>
