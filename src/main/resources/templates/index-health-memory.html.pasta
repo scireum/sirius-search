@@ -1,0 +1,61 @@
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+
+<table class="table table-striped">
+    <tr>
+        <td style="overflow: hidden">
+            Total Disk Space
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getNodesStats().getFs().getTotal().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Available Disk Space
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getNodesStats().getFs().getAvailable().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Free Disk Space
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getNodesStats().getFs().getFree().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Fielddata
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getIndicesStats().getFieldData().getMemorySize().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Segments (#@clusterStats.getIndicesStats().getSegments().getCount())
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getIndicesStats().getSegments().getMemory().getBytes())
+            per segment
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Completion
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getIndicesStats().getCompletion().getSize().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Query Cache
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getIndicesStats().getQueryCache().getMemorySize().getBytes())
+        </td>
+    </tr>
+</table>

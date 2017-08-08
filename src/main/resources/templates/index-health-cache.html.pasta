@@ -1,0 +1,36 @@
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+
+<table class="table table-striped">
+    <tr>
+        <td style="overflow: hidden">
+            Query Cache Size
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getCacheSize())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Query Cache Lookups
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getTotalCount())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Query Cache Hits
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getHitCount())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Query Cache Misses
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getMissCount())
+        </td>
+    </tr>
+</table>

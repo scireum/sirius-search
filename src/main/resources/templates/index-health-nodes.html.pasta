@@ -1,0 +1,62 @@
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+
+<table class="table table-striped">
+    <tr>
+        <td style="overflow: hidden">
+            Versions
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            <i:for type="String" var="version" items="clusterStats.getNodesStats().getVersions()">
+                @version
+            </i:for>
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Available Processors
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterStats.getNodesStats().getOs().getAvailableProcessors()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            CPU Percent
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterStats.getNodesStats().getProcess().getCpuPercent()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Average open file descriptors
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterStats.getNodesStats().getProcess().getAvgOpenFileDescriptors()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            JVM-threads
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterStats.getNodesStats().getJvm().getThreads()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Max-Uptime
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterStats.getNodesStats().getJvm().getMaxUpTime().toString()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Used Heap
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getNodesStats().getJvm().getHeapUsed().getBytes())
+        </td>
+    </tr>
+</table>
