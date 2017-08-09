@@ -6,7 +6,7 @@
             Query Cache Size
         </td>
         <td class="align-right" style="overflow: hidden">
-            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getCacheSize())
+            @toUserString(clusterStats.getIndicesStats().getQueryCache().getCacheSize())
         </td>
     </tr>
     <tr>
@@ -14,7 +14,7 @@
             Query Cache Lookups
         </td>
         <td class="align-right" style="overflow: hidden">
-            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getTotalCount())
+            @toUserString(clusterStats.getIndicesStats().getQueryCache().getTotalCount())
         </td>
     </tr>
     <tr>
@@ -22,7 +22,7 @@
             Query Cache Hits
         </td>
         <td class="align-right" style="overflow: hidden">
-            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getHitCount())
+            @toUserString(clusterStats.getIndicesStats().getQueryCache().getHitCount())
         </td>
     </tr>
     <tr>
@@ -30,7 +30,7 @@
             Query Cache Misses
         </td>
         <td class="align-right" style="overflow: hidden">
-            @numberFormat(clusterStats.getIndicesStats().getQueryCache().getMissCount())
+            @toUserString(clusterStats.getIndicesStats().getQueryCache().getMissCount())
         </td>
     </tr>
 </table>

@@ -1,7 +1,6 @@
 <i:arg name="clusterHealth" type="org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse"/>
 <i:arg name="indicesStats" type="org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse"/>
 <i:arg name="allShardRoutings" type="java.util.Map"/>
-<i:arg name="toXContent" type="sirius.search.controller.IndexHealthController$XContentWriter"/>
 <i:arg name="indexStatusMap" type="java.util.Map"/>
 <i:arg name="indexMetaData" type="java.util.Map"/>
 
@@ -22,7 +21,7 @@
                         <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
                         <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@shardId"
                                   titleKey="IndexHealth.shardRouting"
-                                  content="@toXContent.toXContent(routing)"/>
+                                  content="@toXContent(routing)"/>
                         <a class="@routing.state().toString()" style="width:40px; height:40px; border: 3px solid black; display:inline-block; text-align:center;
                                       cursor:pointer" data-toggle="modal" data-target="#@shardId.as(String.class)">
                             <p style="font-size:35px; position:relative; bottom:8px; color: #000000;">
@@ -88,7 +87,7 @@
             </td>
             <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
                 style="overflow: hidden">
-                @numberFormat(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getDocs().getCount())
+                @toUserString(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getDocs().getCount())
             </td>
         </tr>
         <tr>

@@ -77,8 +77,6 @@ public class IndexHealthController extends BasicController {
         Map<String, Map<Integer, List<ShardRouting>>> indexShardRoutingsMap =
                 getIndexShardRoutings(clusterHealthResponse, clusterStateResponse);
 
-        XContentWriter toXContent = new XContentWriter();
-
         ctx.respondWith()
            .template("templates/index-health.html.pasta",
                      clusterHealthResponse,
@@ -92,22 +90,7 @@ public class IndexHealthController extends BasicController {
                      indexMetaData,
                      indexStatusMap,
                      nodeInfoMap,
-                     clusterStateName,
-                     toXContent);
-    }
-
-    /**
-     * Wraps the static method calls needed for getting the XContent Json Objects
-     */
-    public class XContentWriter {
-        public String toXContent(ToXContent toPrint) {
-            try (XContentBuilder builder = XContentFactory.jsonBuilder().prettyPrint()) {
-                return toPrint.toXContent(builder, ToXContent.EMPTY_PARAMS).string();
-            } catch (IOException e) {
-                Exceptions.handle(e);
-            }
-            return "";
-        }
+                     clusterStateName);
     }
 
     private String getClusterStateName(ClusterHealthResponse clusterHealthResponse) {

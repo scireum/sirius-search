@@ -10,7 +10,6 @@
 <i:arg name="indexStatusMap" type="java.util.Map"/>
 <i:arg name="nodeInfoMap" type="java.util.Map"/>
 <i:arg name="clusterState" type="String"/>
-<i:arg name="toXContent" type="sirius.search.controller.IndexHealthController$XContentWriter"/>
 
 <w:page titleKey="IndexHealth.elasticsearchState">
 
@@ -37,7 +36,7 @@
             .RELOCATING {
                 background-color: #dc88dd;
             }
-            INITIALIZING {
+            .INITIALIZING {
                 background-color: #dddc88;
             }
         </style>
@@ -50,10 +49,46 @@
     <w:pageHeader>
         <span class="@clusterState">Cluster State</span>
         <small>@clusterHealth.getClusterName()</small>
-        <i:invoke template="/templates/index-health-cluster.html.pasta" clusterHealth="@clusterHealth" nodesInfo="@nodesInfo"
-                  nodesStats="@nodesStats" indicesStats="@indicesStats"
-                  clusterStateString="@clusterStateString" toXContent="@toXContent"/>
+        <div class="pull-right">
+            <div class="dropdown" style="display:inline-block">
+                <button id="clusterInfoButton" class="btn btn-default dropdown-toggle" type="button"
+                        data-toggle="dropdown">
+                    Cluster Info
+                </button>
+                <ul class="dropdown-menu" id="clusterInfoDropdown">
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterState">Cluster
+                        State</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterHealth">Cluster Health</a>
+                    <li/>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesStats">Nodes
+                        Stats</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesInfo">Nodes
+                        Info</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#indicesStats">Indices
+                        Stats</a></li>
+                </ul>
+            </div>
+            <a class="btn btn-default" href="/assets/es-head/index.html">HEAD</a>
+            <a class="btn btn-default" href="/system/index"><i class="fa fa-refresh"></i></a>
+        </div>
+        <div class="clearfix"></div>
     </w:pageHeader>
+
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterState"
+              titleKey="IndexHealth.clusterState"
+              content="@clusterStateString"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterHealth"
+              titleKey="IndexHealth.clusterHealth"
+              content="@toXContent(clusterHealth)"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesStats"
+              titleKey="IndexHealth.nodesInfo"
+              content="@nodesInfo.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesInfo"
+              titleKey="IndexHealth.nodesStats"
+              content="@nodesStats.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="indicesStats"
+              titleKey="IndexHealth.indicesStats"
+              content="@indicesStats.toString()"/>
 
     <h2>General</h2>
     <i:invoke template="/templates/index-health-general.html.pasta"
@@ -71,7 +106,6 @@
               clusterHealth="@clusterHealth"
               indicesStats="@indicesStats"
               allShardRoutings="@allShardRoutings"
-              toXContent="@toXContent"
               indexStatusMap="@indexStatusMap"
               indexMetaData="@indexMetaData"/>
 

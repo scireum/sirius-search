@@ -16,7 +16,7 @@
             Cluster Docs
         </td>
         <td class="align-right" style="overflow: hidden">
-            @numberFormat(clusterStats.getIndicesStats().getDocs().getCount())
+            @toUserString(clusterStats.getIndicesStats().getDocs().getCount())
         </td>
     </tr>
     <tr>
