@@ -1,0 +1,38 @@
+<i:arg name="nodesStats" type="org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse"/>
+<i:arg name="nodeStatsMap" type="java.util.Map"/>
+<i:arg name="nodeInfoMap" type="java.util.Map"/>
+
+
+<table class="table table-striped">
+    <i:for type="org.elasticsearch.action.admin.cluster.node.stats.NodeStats" var="nodeStats"
+           items="@nodesStats.getNodes()">
+        <tr>
+            <i:local name="nodeStatId" value="@toUserString(call.generateLocalId())"/>
+            <i:local name="nodeInfoId" value="@toUserString(call.generateLocalId())"/>
+            <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeStatId"
+                      titleKey="IndexHealth.nodeStats"
+                      content="@nodeStatsMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+            <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeInfoId"
+                      titleKey="IndexHealth.nodeInfo"
+                      content="@nodeInfoMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+
+            <td style="vertical-align:middle">
+                @nodeStats.getNode().getName()
+            </td>
+            <td class="align-right">
+                <div class="dropdown" style="display:inline-block">
+                    <button class="btn btn-default dropdown-toggle" type="button"
+                            data-toggle="dropdown">
+                        Node Info
+                    </button>
+                    <ul id="nodeInfoDropdown" class="dropdown-menu">
+                        <li><a style="cursor:pointer" data-toggle="modal" data-target="#@nodeStatId">@i18n('IndexHealth.nodeStats')</a>
+                        </li>
+                        <li><a style="cursor:pointer" data-toggle="modal" data-target="#@nodeInfoId">@i18n('IndexHealth.nodeInfo')</a>
+                        </li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    </i:for>
+</table>

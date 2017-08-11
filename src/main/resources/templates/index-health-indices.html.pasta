@@ -1,0 +1,103 @@
+<i:arg name="clusterHealth" type="org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse"/>
+<i:arg name="indicesStats" type="org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse"/>
+<i:arg name="allShardRoutings" type="java.util.Map"/>
+<i:arg name="indexStatusMap" type="java.util.Map"/>
+<i:arg name="indexMetaData" type="java.util.Map"/>
+
+<i:for type="org.elasticsearch.cluster.health.ClusterIndexHealth" var="indexHealth"
+       items="@clusterHealth.getIndices().as(java.util.Map.class).values().as(java.util.Collection.class)">
+    <table class="table table-striped">
+        <tr>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()"
+                style="vertical-align:middle">
+                @indexHealth.getIndex()
+            </td>
+            <td>
+                <i:for type="java.util.Map$Entry"
+                       var="shardRouting"
+                       items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).as(java.util.Map.class).entrySet()">
+                    <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
+                           items="@shardRouting.getValue().as(java.util.List.class)">
+                        <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
+                        <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@shardId"
+                                  titleKey="IndexHealth.shardRouting"
+                                  content="@toXContent(routing)"/>
+                        <a class="@routing.state().toString()" style="width:40px; height:40px; border: 3px solid black; display:inline-block; text-align:center;
+                                      cursor:pointer" data-toggle="modal" data-target="#@shardId.as(String.class)">
+                            <p style="font-size:35px; position:relative; bottom:8px; color: #000000;">
+                                @shardRouting.getKey()</p>
+                        </a>
+                    </i:for>
+                </i:for>
+            </td>
+            <i:local name="statusId" value="@toUserString(call.generateLocalId())"/>
+            <i:local name="metaDataId" value="@toUserString(call.generateLocalId())"/>
+            <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@statusId"
+                      titleKey="IndexHealth.indexStatus"
+                      content="@indexStatusMap.get(indexHealth.getIndex()).as(String.class)"/>
+            <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@metaDataId"
+                      titleKey="IndexHealth.indexMetadata"
+                      content="@indexMetaData.get(indexHealth.getIndex()).as(String.class)"/>
+            <td class="align-right" style="vertical-align:middle">
+                <div class="dropdown" style="float:right">
+                    <button class="btn btn-default dropdown-toggle" type="button"
+                            data-toggle="dropdown">
+                        Index Info
+                    </button>
+                    <ul class="dropdown-menu" id="indexInfoDropdown">
+                        <li><a style="cursor:pointer" data-toggle="modal" data-target="#@statusId">Index
+                            Status</a></li>
+                        <li><a style="cursor:pointer" data-toggle="modal" data-target="#@metaDataId">Index
+                            Metadata</a>
+                        </li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="overflow: hidden">
+                Status
+            </td>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                style="overflow: hidden">
+                @clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="overflow: hidden">
+                # Shards
+            </td>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                style="overflow: hidden">
+                @indexHealth.getNumberOfShards()
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="overflow: hidden">
+                # Replicas
+            </td>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                style="overflow: hidden">
+                @indexHealth.getNumberOfReplicas()
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="overflow: hidden">
+                # Docs
+            </td>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                style="overflow: hidden">
+                @toUserString(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getDocs().getCount())
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="overflow: hidden">
+                Size
+            </td>
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+                style="overflow: hidden">
+                @formatSize(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getTotalMemory().getBytes())
+            </td>
+        </tr>
+    </table>
+</i:for>

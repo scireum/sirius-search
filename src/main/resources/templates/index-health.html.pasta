@@ -1,0 +1,117 @@
+<i:arg name="clusterHealth" type="org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse"/>
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+<i:arg name="nodesInfo" type="org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse"/>
+<i:arg name="nodesStats" type="org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse"/>
+<i:arg name="indicesStats" type="org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse"/>
+<i:arg name="clusterStateString" type="String"/>
+<i:arg name="allShardRoutings" type="java.util.Map"/>
+<i:arg name="nodeStatsMap" type="java.util.Map"/>
+<i:arg name="indexMetaData" type="java.util.Map"/>
+<i:arg name="indexStatusMap" type="java.util.Map"/>
+<i:arg name="nodeInfoMap" type="java.util.Map"/>
+<i:arg name="clusterState" type="String"/>
+
+<w:page titleKey="IndexHealth.elasticsearchState">
+
+    <i:block name="head">
+        <style>
+            .GRAY {
+                color: #555555;
+            }
+            .GREEN {
+                color: #168d12;
+            }
+            .RED {
+                color: #9f3d33;
+            }
+            .YELLOW {
+                color: rgb(209, 170, 0);
+            }
+            .STARTED {
+                background-color: #99dd88;
+            }
+            .UNASSIGNED {
+                background-color: #999;
+            }
+            .RELOCATING {
+                background-color: #dc88dd;
+            }
+            .INITIALIZING {
+                background-color: #dddc88;
+            }
+        </style>
+    </i:block>
+
+    <i:block name="breadcrumbs">
+        <li><a href="/system/index">@i18n('IndexHealth.elasticsearchState')</a></li>
+    </i:block>
+
+    <w:pageHeader>
+        <span class="@clusterState">Cluster State</span>
+        <small>@clusterHealth.getClusterName()</small>
+        <div class="pull-right">
+            <div class="dropdown" style="display:inline-block">
+                <button id="clusterInfoButton" class="btn btn-default dropdown-toggle" type="button"
+                        data-toggle="dropdown">
+                    Cluster Info
+                </button>
+                <ul class="dropdown-menu" id="clusterInfoDropdown">
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterState">Cluster
+                        State</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#clusterHealth">Cluster Health</a>
+                    <li/>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesStats">Nodes
+                        Stats</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#nodesInfo">Nodes
+                        Info</a></li>
+                    <li><a style="cursor:pointer" data-toggle="modal" data-target="#indicesStats">Indices
+                        Stats</a></li>
+                </ul>
+            </div>
+            <a class="btn btn-default" href="/assets/es-head/index.html">HEAD</a>
+            <a class="btn btn-default" href="/system/index"><i class="fa fa-refresh"></i></a>
+        </div>
+        <div class="clearfix"></div>
+    </w:pageHeader>
+
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterState"
+              titleKey="IndexHealth.clusterState"
+              content="@clusterStateString"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="clusterHealth"
+              titleKey="IndexHealth.clusterHealth"
+              content="@toXContent(clusterHealth)"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesStats"
+              titleKey="IndexHealth.nodesInfo"
+              content="@nodesInfo.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="nodesInfo"
+              titleKey="IndexHealth.nodesStats"
+              content="@nodesStats.toString()"/>
+    <i:invoke template="/templates/index-health-infowindow.html.pasta" id="indicesStats"
+              titleKey="IndexHealth.indicesStats"
+              content="@indicesStats.toString()"/>
+
+    <h2>General</h2>
+    <i:invoke template="/templates/index-health-general.html.pasta"
+              clusterHealth="@clusterHealth" clusterStats="@clusterStats" clusterState="@clusterState"/>
+
+    <h2>Nodes</h2>
+    <i:invoke template="/templates/index-health-node.html.pasta"
+              nodesStats="@nodesStats"
+              nodeStatsMap="@nodeStatsMap"
+              nodeInfoMap="@nodeInfoMap"/>
+    <i:invoke template="/templates/index-health-nodes.html.pasta" clusterStats="@clusterStats"/>
+
+    <h2>Indices</h2>
+    <i:invoke template="/templates/index-health-indices.html.pasta"
+              clusterHealth="@clusterHealth"
+              indicesStats="@indicesStats"
+              allShardRoutings="@allShardRoutings"
+              indexStatusMap="@indexStatusMap"
+              indexMetaData="@indexMetaData"/>
+
+    <h2>Memory</h2>
+    <i:invoke template="/templates/index-health-memory.html.pasta" clusterStats="@clusterStats"/>
+
+    <h2>Cache</h2>
+    <i:invoke template="/templates/index-health-cache.html.pasta" clusterStats="@clusterStats"/>
+</w:page>

@@ -1,0 +1,94 @@
+<i:arg name="clusterHealth" type="org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse"/>
+<i:arg name="clusterStats" type="org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse"/>
+<i:arg name="clusterState" type="String"/>
+
+<table class="table table-striped">
+    <tr>
+        <td style="overflow: hidden">
+            Cluster Status
+        </td>
+        <td class="@clusterState align-right" style="overflow: hidden">
+            @clusterHealth.getStatus()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Cluster Docs
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @toUserString(clusterStats.getIndicesStats().getDocs().getCount())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Indexsize
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @formatSize(clusterStats.getIndicesStats().getStore().size().getBytes())
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            # Nodes
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getNumberOfNodes()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Active Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getActiveShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Active Primary Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getActivePrimaryShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Initializing Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getInitializingShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Relocating Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getRelocatingShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Unassigned Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getUnassignedShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Delayed Unassigned Shards
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getDelayedUnassignedShards()
+        </td>
+    </tr>
+    <tr>
+        <td style="overflow: hidden">
+            Pending Tasks
+        </td>
+        <td class="align-right" style="overflow: hidden">
+            @clusterHealth.getNumberOfPendingTasks()
+        </td>
+    </tr>
+</table>
