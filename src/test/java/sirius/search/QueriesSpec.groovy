@@ -16,6 +16,8 @@ import sirius.search.constraints.And
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
+import sirius.search.entities.ParentEntity
+import sirius.search.entities.QueryEntity
 
 class QueriesSpec extends BaseSpecification {
 

@@ -17,6 +17,8 @@ import sirius.search.aggregation.bucket.Nested
 import sirius.search.aggregation.bucket.Term
 import sirius.search.aggregation.metrics.Max
 import sirius.search.aggregation.metrics.Min
+import sirius.search.entities.NestedObjectsListEntity
+import sirius.search.entities.POJO
 
 class AggregationsSpec extends BaseSpecification {
 

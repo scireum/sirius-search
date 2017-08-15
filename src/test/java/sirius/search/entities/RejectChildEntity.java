@@ -6,15 +6,18 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.entities;
 
+import sirius.search.Cascade;
+import sirius.search.Entity;
+import sirius.search.EntityRef;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.RefType;
 
 @Indexed(index = "test")
-public class CascadingChildEntity extends Entity {
+public class RejectChildEntity extends Entity {
 
-    @RefType(type = ParentEntity.class, cascade = Cascade.CASCADE)
+    @RefType(type = ParentEntity.class, cascade = Cascade.REJECT)
     private EntityRef<ParentEntity> parent;
 
     public EntityRef<ParentEntity> getParent() {

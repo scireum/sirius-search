@@ -6,8 +6,11 @@
  * http://www.scireum.de - info@scireum.de
  */
 
-package sirius.search;
+package sirius.search.entities;
 
+import sirius.search.annotations.Indexed;
+
+@Indexed(index = "test")
 public class POJO {
     public static final String NUMBER_VAR = "numberVar";
     private Long numberVar;

@@ -73,16 +73,16 @@ public class ObjectProperty extends Property {
 
     @Override
     protected Object transformToSource(Object o) {
-        Map<String, Object> valueMap = new HashMap<>();
-
         if (o != null) {
+            Map<String, Object> valueMap = new HashMap<>();
             Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             for (Field innerField : targetClass.getDeclaredFields()) {
                 transformField(o, valueMap, innerField);
             }
+            return valueMap;
+        } else {
+            return null;
         }
-
-        return valueMap;
     }
 
     private void transformField(Object o, Map<String, Object> valueMap, Field innerField) {
@@ -114,6 +114,10 @@ public class ObjectProperty extends Property {
     @Override
     protected Object transformFromSource(Object value) {
         try {
+            if (value == null) {
+                return null;
+            }
+
             Class<?> targetClass = getField().getAnnotation(NestedObject.class).value();
             Object obj = targetClass.newInstance();
 
