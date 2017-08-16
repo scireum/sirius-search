@@ -23,8 +23,9 @@ import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
@@ -45,8 +46,6 @@ import sirius.kernel.di.std.Part;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.health.Microtiming;
 import sirius.kernel.nls.NLS;
-import sirius.search.aggregation.Aggregation;
-import sirius.search.aggregation.bucket.BucketAggregation;
 import sirius.search.constraints.Constraint;
 import sirius.search.constraints.FieldEqual;
 import sirius.search.constraints.FieldNotEqual;
@@ -102,7 +101,8 @@ public class Query<E extends Entity> {
     private List<Constraint> constraints = Lists.newArrayList();
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
-    private List<Aggregation> aggregations = Lists.newArrayList();
+    private List<AggregationBuilder> aggregations = Lists.newArrayList();
+    private List<PipelineAggregationBuilder> pipelineAggregations = Lists.newArrayList();
     private ScoreFunctionBuilder<?> scoreFunctionBuilder;
     private boolean randomize;
     private String randomizeField;
@@ -553,14 +553,13 @@ public class Query<E extends Entity> {
         return this;
     }
 
-    /**
-     * Adds the given aggregration to be filled by the query
-     *
-     * @param aggregation the aggregation to fill
-     * @return the query itself for fluent method calls
-     */
-    public Query<E> addAggregation(Aggregation aggregation) {
-        aggregations.add(aggregation);
+    public Query<E> addAggregation(AggregationBuilder aggregationBuilder) {
+        this.aggregations.add(aggregationBuilder);
+        return this;
+    }
+
+    public Query<E> addPipelineAggregation(PipelineAggregationBuilder pipelineAggregationBuilder) {
+        this.pipelineAggregations.add(pipelineAggregationBuilder);
         return this;
     }
 
@@ -838,6 +837,11 @@ public class Query<E extends Entity> {
         return srb;
     }
 
+    private void applyAggregations(SearchRequestBuilder srb) {
+        aggregations.forEach(aggregation -> srb.addAggregation(aggregation));
+        pipelineAggregations.forEach(pipelineAggregation -> srb.addAggregation(pipelineAggregation));
+    }
+
     private void applyLimit(SearchRequestBuilder srb) {
         if (start > 0) {
             srb.setFrom(start);
@@ -845,32 +849,6 @@ public class Query<E extends Entity> {
         if (limit != null && limit >= 0) {
             srb.setSize(limit);
         }
-    }
-
-    private void applyAggregations(SearchRequestBuilder srb) {
-        for (Aggregation aggregation : aggregations) {
-            AbstractAggregationBuilder<?> aggregationBuilder = aggregation.getBuilder();
-
-            if (aggregation instanceof BucketAggregation) {
-                for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                    aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
-                }
-            }
-
-            srb.addAggregation(aggregationBuilder);
-        }
-    }
-
-    private AbstractAggregationBuilder<?> buildSubAggregations(Aggregation aggregation) {
-        AbstractAggregationBuilder<?> aggregationBuilder = aggregation.getBuilder();
-
-        if (aggregation instanceof BucketAggregation) {
-            for (Aggregation subAggregation : ((BucketAggregation) aggregation).getSubAggregations()) {
-                aggregationBuilder.subAggregation(buildSubAggregations(subAggregation));
-            }
-        }
-
-        return aggregationBuilder;
     }
 
     private void applyFacets(SearchRequestBuilder srb) {
@@ -971,9 +949,8 @@ public class Query<E extends Entity> {
     }
 
     /**
-     * Can be used to return the raw {@link SearchResponse}. This can e.g. be useful in combination with the {@link
-     * sirius.search.aggregation.metrics.TopHits} aggregation where the aggregated hits need to be parsed from the
-     * aggregation section of the response.
+     * Can be used to return the raw {@link SearchResponse}. This can e.g. be useful in combination with the top-hits
+     * aggregation where the aggregated hits need to be parsed from the aggregation section of the response.
      *
      * @return the raw {@link SearchResponse}
      */
@@ -1021,8 +998,8 @@ public class Query<E extends Entity> {
     }
 
     /**
-     * Helper method to parse searchHits. Can e.g. be used in combination with {@link
-     * sirius.search.aggregation.metrics.TopHits} where the aggregated hits are not part of the query section.
+     * Helper method to parse searchHits. Can e.g. be used in combination with top-hits where the aggregated hits are
+     * not part of the query section.
      * <p>
      * {@code
      * query = index.select(...).where(...).addAggregation(...);
