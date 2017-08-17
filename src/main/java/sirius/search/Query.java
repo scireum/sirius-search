@@ -558,6 +558,12 @@ public class Query<E extends Entity> {
         return this;
     }
 
+    /**
+     * Adds a special kind of aggregation to the query which can access the outputs of other aggregations.
+     *
+     * @param pipelineAggregationBuilder the pipeline aggregation that should be added to the query
+     * @return the query itself for fluent method calls
+     */
     public Query<E> addPipelineAggregation(PipelineAggregationBuilder pipelineAggregationBuilder) {
         this.pipelineAggregations.add(pipelineAggregationBuilder);
         return this;
