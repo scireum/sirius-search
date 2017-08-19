@@ -31,8 +31,8 @@ import java.util.Map;
  */
 public class StringMapProperty extends StringProperty {
 
-    public static final String KEY = "key";
-    public static final String VALUE = "value";
+    protected static final String KEY = "key";
+    protected static final String VALUE = "value";
 
     private final boolean nested;
 
@@ -57,7 +57,7 @@ public class StringMapProperty extends StringProperty {
     /*
      * Instances are only created by the factory
      */
-    private StringMapProperty(Field field) {
+    protected StringMapProperty(Field field) {
         super(field);
         setInnerProperty(true);
 
