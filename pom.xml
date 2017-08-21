@@ -9,7 +9,7 @@
         <version>3.10</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>9.0-SNAPSHOT</version>
+    <version>9.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
