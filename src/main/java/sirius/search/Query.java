@@ -22,7 +22,6 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilder;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
@@ -114,6 +113,7 @@ public class Query<E extends Entity> {
     private String index;
     private boolean forceFail = false;
     private String routing;
+    private boolean explain = false;
     protected boolean logQuery;
     // Used to signal that deliberately no routing was given
     private boolean deliberatelyUnrouted;
@@ -465,6 +465,18 @@ public class Query<E extends Entity> {
      */
     public Query<E> routing(String value) {
         this.routing = value;
+        return this;
+    }
+
+    /**
+     * Enables the explain mode which gives detailed informations about score calculations.
+     * <p>
+     * Only use this mode for debugging as this might cost performance!
+     *
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> explain() {
+        this.explain = true;
         return this;
     }
 
@@ -825,6 +837,8 @@ public class Query<E extends Entity> {
                                                              indexAccess.getIndexName(ed.getIndex()))
                                               .setTypes(ed.getType());
         srb.setVersion(true);
+        srb.setExplain(explain);
+
         if (primary) {
             srb.setPreference("_primary");
         }
@@ -986,7 +1000,7 @@ public class Query<E extends Entity> {
             IndexAccess.LOG.FINE("SEARCH: %s.%s: SUCCESS: %d - %d ms",
                                  indexAccess.getIndex(clazz),
                                  indexAccess.getDescriptor(clazz).getType(),
-                                 response.getHits().totalHits(),
+                                 response.getHits().getTotalHits(),
                                  response.getTookInMillis());
         }
 
@@ -1004,35 +1018,29 @@ public class Query<E extends Entity> {
     }
 
     /**
-     * Helper method to parse searchHits. Can e.g. be used in combination with top-hits where the aggregated hits are
-     * not part of the query section.
-     * <p>
-     * {@code
-     * query = index.select(...).where(...).addAggregation(...);
-     * SearchResponse response = query.queryRaw();
-     * for (Terms.Bucket bucket : response.getAggregations().get("...").getBuckets()) {
-     * entities.addAll(query.transformTopHits(bucket.getAggregations().get("item")).getHits()));
-     * }
-     * }
+     * Helper method which can be used to parse a {@link SearchHit} into a POJO. This can be useful when using
+     * aggregations to transform raw {@link SearchHit}s.
      *
-     * @param searchHits the JSON encoded searchHits
-     * @return the transformed searchHits
-     * @throws ReflectiveOperationException
+     * @param searchHit a raw hit returned by ElasticSearch
+     * @return the raw hit transformed into an object of the desired class
      */
-    public List<E> transformTopHits(SearchHits searchHits) throws ReflectiveOperationException {
-        List<E> transformedHits = new ArrayList<>();
-
-        for (SearchHit searchHit : searchHits) {
+    public E transformHit(SearchHit searchHit) {
+        try {
             EntityDescriptor descriptor = indexAccess.getDescriptor(clazz);
             E entity = clazz.newInstance();
             entity.initSourceTracing();
             entity.setId(searchHit.getId());
             entity.setVersion(searchHit.getVersion());
             descriptor.readSource(entity, searchHit.getSource());
-            transformedHits.add(entity);
-        }
 
-        return transformedHits;
+            return entity;
+        } catch (Exception e) {
+            throw Exceptions.handle()
+                            .error(e)
+                            .to(IndexAccess.LOG)
+                            .withSystemErrorMessage("Cannot transform SearchHit to POJO: %s", toString())
+                            .handle();
+        }
     }
 
     /**
