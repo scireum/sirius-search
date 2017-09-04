@@ -659,7 +659,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addBooleanTermFacet(String field, String value) {
-        return addTermFacet(field, value, key -> NLS.get("T".equals(key) ? "NLS.yes" : "NLS.no"));
+        return addTermFacet(field, value, key -> NLS.get("true".equals(key) ? "NLS.yes" : "NLS.no"));
     }
 
     /**
@@ -670,7 +670,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> addBooleanTermFacet(String field, WebContext request) {
-        return addTermFacet(field, request, key -> NLS.get("T".equals(key) ? "NLS.yes" : "NLS.no"));
+        return addTermFacet(field, request, key -> NLS.get("true".equals(key) ? "NLS.yes" : "NLS.no"));
     }
 
     /**
