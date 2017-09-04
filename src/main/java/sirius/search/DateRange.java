@@ -9,14 +9,12 @@
 package sirius.search;
 
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
-import org.joda.time.DateTime;
 import sirius.kernel.nls.NLS;
 import sirius.search.constraints.FieldOperator;
 
 import javax.annotation.Nullable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 
@@ -216,18 +214,12 @@ public class DateRange {
     protected void applyTo(DateRangeAggregationBuilder rangeBuilder) {
         if (until == null) {
             if (from != null) {
-                rangeBuilder.addUnboundedFrom(key,
-                                              new DateTime(from.atZone(ZoneId.systemDefault())
-                                                               .toInstant()
-                                                               .toEpochMilli()));
+                rangeBuilder.addUnboundedFrom(key, from.toString());
             }
         } else if (from == null) {
-            rangeBuilder.addUnboundedTo(key,
-                                        new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
+            rangeBuilder.addUnboundedTo(key, until.toString());
         } else {
-            rangeBuilder.addRange(key,
-                                  new DateTime(from.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()),
-                                  new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
+            rangeBuilder.addRange(key, from.toString(), until.toString());
         }
     }
 
