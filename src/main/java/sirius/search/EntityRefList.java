@@ -18,6 +18,7 @@ import sirius.kernel.health.Exceptions;
 import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -105,7 +106,7 @@ public class EntityRefList<E extends Entity> {
                     result.add(index.find(clazz, id));
                 }
             }
-            values = result.stream().filter(v -> v != null).collect(Collectors.toList());
+            values = result.stream().filter(Objects::nonNull).collect(Collectors.toList());
             valueFromCache = false;
         }
         if (values == null) {

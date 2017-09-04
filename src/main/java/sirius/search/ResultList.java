@@ -107,34 +107,38 @@ public class ResultList<T> implements Iterable<T> {
         if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
                 if (facet instanceof DateFacet) {
-                    DateFacet dateFacet = (DateFacet) facet;
-
-                    Map<String, Range.Bucket> items = new LinkedHashMap<>();
-                    dateFacet.getRanges().forEach(range -> items.put(range.getKey(), null));
-
-                    Range range = response.getAggregations().get(facet.getName());
-
-                    range.getBuckets().stream().filter(bucket -> bucket.getDocCount() > 0).forEach(bucket -> {
-                        DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
-                        if (dateRange != null) {
-                            items.put(dateRange.getKey(), bucket);
-                        }
-                    });
-
-                    items.values().stream().filter(Objects::nonNull).forEach(bucket -> {
-                        DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
-                        facet.addItem(dateRange.getKey(), dateRange.getName(), (int)bucket.getDocCount());
-                    });
+                    fillDateFacet(facet);
                 } else {
                     Terms terms = response.getAggregations().get(facet.getName());
                     for (Terms.Bucket bucket : terms.getBuckets()) {
                         String key = bucket.getKeyAsString();
-                        facet.addItem(key, key, (int)bucket.getDocCount());
+                        facet.addItem(key, key, (int) bucket.getDocCount());
                     }
                 }
             }
         }
         return termFacets;
+    }
+
+    private void fillDateFacet(Facet facet) {
+        DateFacet dateFacet = (DateFacet) facet;
+
+        Map<String, Range.Bucket> items = new LinkedHashMap<>();
+        dateFacet.getRanges().forEach(range -> items.put(range.getKey(), null));
+
+        Range range = response.getAggregations().get(facet.getName());
+
+        range.getBuckets().stream().filter(bucket -> bucket.getDocCount() > 0).forEach(bucket -> {
+            DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
+            if (dateRange != null) {
+                items.put(dateRange.getKey(), bucket);
+            }
+        });
+
+        items.values().stream().filter(Objects::nonNull).forEach(bucket -> {
+            DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
+            facet.addItem(dateRange.getKey(), dateRange.getName(), (int) bucket.getDocCount());
+        });
     }
 
     /**

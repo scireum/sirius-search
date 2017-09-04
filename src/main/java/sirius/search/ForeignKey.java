@@ -180,17 +180,15 @@ public class ForeignKey {
      * @param entity the entity (which must be of type {@link #getReferencedClass()}) which is the be deleted.
      */
     public void checkDelete(final Entity entity) {
-        if (refType.cascade() == Cascade.REJECT) {
-            if (index.select(getLocalClass())
-                     .eq(field.getName(), entity.getId())
-                     .autoRoute(field.getName(), entity.getId())
-                     .exists()) {
-                throw Exceptions.createHandled()
-                                .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
-                                            refType.onDeleteErrorMsg() :
-                                            "ForeignKey.restricted")
-                                .handle();
-            }
+        if (refType.cascade() == Cascade.REJECT && index.select(getLocalClass())
+                                                        .eq(field.getName(), entity.getId())
+                                                        .autoRoute(field.getName(), entity.getId())
+                                                        .exists()) {
+            throw Exceptions.createHandled()
+                            .withNLSKey(Strings.isFilled(refType.onDeleteErrorMsg()) ?
+                                        refType.onDeleteErrorMsg() :
+                                        "ForeignKey.restricted")
+                            .handle();
         }
     }
 
@@ -363,7 +361,7 @@ public class ForeignKey {
                 urb.setRouting(String.valueOf(routingKey));
             }
         }
-        Script script = computeUpdateScript(parent, updateParent, urb);
+        Script script = computeUpdateScript(parent, updateParent);
         urb.setScript(script);
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("UPDATE: %s.%s: %s",
@@ -374,7 +372,7 @@ public class ForeignKey {
         return urb;
     }
 
-    private Script computeUpdateScript(Entity parent, boolean updateParent, UpdateRequestBuilder urb) {
+    private Script computeUpdateScript(Entity parent, boolean updateParent) {
         sirius.kernel.commons.Context ctx = sirius.kernel.commons.Context.create();
         StringBuilder sb = new StringBuilder();
         for (Reference ref : references) {
