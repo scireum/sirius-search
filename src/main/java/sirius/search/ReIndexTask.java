@@ -72,7 +72,7 @@ class ReIndexTask implements Runnable {
             while (TaskContext.get().isActive()) {
                 searchResponse = reindexBlock(ed, searchResponse.getScrollId());
                 //Break condition: No hits are returned
-                if (searchResponse.getHits().hits().length == 0) {
+                if (searchResponse.getHits().getHits().length == 0) {
                     return;
                 }
             }

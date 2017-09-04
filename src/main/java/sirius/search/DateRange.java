@@ -9,14 +9,12 @@
 package sirius.search;
 
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
-import org.joda.time.DateTime;
 import sirius.kernel.nls.NLS;
 import sirius.search.constraints.FieldOperator;
 
 import javax.annotation.Nullable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 
@@ -213,30 +211,24 @@ public class DateRange {
         return key;
     }
 
-    protected void applyTo(DateRangeAggregationBuilder rangeBuilder) {
+    protected void applyTo(DateRangeAggregationBuilder builder) {
         if (until == null) {
             if (from != null) {
-                rangeBuilder.addUnboundedFrom(key,
-                                              new DateTime(from.atZone(ZoneId.systemDefault())
-                                                               .toInstant()
-                                                               .toEpochMilli()));
+                builder.addUnboundedFrom(key, from.toString());
             }
         } else if (from == null) {
-            rangeBuilder.addUnboundedTo(key,
-                                        new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
+            builder.addUnboundedTo(key, until.toString());
         } else {
-            rangeBuilder.addRange(key,
-                                  new DateTime(from.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()),
-                                  new DateTime(until.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
+            builder.addRange(key, from.toString(), until.toString());
         }
     }
 
-    protected void applyToQuery(String field, Query<?> qry) {
+    protected void applyToQuery(String field, Query<?> query) {
         if (from != null) {
-            qry.where(FieldOperator.greater(field, from).including());
+            query.where(FieldOperator.greater(field, from).including());
         }
         if (until != null) {
-            qry.where(FieldOperator.less(field, until).including());
+            query.where(FieldOperator.less(field, until).including());
         }
     }
 

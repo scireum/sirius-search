@@ -16,8 +16,10 @@ import sirius.kernel.commons.Monoflop;
 import sirius.web.controller.Facet;
 
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Combines the result items of a query along with the collected facet filters and aggregations.
@@ -37,8 +39,8 @@ public class ResultList<T> implements Iterable<T> {
     /**
      * Creates a new result list
      *
-     * @param termFacets   list of facets created by the query
-     * @param response     underlying search response building the result
+     * @param termFacets list of facets created by the query
+     * @param response   underlying search response building the result
      */
     protected ResultList(List<Facet> termFacets, SearchResponse response) {
         this.termFacets = termFacets;
@@ -105,25 +107,38 @@ public class ResultList<T> implements Iterable<T> {
         if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
                 if (facet instanceof DateFacet) {
-                    Range range = response.getAggregations().get(facet.getName());
-                    for (Range.Bucket bucket : range.getBuckets()) {
-                        if (bucket.getDocCount() > 0) {
-                            DateRange dateRange = ((DateFacet) facet).getRangeByName(bucket.getKeyAsString());
-                            if (dateRange != null) {
-                                facet.addItem(dateRange.getKey(), dateRange.getName(), (int)bucket.getDocCount());
-                            }
-                        }
-                    }
+                    fillDateFacet(facet);
                 } else {
                     Terms terms = response.getAggregations().get(facet.getName());
                     for (Terms.Bucket bucket : terms.getBuckets()) {
                         String key = bucket.getKeyAsString();
-                        facet.addItem(key, key, (int)bucket.getDocCount());
+                        facet.addItem(key, key, (int) bucket.getDocCount());
                     }
                 }
             }
         }
         return termFacets;
+    }
+
+    private void fillDateFacet(Facet facet) {
+        DateFacet dateFacet = (DateFacet) facet;
+
+        Map<String, Range.Bucket> items = new LinkedHashMap<>();
+        dateFacet.getRanges().forEach(range -> items.put(range.getKey(), null));
+
+        Range range = response.getAggregations().get(facet.getName());
+
+        range.getBuckets().stream().filter(bucket -> bucket.getDocCount() > 0).forEach(bucket -> {
+            DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
+            if (dateRange != null) {
+                items.put(dateRange.getKey(), bucket);
+            }
+        });
+
+        items.values().stream().filter(Objects::nonNull).forEach(bucket -> {
+            DateRange dateRange = dateFacet.getRangeByName(bucket.getKeyAsString());
+            facet.addItem(dateRange.getKey(), dateRange.getName(), (int) bucket.getDocCount());
+        });
     }
 
     /**
