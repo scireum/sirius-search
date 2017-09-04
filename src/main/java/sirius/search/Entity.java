@@ -359,7 +359,7 @@ public abstract class Entity {
         }
     }
 
-    private String determineLocalRouting(Property p, EntityDescriptor descriptor, Property entityRef) {
+    private String determineLocalRouting(Property property, EntityDescriptor descriptor, Property entityRef) {
         String routingField = entityRef.getField().getAnnotation(RefType.class).localRouting();
         if (Strings.isFilled(routingField)) {
             return (String) descriptor.getProperty(routingField).writeToSource(this);
@@ -595,13 +595,14 @@ public abstract class Entity {
     }
 
     private Object createModificationProtectedValue(Object value) {
+        Object protectedValue = value;
         if (value instanceof List<?>) {
-            value = new ArrayList<>((List<?>) value);
+            protectedValue = new ArrayList<>((List<?>) value);
         }
         if (value instanceof Map<?, ?>) {
-            value = new HashMap<>((Map<?, ?>) value);
+            protectedValue = new HashMap<>((Map<?, ?>) value);
         }
-        return value;
+        return protectedValue;
     }
 
     /**

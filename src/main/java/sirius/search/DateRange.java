@@ -211,24 +211,24 @@ public class DateRange {
         return key;
     }
 
-    protected void applyTo(DateRangeAggregationBuilder rangeBuilder) {
+    protected void applyTo(DateRangeAggregationBuilder builder) {
         if (until == null) {
             if (from != null) {
-                rangeBuilder.addUnboundedFrom(key, from.toString());
+                builder.addUnboundedFrom(key, from.toString());
             }
         } else if (from == null) {
-            rangeBuilder.addUnboundedTo(key, until.toString());
+            builder.addUnboundedTo(key, until.toString());
         } else {
-            rangeBuilder.addRange(key, from.toString(), until.toString());
+            builder.addRange(key, from.toString(), until.toString());
         }
     }
 
-    protected void applyToQuery(String field, Query<?> qry) {
+    protected void applyToQuery(String field, Query<?> query) {
         if (from != null) {
-            qry.where(FieldOperator.greater(field, from).including());
+            query.where(FieldOperator.greater(field, from).including());
         }
         if (until != null) {
-            qry.where(FieldOperator.less(field, until).including());
+            query.where(FieldOperator.less(field, until).including());
         }
     }
 

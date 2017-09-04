@@ -29,10 +29,10 @@ public class EntityLoadAction implements ClassLoadAction {
 
     @Override
     public void handle(MutableGlobalContext ctx, Class<?> clazz) throws Exception {
-        if (Entity.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
-            if (acceptedByFrameworkFilter(clazz)) {
-                ctx.registerPart(clazz.newInstance(), Entity.class);
-            }
+        if (Entity.class.isAssignableFrom(clazz)
+            && !Modifier.isAbstract(clazz.getModifiers())
+            && acceptedByFrameworkFilter(clazz)) {
+            ctx.registerPart(clazz.newInstance(), Entity.class);
         }
     }
 

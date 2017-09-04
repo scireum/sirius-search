@@ -96,7 +96,6 @@ public class IndexAccess {
      * Async executor category for integrity check tasks
      */
     public static final String ASYNC_CATEGORY_INDEX_INTEGRITY = "index-ref-integrity";
-    private static final String CATEGORY_INDEX = "index";
     private static final String CONFIG_KEY_INDEX_TYPE = "index.type";
     private static final String ASYNC_UPDATER = "async-updater";
 
@@ -824,7 +823,7 @@ public class IndexAccess {
      * @return a {@link Promise} handling the update process
      */
     public <E extends Entity> Promise<E> updateAsync(E entity) {
-        Promise<E> promise = new Promise<E>();
+        Promise<E> promise = new Promise<>();
         tasks.executor(ASYNC_UPDATER).start(() -> {
             try {
                 update(entity);
