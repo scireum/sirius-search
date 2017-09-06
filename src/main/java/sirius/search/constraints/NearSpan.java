@@ -66,7 +66,13 @@ public class NearSpan implements Constraint, SpanConstraint {
         return this;
     }
 
-    public NearSpan boost(float boost) {
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the contraint itself for fluent method calls
+     */
+    public NearSpan withBoost(float boost) {
         this.boost = boost;
         return this;
     }

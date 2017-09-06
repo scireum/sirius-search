@@ -102,7 +102,13 @@ public class FieldEqual implements Constraint, SpanConstraint {
         return this;
     }
 
-    public FieldEqual boost(float boost) {
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the constraint itself for fluent method calls
+     */
+    public FieldEqual withBoost(float boost) {
         this.boost = boost;
         return this;
     }

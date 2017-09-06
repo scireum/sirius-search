@@ -18,6 +18,12 @@ public class Unscored implements Constraint {
 
     private Constraint constraint;
 
+    /**
+     * Creates a new constraint which excludes {@link #constraint} from scoring.
+     *
+     * @param constraint the constraint that shoulde be excluded from scoring
+     * @return a new constraint representing an unscored constraint
+     */
     public static Unscored of(Constraint constraint) {
         Unscored unscored = new Unscored();
         unscored.constraint = constraint;
