@@ -23,6 +23,7 @@ public class NearSpan implements Constraint, SpanConstraint {
     private SpanConstraint[] constraints;
     private int slop = 3;
     private boolean inOrder = false;
+    private float boost = 1f;
 
     /*
      * Use the #on(Constraint...) factory method
@@ -65,6 +66,11 @@ public class NearSpan implements Constraint, SpanConstraint {
         return this;
     }
 
+    public NearSpan boost(float boost) {
+        this.boost = boost;
+        return this;
+    }
+
     @Override
     public SpanNearQueryBuilder createQuery() {
         Monoflop mflop = Monoflop.create();
@@ -72,9 +78,9 @@ public class NearSpan implements Constraint, SpanConstraint {
 
         for (SpanConstraint constraint : constraints) {
             if (mflop.firstCall()) {
-                builder = QueryBuilders.spanNearQuery(constraint.createSpanQuery(), slop).inOrder(inOrder);
+                builder = QueryBuilders.spanNearQuery(constraint.createSpanQuery(), slop).inOrder(inOrder).boost(boost);
             } else {
-                builder.addClause(constraint.createSpanQuery()).inOrder(inOrder);
+                builder.addClause(constraint.createSpanQuery()).inOrder(inOrder).boost(boost);
             }
         }
         return builder;
