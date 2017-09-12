@@ -23,6 +23,7 @@ public class Fuzzy implements Constraint, SpanConstraint {
     private final String field;
     private String value;
     private Fuzziness fuzziness = Fuzziness.AUTO;
+    private float boost = 1f;
 
     private Fuzzy(String field, String value) {
         this.field = field;
@@ -54,14 +55,27 @@ public class Fuzzy implements Constraint, SpanConstraint {
         return this;
     }
 
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the constraint itself for fluent method calls
+     */
+    public Fuzzy withBoost(float boost) {
+        this.boost = boost;
+        return this;
+    }
+
     @Override
     public QueryBuilder createQuery() {
-        return QueryBuilders.matchQuery(field, value).fuzziness(fuzziness);
+        return QueryBuilders.matchQuery(field, value).fuzziness(fuzziness).boost(boost);
     }
 
     @Override
     public SpanQueryBuilder createSpanQuery() {
-        return QueryBuilders.spanMultiTermQueryBuilder(QueryBuilders.fuzzyQuery(field, value).fuzziness(fuzziness));
+        return QueryBuilders.spanMultiTermQueryBuilder(QueryBuilders.fuzzyQuery(field, value)
+                                                                    .fuzziness(fuzziness)
+                                                                    .boost(boost));
     }
 
     @Override

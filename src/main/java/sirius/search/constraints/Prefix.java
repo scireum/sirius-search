@@ -22,6 +22,7 @@ import sirius.kernel.commons.Strings;
 public class Prefix implements Constraint, SpanConstraint {
     private final String field;
     private String value;
+    private float boost = 1f;
 
     /*
      * Use the #on(String, Object) factory method
@@ -42,10 +43,21 @@ public class Prefix implements Constraint, SpanConstraint {
         return new Prefix(field, value);
     }
 
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the constraint itself for fluent method calls
+     */
+    public Prefix withBoost(float boost) {
+        this.boost = boost;
+        return this;
+    }
+
     @Override
     public QueryBuilder createQuery() {
         if (Strings.isFilled(value)) {
-            return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256");
+            return QueryBuilders.prefixQuery(field, value).rewrite("top_terms_256").boost(boost);
         }
 
         return null;
