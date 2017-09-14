@@ -50,8 +50,6 @@ public class IndexLifecycle implements Lifecycle {
             return;
         }
 
-        index.getSchema().dropTemporaryIndices();
-
         if (index.delayLineTimer != null) {
             index.delayLineTimer.cancel();
         }
@@ -63,6 +61,9 @@ public class IndexLifecycle implements Lifecycle {
             LOG.INFO("ElasticSearch is disabled! (index.host is not set)");
             return;
         }
+
+        // may take longer than 10 seconds
+        index.getSchema().dropTemporaryIndices();
 
         // We wait until this last call before we cut the connection to the database (elasticsearch) to permit
         // other stopping lifecycles access until the very end...
