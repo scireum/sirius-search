@@ -54,6 +54,7 @@ public class CSVFilter implements Constraint {
     private String commaSeparatedValues;
     private String splitter;
     private boolean lowercaseValues;
+    private boolean uppercaseValues;
 
     /*
      * Use one of the factory methods
@@ -105,6 +106,16 @@ public class CSVFilter implements Constraint {
      */
     public CSVFilter lowercaseValues() {
         lowercaseValues = true;
+        return this;
+    }
+
+    /**
+     * Signals that this constraint should convert the values to uppercase before being applied
+     *
+     * @return the constraint itself for fluent method calls
+     */
+    public CSVFilter uppercaseValues() {
+        uppercaseValues = true;
         return this;
     }
 
@@ -204,6 +215,9 @@ public class CSVFilter implements Constraint {
                                           .filter(Strings::isFilled);
             if (lowercaseValues) {
                 stream = stream.map(String::toLowerCase);
+            }
+            if (uppercaseValues) {
+                stream = stream.map(String::toUpperCase);
             }
             this.values = stream.collect(Collectors.toList());
         } else {
