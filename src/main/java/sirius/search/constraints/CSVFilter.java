@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  */
 public class CSVFilter implements Constraint {
 
-    private static final String defaultSplitter = "[,\\|]";
+    private static final String DEFAULT_SPLITTER = "[,|]";
 
     /**
      * Specifies the matching mode for a filter.
@@ -62,7 +62,7 @@ public class CSVFilter implements Constraint {
         } else {
             this.field = field;
         }
-        this.splitter = defaultSplitter;
+        this.splitter = DEFAULT_SPLITTER;
         this.mode = mode;
         this.commaSeparatedValues = value;
     }
@@ -146,17 +146,14 @@ public class CSVFilter implements Constraint {
             return null;
         }
         BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-        switch (mode) {
-            case CONTAINS_ANY:
-                for (String val : values) {
-                    bqb.should(QueryBuilders.termQuery(field, val));
-                }
-                break;
-            case CONTAINS_ALL:
-                for (String val : values) {
-                    bqb.must(QueryBuilders.termQuery(field, val));
-                }
-                break;
+        if (mode == Mode.CONTAINS_ANY) {
+            for (String val : values) {
+                bqb.should(QueryBuilders.termQuery(field, val));
+            }
+        } else if (mode == Mode.CONTAINS_ALL) {
+            for (String val : values) {
+                bqb.must(QueryBuilders.termQuery(field, val));
+            }
         }
         if (orEmpty) {
             bqb.should(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)));
