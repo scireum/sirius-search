@@ -184,6 +184,7 @@ public class CSVFilter implements Constraint {
 
     @Override
     public String toString(boolean skipConstraintValues) {
+        collectValues();
         return field + " " + mode + " '" + (skipConstraintValues ? "?" : values) + "' " + (orEmpty ?
                                                                                            " OR IS EMPTY" :
                                                                                            "");
