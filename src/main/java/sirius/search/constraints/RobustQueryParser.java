@@ -22,6 +22,7 @@ import sirius.search.IndexAccess;
 import sirius.search.Query;
 
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -40,7 +41,7 @@ import java.util.regex.Pattern;
 public class RobustQueryParser implements Constraint {
 
     private static final int EXPANSION_TOKEN_MIN_LENGTH = 2;
-    private static final Pattern EXPANDABLE_INPUT = Pattern.compile("[^\\s+:]{" + EXPANSION_TOKEN_MIN_LENGTH + ",}");
+    private static final Pattern EXPANDABLE_INPUT = Pattern.compile("[\\p{L}\\d][^\\s:]+");
     private final String input;
     private final String defaultField;
     private final Function<String, Iterable<List<String>>> tokenizer;
@@ -66,7 +67,6 @@ public class RobustQueryParser implements Constraint {
         this.tokenizer = tokenizer;
         this.autoExpand = autoExpand;
         this.parsed = Monoflop.create();
-        this.finishedQuery = createQuery();
     }
 
     @Override
@@ -94,7 +94,7 @@ public class RobustQueryParser implements Constraint {
     }
 
     public boolean isEmpty() {
-        return finishedQuery == null;
+        return createQuery() == null;
     }
 
     private void skipWhitespace(LookaheadReader reader) {
@@ -339,8 +339,14 @@ public class RobustQueryParser implements Constraint {
     }
 
     protected QueryBuilder createTokenizedConstraint(String field, String value) {
+        List<List<String>> tokenLists = new ArrayList<>();
+        tokenizer.apply(value).forEach(tokenLists::add);
+        if (tokenLists.size() == 1) {
+            return transformTokenList(field, tokenLists.get(0));
+        }
+
         BoolQueryBuilder qry = QueryBuilders.boolQuery();
-        for (List<String> tokens : tokenizer.apply(value)) {
+        for (List<String> tokens : tokenLists) {
             if (tokens != null && !tokens.isEmpty()) {
                 QueryBuilder qb = transformTokenList(field, tokens);
                 qry.must(qb);
