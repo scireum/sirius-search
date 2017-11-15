@@ -101,6 +101,12 @@ public class Complete<E extends Entity> {
         return this;
     }
 
+    /**
+     * Specifies the maximal number of determinized states.
+     *
+     * @param maxDeterminizedStates the maximal number of determinized states
+     * @return the completion helper itself for fluent method calls
+     */
     public Complete<E> maxDeterminizedStates(int maxDeterminizedStates) {
         this.maxDeterminizedStates = maxDeterminizedStates;
         return this;

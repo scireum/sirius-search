@@ -92,44 +92,15 @@ public class ObjectListProperty extends Property {
     @Override
     protected Object transformFromSource(Object value) {
         List<Object> result = new ArrayList<>();
-        if (value instanceof List) {
-            for (Object object : (List<?>) value) {
-                if (object instanceof Map) {
-                    try {
-                        Map<String, String> values = (Map<String, String>) object;
-                        Class<?> targetClass = getField().getAnnotation(ListType.class).value();
-                        Object obj = targetClass.newInstance();
+        if (!(value instanceof List)) {
+            return result;
+        }
 
-                        for (Field innerField : targetClass.getDeclaredFields()) {
-                            if (!innerField.isAnnotationPresent(Transient.class)
-                                && !Modifier.isStatic(innerField.getModifiers())) {
-                                try {
-                                    if (values.containsKey(innerField.getName())) {
-                                        innerField.setAccessible(true);
-                                        innerField.set(obj,
-                                                       NLS.parseMachineString(innerField.getType(),
-                                                                              values.get(innerField.getName())));
-                                    }
-                                } catch (Exception e) {
-                                    Exceptions.handle()
-                                              .error(e)
-                                              .to(IndexAccess.LOG)
-                                              .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
-                                                                      innerField.getName(),
-                                                                      toString())
-                                              .handle();
-                                }
-                            }
-                        }
-
-                        result.add(obj);
-                    } catch (Exception e) {
-                        Exceptions.handle()
-                                  .error(e)
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
-                                  .handle();
-                    }
+        for (Object object : (List<?>) value) {
+            if (object instanceof Map) {
+                Object obj = transformObject((Map<String, String>) object);
+                if (obj != null) {
+                    result.add(obj);
                 }
             }
         }
@@ -137,39 +108,89 @@ public class ObjectListProperty extends Property {
         return result;
     }
 
+    private Object transformObject(Map<String, String> map) {
+        try {
+            Class<?> targetClass = getField().getAnnotation(ListType.class).value();
+            Object obj = targetClass.newInstance();
+
+            for (Field innerField : targetClass.getDeclaredFields()) {
+                if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                    transformField(map, obj, innerField);
+                }
+            }
+
+            return obj;
+        } catch (Exception e) {
+            Exceptions.handle()
+                      .error(e)
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Cannot load POJO in %s: %s (%s)", toString())
+                      .handle();
+            return null;
+        }
+    }
+
+    private void transformField(Map<String, String> map, Object obj, Field innerField) {
+        try {
+            if (map.containsKey(innerField.getName())) {
+                innerField.setAccessible(true);
+                innerField.set(obj, NLS.parseMachineString(innerField.getType(), map.get(innerField.getName())));
+            }
+        } catch (Exception e) {
+            Exceptions.handle()
+                      .error(e)
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Cannot load POJO field %s of %s: %s (%s)",
+                                              innerField.getName(),
+                                              toString())
+                      .handle();
+        }
+    }
+
     @Override
     protected Object transformToSource(Object o) {
         List<Map<String, String>> result = new ArrayList<>();
-        if (o instanceof List<?>) {
-            for (Object obj : (List<?>) o) {
-                if (obj != null) {
-                    Map<String, String> valueMap = new HashMap<>();
-                    Class<?> targetClass = getField().getAnnotation(ListType.class).value();
-                    for (Field innerField : targetClass.getDeclaredFields()) {
-                        if (!innerField.isAnnotationPresent(Transient.class)
-                            && !Modifier.isStatic(innerField.getModifiers())) {
-                            try {
-                                innerField.setAccessible(true);
-                                Object val = innerField.get(obj);
-                                if (val != null) {
-                                    valueMap.put(innerField.getName(), NLS.toMachineString(val));
-                                }
-                            } catch (Exception e) {
-                                Exceptions.handle()
-                                          .error(e)
-                                          .to(IndexAccess.LOG)
-                                          .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
-                                                                  innerField.getName(),
-                                                                  toString())
-                                          .handle();
-                            }
-                        }
-                    }
-                    result.add(valueMap);
-                }
+        if (!(o instanceof List<?>)) {
+            return result;
+        }
+
+        for (Object obj : (List<?>) o) {
+            if (obj != null) {
+                Map<String, String> valueMap = transformObject(obj);
+                result.add(valueMap);
             }
         }
+
         return result;
+    }
+
+    private Map<String, String> transformObject(Object obj) {
+        Map<String, String> valueMap = new HashMap<>();
+        Class<?> targetClass = getField().getAnnotation(ListType.class).value();
+        for (Field innerField : targetClass.getDeclaredFields()) {
+            if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
+                transformValue(obj, valueMap, innerField);
+            }
+        }
+        return valueMap;
+    }
+
+    private void transformValue(Object obj, Map<String, String> valueMap, Field innerField) {
+        try {
+            innerField.setAccessible(true);
+            Object val = innerField.get(obj);
+            if (val != null) {
+                valueMap.put(innerField.getName(), NLS.toMachineString(val));
+            }
+        } catch (Exception e) {
+            Exceptions.handle()
+                      .error(e)
+                      .to(IndexAccess.LOG)
+                      .withSystemErrorMessage("Cannot save POJO field %s of %s: %s (%s)",
+                                              innerField.getName(),
+                                              toString())
+                      .handle();
+        }
     }
 
     @Override

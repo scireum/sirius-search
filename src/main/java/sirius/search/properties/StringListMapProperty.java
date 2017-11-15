@@ -63,7 +63,7 @@ public class StringListMapProperty extends StringMapProperty {
                 } else if (value instanceof List) {
                     values.addAll((List<String>) val);
                 }
-                result.put((String)entry.get(KEY), values);
+                result.put((String) entry.get(KEY), values);
             });
         }
         return result;
@@ -76,8 +76,8 @@ public class StringListMapProperty extends StringMapProperty {
 
         if (o instanceof Map) {
             ((Map<String, List<String>>) o).forEach((key, value) -> valueList.add(Context.create()
-                                                                                   .set(KEY, key)
-                                                                                   .set(VALUE, value)));
+                                                                                         .set(KEY, key)
+                                                                                         .set(VALUE, value)));
         }
         return valueList;
     }

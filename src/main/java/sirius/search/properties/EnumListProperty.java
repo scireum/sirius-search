@@ -64,18 +64,22 @@ public class EnumListProperty extends Property {
         List<Object> result = new ArrayList<>();
         try {
             if (value instanceof List) {
-                for (Object element : (List<?>) value) {
-                    Object enumValue = Value.of(element).coerce(getField().getAnnotation(ListType.class).value(), null);
-                    if (enumValue != null) {
-                        result.add(enumValue);
-                    }
-                }
+                transformValues((List<?>) value, result);
             }
         } catch (IllegalArgumentException e) {
-            /* IGNORE */
+            Exceptions.ignore(e);
         }
 
         return result;
+    }
+
+    private void transformValues(List<?> values, List<Object> result) {
+        for (Object element : values) {
+            Object enumValue = Value.of(element).coerce(getField().getAnnotation(ListType.class).value(), null);
+            if (enumValue != null) {
+                result.add(enumValue);
+            }
+        }
     }
 
     @Override

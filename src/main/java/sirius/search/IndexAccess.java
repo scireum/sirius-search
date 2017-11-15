@@ -41,6 +41,7 @@ import sirius.kernel.async.Tasks;
 import sirius.kernel.cache.Cache;
 import sirius.kernel.cache.CacheManager;
 import sirius.kernel.commons.Callback;
+import sirius.kernel.commons.Explain;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
@@ -473,6 +474,8 @@ public class IndexAccess {
         }
     }
 
+    @SuppressWarnings("squid:S2095")
+    @Explain("We don't want to immediatelly close the transport client but rather return it to be used.")
     private void startClient() {
         if (Sirius.getSettings().getConfig().hasPath(CONFIG_KEY_INDEX_TYPE)
             && !"server".equalsIgnoreCase(Sirius.getSettings().getConfig().getString(CONFIG_KEY_INDEX_TYPE))) {

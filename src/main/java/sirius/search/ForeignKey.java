@@ -52,6 +52,9 @@ public class ForeignKey {
     @Part
     private static IndexAccess index;
 
+    @Part
+    private static Tasks tasks;
+
     /**
      * Contains all metadata to take care of a {@link sirius.search.annotations.RefField}
      */
@@ -191,9 +194,6 @@ public class ForeignKey {
                             .handle();
         }
     }
-
-    @Part
-    private static Tasks tasks;
 
     /**
      * Handles a delete of the given entity.
