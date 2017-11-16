@@ -38,7 +38,6 @@ public class Suggest<E extends Entity> {
     private float maxErrors = 2f;
     private int limit = 5;
     private float confidence = 1f;
-    private SuggestMode suggestMode = SuggestMode.MISSING;
     private String analyzer = "whitespace";
     private String collateQuery;
     private Map<String, Object> collateParams;
@@ -163,24 +162,6 @@ public class Suggest<E extends Entity> {
      */
     public enum SuggestMode {
         MISSING, POPULAR, ALWAYS
-    }
-
-    /**
-     * Controls for which terms suggestions should be given, and what kind.
-     * <p>
-     * Options:
-     * "missing" = only suggest for query terms not in the shard. This is the default. If suggestions are still given
-     * for words that are in the index,
-     * set confidence level higher.
-     * "popular" =  only suggest terms that occur in more docs on the shard then the original term.
-     * "always" = suggest any matching suggestions based on terms in the suggest text.
-     *
-     * @param suggestMode the suggest mode 'missing', 'popular' or 'always'
-     * @return the helper itself for fluent method calls
-     */
-    public Suggest<E> suggestMode(SuggestMode suggestMode) {
-        this.suggestMode = suggestMode;
-        return this;
     }
 
     /**

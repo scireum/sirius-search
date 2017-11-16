@@ -15,6 +15,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRespon
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.Sirius;
+import sirius.kernel.commons.Explain;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
@@ -181,6 +182,8 @@ public class Schema {
         return createMappings(indexPrefix);
     }
 
+    @SuppressWarnings("squid:S2095")
+    @Explain("The content builder of the mapping doesn't have to be closed here")
     protected List<String> createMappings(String indexPrefix) {
         List<String> changes = new ArrayList<>();
         for (EntityDescriptor ed : descriptorTable.values()) {

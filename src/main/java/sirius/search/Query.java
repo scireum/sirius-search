@@ -563,6 +563,12 @@ public class Query<E extends Entity> {
         return this;
     }
 
+    /**
+     * Adds the given aggregation.
+     *
+     * @param aggregationBuilder the aggegration to add
+     * @return the query itself for fluent method calls
+     */
     public Query<E> addAggregation(AggregationBuilder aggregationBuilder) {
         this.aggregations.add(aggregationBuilder);
         return this;
