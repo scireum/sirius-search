@@ -1402,11 +1402,6 @@ public class Query<E extends Entity> {
 
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
-        if (!orderBys.isEmpty()) {
-            IndexAccess.LOG.WARN("An iterated query cannot be sorted! Use '.blockwise(...)'. Query: %s, Location: %s",
-                                 this,
-                                 ExecutionPoint.snapshot());
-        }
 
         srb.addSort("_doc", SortOrder.ASC);
         srb.setFrom(0);
