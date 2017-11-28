@@ -1403,7 +1403,10 @@ public class Query<E extends Entity> {
     private SearchResponse createScroll(EntityDescriptor entityDescriptor) {
         SearchRequestBuilder srb = buildSearch();
 
-        srb.addSort("_doc", SortOrder.ASC);
+        if (orderBys.isEmpty()) {
+            // If no custom ordering is needed we sort by _doc which brings performance benefits
+            srb.addSort("_doc", SortOrder.ASC);
+        }
         srb.setFrom(0);
 
         // If a routing is present, we will only hit one shard. Therefore we fetch up to 50 documents.
