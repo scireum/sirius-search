@@ -247,6 +247,7 @@ public abstract class Entity {
     private void setupRoutingForUniquenessCheck(EntityDescriptor descriptor, Query<?> qry, Unique unique) {
         if (Strings.isEmpty(unique.within())) {
             qry.deliberatelyUnrouted();
+            return;
         }
 
         qry.eq(unique.within(), descriptor.getProperty(unique.within()).writeToSource(this));
