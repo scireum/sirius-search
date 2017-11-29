@@ -48,18 +48,22 @@ public class UpdateMappingCommand implements Command {
     protected static Class<? extends Entity> findTypeOrReportError(Output output, String typeName) {
         Class<? extends Entity> type = index.getType(typeName);
         if (type == null) {
-            output.line("Unknown type: " + typeName);
-            Monoflop mf = Monoflop.create();
-            for (String name : index.getSchema().getTypeNames()) {
-                if (name.toLowerCase().contains(typeName.toLowerCase())) {
-                    if (mf.firstCall()) {
-                        output.line("Did you mean one of those: ");
-                    }
-                    output.line(" * " + name);
-                }
-            }
+            reportUnknownType(output, typeName);
         }
         return type;
+    }
+
+    private static void reportUnknownType(Output output, String typeName) {
+        output.line("Unknown type: " + typeName);
+        Monoflop mf = Monoflop.create();
+        for (String name : index.getSchema().getTypeNames()) {
+            if (name.toLowerCase().contains(typeName.toLowerCase())) {
+                if (mf.firstCall()) {
+                    output.line("Did you mean one of those: ");
+                }
+                output.line(" * " + name);
+            }
+        }
     }
 
     @Override

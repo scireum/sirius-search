@@ -79,6 +79,9 @@ public abstract class Entity {
     @Part
     private static IndexAccess index;
 
+    @Part
+    private static IdGenerator sequenceGenerator;
+
     /**
      * Creates and initializes a new instance.
      * <p>
@@ -242,34 +245,34 @@ public abstract class Entity {
     }
 
     private void setupRoutingForUniquenessCheck(EntityDescriptor descriptor, Query<?> qry, Unique unique) {
-        if (Strings.isFilled(unique.within())) {
-            qry.eq(unique.within(), descriptor.getProperty(unique.within()).writeToSource(this));
-            try {
-                if (descriptor.hasRouting()) {
-                    Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(this);
-                    if (routingKey != null) {
-                        qry.routing(routingKey.toString());
-                    } else {
-                        qry.deliberatelyUnrouted();
-                        Exceptions.handle()
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage(
-                                          "Performing a unique check on %s without any routing. This will be slow!",
-                                          this.getClass().getName())
-                                  .handle();
-                    }
+        if (Strings.isEmpty(unique.within())) {
+            qry.deliberatelyUnrouted();
+        }
+
+        qry.eq(unique.within(), descriptor.getProperty(unique.within()).writeToSource(this));
+        try {
+            if (descriptor.hasRouting()) {
+                Object routingKey = descriptor.getProperty(descriptor.getRouting()).writeToSource(this);
+                if (routingKey != null) {
+                    qry.routing(routingKey.toString());
+                } else {
+                    qry.deliberatelyUnrouted();
+                    Exceptions.handle()
+                              .to(IndexAccess.LOG)
+                              .withSystemErrorMessage(
+                                      "Performing a unique check on %s without any routing. This will be slow!",
+                                      this.getClass().getName())
+                              .handle();
                 }
-            } catch (Exception e) {
-                Exceptions.handle()
-                          .to(IndexAccess.LOG)
-                          .error(e)
-                          .withSystemErrorMessage("Cannot determine routing key for '%s' of type %s",
-                                                  this,
-                                                  this.getClass().getName())
-                          .handle();
-                qry.deliberatelyUnrouted();
             }
-        } else {
+        } catch (Exception e) {
+            Exceptions.handle()
+                      .to(IndexAccess.LOG)
+                      .error(e)
+                      .withSystemErrorMessage("Cannot determine routing key for '%s' of type %s",
+                                              this,
+                                              this.getClass().getName())
+                      .handle();
             qry.deliberatelyUnrouted();
         }
     }
@@ -320,23 +323,11 @@ public abstract class Entity {
                     sourceEntity = sourceReference.getValue();
                 }
             } else if (sourceReference.isDirty()) {
-                // Value has changed - force load...
-                String routingValue = null;
-                if (remoteDescriptor.getRouting() != null) {
-                    routingValue = determineLocalRouting(propertyToFill, localEntityDescriptor, sourceProperty);
-                    if (routingValue == null) {
-                        // No routing available or sourceReference was null -> fail
-                        Exceptions.handle()
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage(
-                                          "Error updating an RefField for an RefType: Property %s in class %s: "
-                                          + "No routing information was available to load the referenced entity!",
-                                          propertyToFill.getName(),
-                                          this.getClass().getName())
-                                  .handle();
-                    }
-                }
-                sourceEntity = sourceReference.getValue(routingValue);
+                sourceEntity = fetchSourceEntity(localEntityDescriptor,
+                                                 propertyToFill,
+                                                 sourceProperty,
+                                                 remoteDescriptor,
+                                                 sourceReference);
             } else {
                 // Nothing has changed -> no need to load and update...
                 return;
@@ -359,7 +350,30 @@ public abstract class Entity {
         }
     }
 
-    private String determineLocalRouting(Property property, EntityDescriptor descriptor, Property entityRef) {
+    private Entity fetchSourceEntity(EntityDescriptor localEntityDescriptor,
+                                     Property propertyToFill,
+                                     Property sourceProperty,
+                                     EntityDescriptor remoteDescriptor,
+                                     EntityRef<?> sourceReference) {
+        String routingValue = null;
+        if (remoteDescriptor.getRouting() != null) {
+            routingValue = determineLocalRouting(localEntityDescriptor, sourceProperty);
+            if (routingValue == null) {
+                // No routing available or sourceReference was null -> fail
+                Exceptions.handle()
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Error updating an RefField for an RefType: Property %s in class %s: "
+                                                  + "No routing information was available to load the referenced entity!",
+                                                  propertyToFill.getName(),
+                                                  this.getClass().getName())
+                          .handle();
+            }
+        }
+
+        return sourceReference.getValue(routingValue);
+    }
+
+    private String determineLocalRouting(EntityDescriptor descriptor, Property entityRef) {
         String routingField = entityRef.getField().getAnnotation(RefType.class).localRouting();
         if (Strings.isFilled(routingField)) {
             return (String) descriptor.getProperty(routingField).writeToSource(this);
@@ -727,9 +741,6 @@ public abstract class Entity {
     public enum IdGeneratorType {
         ELASTICSEARCH, SEQUENCE, BASE32HEX
     }
-
-    @Part
-    private static IdGenerator sequenceGenerator;
 
     /**
      * Used by the default implementation of {@link #computePossibleId()} to determine which kind of ID to generate.

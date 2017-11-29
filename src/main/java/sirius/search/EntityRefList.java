@@ -10,6 +10,7 @@ package sirius.search;
 
 import com.google.common.cache.Cache;
 import com.google.common.collect.Lists;
+import sirius.kernel.commons.Explain;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.commons.Tuple;
 import sirius.kernel.di.std.Part;
@@ -82,29 +83,7 @@ public class EntityRefList<E extends Entity> {
             EntityDescriptor descriptor = index.getDescriptor(clazz);
             List<E> result = Lists.newArrayList();
             for (String id : ids) {
-                if (descriptor.hasRouting()) {
-                    if (Strings.isFilled(routing)) {
-                        result.add(index.find(routing, clazz, id));
-                    } else {
-                        Exceptions.handle()
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage("Fetching an entity of type %s (%s) without routing! "
-                                                          + "Using SELECT which might be slower!", clazz.getName(), id)
-                                  .handle();
-                        result.add(index.select(clazz).eq(IndexAccess.ID_FIELD, id).queryFirst());
-                    }
-                } else {
-                    if (Strings.isFilled(routing)) {
-                        Exceptions.handle()
-                                  .to(IndexAccess.LOG)
-                                  .withSystemErrorMessage("Fetching an entity of type %s (%s) with routing "
-                                                          + "(which is not required for this type)!",
-                                                          clazz.getName(),
-                                                          id)
-                                  .handle();
-                    }
-                    result.add(index.find(clazz, id));
-                }
+                result.add(getValueWithRouting(id, routing, descriptor));
             }
             values = result.stream().filter(Objects::nonNull).collect(Collectors.toList());
             valueFromCache = false;
@@ -113,6 +92,30 @@ public class EntityRefList<E extends Entity> {
             return Collections.emptyList();
         }
         return Collections.unmodifiableList(values);
+    }
+
+    private E getValueWithRouting(String id, String routing, EntityDescriptor descriptor) {
+        if (descriptor.hasRouting()) {
+            if (Strings.isFilled(routing)) {
+                return index.find(routing, clazz, id);
+            } else {
+                Exceptions.handle()
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Fetching an entity of type %s (%s) without routing! "
+                                                  + "Using SELECT which might be slower!", clazz.getName(), id)
+                          .handle();
+                return index.select(clazz).eq(IndexAccess.ID_FIELD, id).queryFirst();
+            }
+        } else {
+            if (Strings.isFilled(routing)) {
+                Exceptions.handle()
+                          .to(IndexAccess.LOG)
+                          .withSystemErrorMessage("Fetching an entity of type %s (%s) with routing "
+                                                  + "(which is not required for this type)!", clazz.getName(), id)
+                          .handle();
+            }
+            return index.find(clazz, id);
+        }
     }
 
     /**
@@ -209,6 +212,8 @@ public class EntityRefList<E extends Entity> {
      * @param value the value to check for
      * @return <tt>true</tt> if the value is non null and contained in the list of referenced entities
      */
+    @SuppressWarnings("squid:S2250")
+    @Explain("ids needs to be a List for Elasticsearch")
     public boolean contains(@Nullable E value) {
         if (value == null) {
             return false;
@@ -222,6 +227,8 @@ public class EntityRefList<E extends Entity> {
      * @param id the id of the entity to check for
      * @return <tt>true</tt> if the id is non null and the id of an entity contained in the list of referenced entities
      */
+    @SuppressWarnings("squid:S2250")
+    @Explain("ids needs to be a List for Elasticsearch")
     public boolean containsId(String id) {
         if (Strings.isEmpty(id)) {
             return false;

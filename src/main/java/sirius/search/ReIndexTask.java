@@ -13,6 +13,7 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.TaskContext;
@@ -92,7 +93,7 @@ class ReIndexTask implements Runnable {
             bulk.add(index.getClient()
                           .prepareIndex(newPrefix + ed.getIndex(), ed.getType())
                           .setId(hit.getId())
-                          .setSource(hit.source())
+                          .setSource(hit.getSourceAsString(), XContentType.JSON)
                           .request());
             counter++;
             if (counter > 1000) {

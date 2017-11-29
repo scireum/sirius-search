@@ -31,6 +31,7 @@ public class FieldEqual implements Constraint, SpanConstraint {
     private final String field;
     private Object value;
     private boolean ignoreNull = false;
+    private float boost = 1f;
 
     /*
      * Use the #on(String, Object) factory method
@@ -101,21 +102,32 @@ public class FieldEqual implements Constraint, SpanConstraint {
         return this;
     }
 
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the constraint itself for fluent method calls
+     */
+    public FieldEqual withBoost(float boost) {
+        this.boost = boost;
+        return this;
+    }
+
     @Override
     public QueryBuilder createQuery() {
         if (Strings.isEmpty(value)) {
             if (ignoreNull) {
                 return null;
             }
-            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field));
+            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)).boost(boost);
         }
-        return QueryBuilders.termQuery(field, value);
+        return QueryBuilders.termQuery(field, value).boost(boost);
     }
 
     @Override
     public SpanQueryBuilder createSpanQuery() {
         if (value instanceof String && Strings.isFilled(value)) {
-            return QueryBuilders.spanTermQuery(field, (String) value);
+            return QueryBuilders.spanTermQuery(field, (String) value).boost(boost);
         }
 
         return null;

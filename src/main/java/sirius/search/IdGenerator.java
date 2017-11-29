@@ -41,30 +41,7 @@ public class IdGenerator {
         try {
             if (lock.tryLock(10, TimeUnit.SECONDS)) {
                 try {
-                    int retries = 5;
-                    while (retries-- > 0) {
-                        try {
-                            Sequence seq = index.find(Sequence.class, sequence);
-                            if (seq == null) {
-                                seq = new Sequence();
-                                seq.setId(sequence);
-                                seq.setNext(1);
-                                seq = index.create(seq);
-                            }
-                            int result = seq.getNext();
-                            seq.setNext(result + 1);
-                            index.tryUpdate(seq);
-                            return result;
-                        } catch (OptimisticLockException e) {
-                            Exceptions.ignore(e);
-                        }
-                    }
-                    throw Exceptions.handle()
-                                    .to(IndexAccess.LOG)
-                                    .withSystemErrorMessage(
-                                            "Unable to generate a unique ID for sequence: %s after 5 attempts",
-                                            sequence)
-                                    .handle();
+                    return createIdInLock(sequence);
                 } finally {
                     lock.unlock();
                 }
@@ -86,5 +63,32 @@ public class IdGenerator {
                                                     sequence)
                             .handle();
         }
+    }
+
+    private int createIdInLock(String sequence) {
+        int retries = 5;
+        while (retries-- > 0) {
+            try {
+                Sequence seq = index.find(Sequence.class, sequence);
+                if (seq == null) {
+                    seq = new Sequence();
+                    seq.setId(sequence);
+                    seq.setNext(1);
+                    seq = index.create(seq);
+                }
+                int result = seq.getNext();
+                seq.setNext(result + 1);
+                index.tryUpdate(seq);
+                return result;
+            } catch (OptimisticLockException e) {
+                Exceptions.ignore(e);
+            }
+        }
+        throw Exceptions.handle()
+                        .to(IndexAccess.LOG)
+                        .withSystemErrorMessage(
+                                "Unable to generate a unique ID for sequence: %s after 5 attempts",
+                                sequence)
+                        .handle();
     }
 }

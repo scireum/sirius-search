@@ -8,12 +8,14 @@
 
 package sirius.search;
 
+import com.typesafe.config.ConfigValue;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import sirius.kernel.Sirius;
+import sirius.kernel.commons.Explain;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.Injector;
 import sirius.kernel.di.PartCollection;
@@ -180,6 +182,8 @@ public class Schema {
         return createMappings(indexPrefix);
     }
 
+    @SuppressWarnings("squid:S2095")
+    @Explain("The content builder of the mapping doesn't have to be closed here")
     protected List<String> createMappings(String indexPrefix) {
         List<String> changes = new ArrayList<>();
         for (EntityDescriptor ed : descriptorTable.values()) {
@@ -255,6 +259,7 @@ public class Schema {
 
             builder.startObject("analysis");
             buildCustomAnalyzers(builder);
+            buildCustomTokenizers(builder);
             buildCustomFilters(builder);
             builder.endObject();
 
@@ -263,28 +268,44 @@ public class Schema {
         }
     }
 
+    private void buildCustomTokenizers(XContentBuilder builder) throws IOException {
+        if (Sirius.getSettings().getConfig().hasPath("index.customTokenizers")) {
+            builder.startObject("tokenizer");
+            readCustomAnalysisSettings("index.customTokenizers", builder);
+            builder.endObject();
+        }
+    }
+
     private void buildCustomAnalyzers(XContentBuilder builder) throws IOException {
-        builder.startObject("analyzer");
-
-        builder.startObject("trigram");
-        builder.field("type", "custom");
-        builder.field("tokenizer", "standard");
-        builder.array("filter", "standard", "shingle");
-        builder.endObject();
-
-        builder.endObject();
+        if (Sirius.getSettings().getConfig().hasPath("index.customAnalyzers")) {
+            builder.startObject("analyzer");
+            readCustomAnalysisSettings("index.customAnalyzers", builder);
+            builder.endObject();
+        }
     }
 
     private void buildCustomFilters(XContentBuilder builder) throws IOException {
-        builder.startObject("filter");
+        if (Sirius.getSettings().getConfig().hasPath("index.customFilters")) {
+            builder.startObject("filter");
+            readCustomAnalysisSettings("index.customFilters", builder);
+            builder.endObject();
+        }
+    }
 
-        builder.startObject("shingle");
-        builder.field("type", "shingle");
-        builder.field("min_shingle_size", "2");
-        builder.field("max_shingle_size", "3");
-        builder.endObject();
-
-        builder.endObject();
+    @SuppressWarnings("unchecked")
+    private void readCustomAnalysisSettings(String configPath, XContentBuilder builder) throws IOException {
+        for (Map.Entry<String, ConfigValue> entry : Sirius.getSettings().getConfig(configPath).root().entrySet()) {
+            builder.startObject(entry.getKey());
+            for (Map.Entry<String, Object> inner : ((Map<String, Object>) entry.getValue().unwrapped()).entrySet()) {
+                if (inner.getValue() instanceof List) {
+                    List<String> list = (List<String>) inner.getValue();
+                    builder.array(inner.getKey(), list.toArray(new String[list.size()]));
+                } else {
+                    builder.field(inner.getKey(), inner.getValue());
+                }
+            }
+            builder.endObject();
+        }
     }
 
     /**

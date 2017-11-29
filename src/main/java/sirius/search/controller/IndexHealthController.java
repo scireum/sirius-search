@@ -55,6 +55,10 @@ public class IndexHealthController extends BasicController {
     @Part
     private IndexAccess index;
 
+    /**
+     * Reports some statistics for Elasticsearch
+     * @param ctx the request to handle
+     */
     @Permission(PERMISSION_SYSTEM_STATE)
     @Routed("/system/index")
     public void index(WebContext ctx) {

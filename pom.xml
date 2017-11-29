@@ -9,7 +9,7 @@
         <version>3.10</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>9.1.1</version>
+    <version>10.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -20,17 +20,17 @@
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>9.2.1</version>
+            <version>11.3</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>6.13</version>
+            <version>7.0</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>6.13</version>
+            <version>7.0</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>

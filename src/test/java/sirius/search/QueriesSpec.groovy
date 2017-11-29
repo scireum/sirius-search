@@ -45,6 +45,7 @@ class QueriesSpec extends BaseSpecification {
         index.blockThreadForUpdate()
         then:
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
+        index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
     }
 
     def "near span query uses applied slop value"() {

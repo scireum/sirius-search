@@ -9,6 +9,7 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import sirius.kernel.commons.Explain;
 import sirius.kernel.commons.Value;
 import sirius.kernel.di.Injector;
 import sirius.kernel.health.Exceptions;
@@ -310,6 +311,8 @@ public abstract class Property {
      *
      * @return the name of the data type used in the mapping
      */
+    @SuppressWarnings("squid:S3400")
+    @Explain("To be overwritten by subclasses.")
     protected String getMappingType() {
         return "keyword";
     }
@@ -463,7 +466,7 @@ public abstract class Property {
      *
      * @param builder     output
      * @param nestedClass model class that is used as nested object
-     * @throws IOException
+     * @throws IOException in case of an io error
      */
     protected void addNestedMappingProperties(XContentBuilder builder, Class<?> nestedClass) throws IOException {
         if (nestedClass.isAnnotationPresent(Indexed.class)) {
@@ -480,23 +483,23 @@ public abstract class Property {
     private void createFieldMappings(XContentBuilder builder, Class<?> nestedClass) throws IOException {
         for (Field innerField : nestedClass.getDeclaredFields()) {
             if (!innerField.isAnnotationPresent(Transient.class) && !Modifier.isStatic(innerField.getModifiers())) {
-                boolean accepted = false;
-                for (PropertyFactory f : Injector.context().getPartCollection(PropertyFactory.class)) {
-                    if (f.accepts(innerField)) {
-                        Property p = f.create(innerField);
-                        p.setInnerProperty(true);
-                        p.createMapping(builder);
-                        accepted = true;
-                        break;
-                    }
-                }
-
-                if (!accepted) {
-                    IndexAccess.LOG.WARN("Cannot create property %s in type %s - found no matching property factory",
-                                         innerField.getName(),
-                                         innerField.getDeclaringClass().getSimpleName());
-                }
+                createMapping(builder, innerField);
             }
         }
+    }
+
+    private void createMapping(XContentBuilder builder, Field innerField) throws IOException {
+        for (PropertyFactory f : Injector.context().getPartCollection(PropertyFactory.class)) {
+            if (f.accepts(innerField)) {
+                Property p = f.create(innerField);
+                p.setInnerProperty(true);
+                p.createMapping(builder);
+                return;
+            }
+        }
+
+        IndexAccess.LOG.WARN("Cannot create property %s in type %s - found no matching property factory",
+                             innerField.getName(),
+                             innerField.getDeclaringClass().getSimpleName());
     }
 }

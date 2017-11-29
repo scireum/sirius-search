@@ -106,18 +106,22 @@ public class ResultList<T> implements Iterable<T> {
     public List<Facet> getFacets() {
         if (facetsProcessed.firstCall() && response != null) {
             for (Facet facet : termFacets) {
-                if (facet instanceof DateFacet) {
-                    fillDateFacet(facet);
-                } else {
-                    Terms terms = response.getAggregations().get(facet.getName());
-                    for (Terms.Bucket bucket : terms.getBuckets()) {
-                        String key = bucket.getKeyAsString();
-                        facet.addItem(key, key, (int) bucket.getDocCount());
-                    }
-                }
+                fillFacet(facet);
             }
         }
         return termFacets;
+    }
+
+    private void fillFacet(Facet facet) {
+        if (facet instanceof DateFacet) {
+            fillDateFacet(facet);
+        } else {
+            Terms terms = response.getAggregations().get(facet.getName());
+            for (Terms.Bucket bucket : terms.getBuckets()) {
+                String key = bucket.getKeyAsString();
+                facet.addItem(key, key, (int) bucket.getDocCount());
+            }
+        }
     }
 
     private void fillDateFacet(Facet facet) {

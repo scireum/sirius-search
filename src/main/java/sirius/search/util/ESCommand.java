@@ -42,9 +42,9 @@ public class ESCommand implements Command {
         } else if ("resave".equalsIgnoreCase(values.at(0).asString())) {
             resave(output, values);
         } else if ("unbalance".equalsIgnoreCase(values.at(0).asString())) {
-            unbalance(output, values);
+            unbalance(output);
         } else if ("balance".equalsIgnoreCase(values.at(0).asString())) {
-            balance(output, values);
+            balance(output);
         } else {
             output.apply("Unknown command: %s", values.at(0));
             output.line("Use: query <type> <filter>");
@@ -61,18 +61,16 @@ public class ESCommand implements Command {
         if (type != null) {
             output.line("Results (limited at 500):");
             output.separator();
-            int rows = 0;
+            AtomicInteger rows = new AtomicInteger();
             for (Entity e : index.select(type)
                                  .deliberatelyUnrouted()
                                  .query(values.at(2).asString())
                                  .limit(500)
                                  .queryList()) {
                 output.line(e.toDebugString());
-                rows++;
+                rows.incrementAndGet();
             }
-            output.separator();
-            output.apply("%s rows affected", rows);
-            output.blankLine();
+            outputAffectedRows(output, rows);
         }
     }
 
@@ -90,24 +88,25 @@ public class ESCommand implements Command {
                 index.update(e);
                 rows.incrementAndGet();
             });
-            output.separator();
-            output.apply("%s rows affected", rows.get());
-            output.blankLine();
+            outputAffectedRows(output, rows);
         }
+    }
+
+    private void outputAffectedRows(Output output, AtomicInteger rows) {
+        output.separator();
+        output.apply("%s rows affected", rows.get());
+        output.blankLine();
     }
 
     private void resave(Output output, Values values) {
         Class<? extends Entity> type = UpdateMappingCommand.findTypeOrReportError(output, values.at(1).asString());
         if (type != null) {
-            EntityDescriptor ed = index.getDescriptor(type);
             AtomicInteger rows = new AtomicInteger();
             index.select(type).deliberatelyUnrouted().query(values.at(2).asString()).iterateAll(e -> {
                 index.update(e);
                 rows.incrementAndGet();
             });
-            output.separator();
-            output.apply("%s rows affected", rows.get());
-            output.blankLine();
+            outputAffectedRows(output, rows);
         }
     }
 
@@ -119,12 +118,12 @@ public class ESCommand implements Command {
                 index.delete(e);
                 rows.incrementAndGet();
             });
-            output.apply("%s rows affected", rows.get());
-            output.blankLine();
+
+            outputAffectedRows(output, rows);
         }
     }
 
-    private void unbalance(Output output, Values values) {
+    private void unbalance(Output output) {
         output.line("Disabling automatic allocation.");
         changeAllocationMode("none");
         output.line("Disabled automatic allocation.");
@@ -138,7 +137,7 @@ public class ESCommand implements Command {
         index.getClient().admin().cluster().updateSettings(request);
     }
 
-    private void balance(Output output, Values values) {
+    private void balance(Output output) {
         output.line("Enabling automatic allocation.");
         changeAllocationMode("all");
         output.line("Enabled automatic allocation.");

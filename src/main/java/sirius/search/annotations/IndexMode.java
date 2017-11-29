@@ -26,7 +26,8 @@ public @interface IndexMode {
      * Determines whether this field should be indexed in general by elasticsearch.
      *
      * @return true if this field should be indexed or not.
-     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-index.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-index.html</a>
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-index.html">
+     * https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-index.html</a>
      */
     ESOption indexed() default ESOption.DEFAULT;
 
@@ -34,7 +35,8 @@ public @interface IndexMode {
      * Determines whether this field should be stored separately from the _source field by elasticsearch.
      *
      * @return true if this field should be stored separately from the _source field by elasticsearch.
-     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-store.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-store.html</a>
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-store.html">
+     * https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-store.html</a>
      */
     ESOption stored() default ESOption.DEFAULT;
 
@@ -43,7 +45,8 @@ public @interface IndexMode {
      * Permits to specify if norms are enabled for this field or not.
      *
      * @return whether norms are enabled or not.
-     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/norms.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/norms.html</a>
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/norms.html">
+     * https://www.elastic.co/guide/en/elasticsearch/reference/current/norms.html</a>
      */
     ESOption normsEnabled() default ESOption.DEFAULT;
 
@@ -52,7 +55,8 @@ public @interface IndexMode {
      *
      * @return <tt>"true"</tt> if the contents of this field should be included in the <tt>_all</tt> field,
      * <tt>"false"</tt> otherwise.
-     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/include-in-all.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/include-in-all.html</a>
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/include-in-all.html">
+     * https://www.elastic.co/guide/en/elasticsearch/reference/current/include-in-all.html</a>
      */
     ESOption includeInAll() default ESOption.DEFAULT;
 
@@ -61,7 +65,8 @@ public @interface IndexMode {
      *
      * @return <tt>"true"</tt> if the contents of this field should be stored on disk in a column-stride fashion,
      * <tt>"false"</tt> otherwise.
-     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/doc-values.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/doc-values.html</a>
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/doc-values.html">
+     * https://www.elastic.co/guide/en/elasticsearch/reference/current/doc-values.html</a>
      */
     ESOption docValues() default ESOption.DEFAULT;
 
