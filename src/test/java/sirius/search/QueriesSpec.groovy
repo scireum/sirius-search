@@ -16,6 +16,7 @@ import sirius.search.constraints.And
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
+import sirius.search.entities.CustomAnalyzerPropertyEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 
@@ -46,6 +47,21 @@ class QueriesSpec extends BaseSpecification {
         then:
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
+    }
+
+    def "custom analyzer are created at startup and work"() {
+        given:
+        CustomAnalyzerPropertyEntity e = new CustomAnalyzerPropertyEntity()
+        e.setPrefixesContent("thisisalongword")
+        when:
+        e = index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(CustomAnalyzerPropertyEntity).eq(CustomAnalyzerPropertyEntity.PREFIXES_CONTENT, "this").count() == 1
+        index.select(CustomAnalyzerPropertyEntity).eq(CustomAnalyzerPropertyEntity.PREFIXES_CONTENT, "thisi").count() == 1
+        index.select(CustomAnalyzerPropertyEntity).eq(CustomAnalyzerPropertyEntity.PREFIXES_CONTENT, "thisis").count() == 1
+        index.select(CustomAnalyzerPropertyEntity).eq(CustomAnalyzerPropertyEntity.PREFIXES_CONTENT, "thisisword").count() == 0
     }
 
     def "near span query uses applied slop value"() {
