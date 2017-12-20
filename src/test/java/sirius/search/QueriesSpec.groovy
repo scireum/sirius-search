@@ -11,6 +11,7 @@ package sirius.search
 import org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder
 import sirius.kernel.BaseSpecification
+import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
 import sirius.search.constraints.FieldEqual
@@ -19,6 +20,7 @@ import sirius.search.constraints.Or
 import sirius.search.entities.CustomAnalyzerPropertyEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
+import sirius.web.controller.Page
 
 class QueriesSpec extends BaseSpecification {
 
@@ -114,6 +116,39 @@ class QueriesSpec extends BaseSpecification {
         index.select(QueryEntity.class).eq(QueryEntity.CONTENT, "bulk").count() == 500
         and:
         noExceptionThrown()
+    }
+    
+    def queryPageSetup() {
+        index.select(QueryEntity.class).delete()
+        List<QueryEntity> entities = new ArrayList<>()
+        for (int i = 0; i < 500; i++) {
+            QueryEntity e = new QueryEntity()
+            e.setContent("querypage")
+            entities.add(e)
+        }
+        index.updateBulk(entities)
+        index.blockThreadForUpdate(4)
+    }
+    
+    @SetupOnce("queryPageSetup")
+    def "queryPage counts number of items correctly"() {
+        when:
+        Page<QueryEntity> page
+        and:
+        page = index.select(QueryEntity.class).eq(QueryEntity.CONTENT, "querypage").withPageSize(pageSize).page(start).queryPage()
+        then:
+        page.getItems().size() == count
+        page.hasMore() == hasMore
+        page.getTotal() == total
+        where:
+        pageSize | start | count | total | hasMore
+        0        | 1     | 0     | 500   | true
+        25       | 1     | 25    | 500   | true
+        500      | 1     | 500   | 500   | false
+        25       | 480   | 21    | 500   | false
+        200      | 301   | 200   | 500   | false
+        200      | 300   | 200   | 500   | true
+        25       | 500   | 1     | 500   | false
     }
 
     def "bulk update combined with version conflict"() {

@@ -1224,13 +1224,10 @@ public class Query<E extends Entity> {
      *
      * @return the result of the query along with all facets and paging-metadata
      */
-    @SuppressWarnings("unchecked")
     public Page<E> queryPage() {
         if (limit == null) {
             throw new IllegalStateException("limit must be set when using queryPage (Call .page(...)!)");
         }
-        int originalLimit = limit;
-        limit++;
         Watch w = Watch.start();
         ResultList<E> result = new ResultList<>(termFacets, null);
         if (!forceFail) {
@@ -1240,16 +1237,14 @@ public class Query<E extends Entity> {
                 UserContext.handle(e);
             }
         }
-        boolean hasMore = false;
-        if (result.size() > originalLimit) {
-            hasMore = true;
-            result.getResults().remove(result.size() - 1);
-        }
-        final ResultList<E> finalResult = result;
+        int total = Math.toIntExact(result.getTotalNumberOfHits());
+        boolean hasMore = total > start + limit;
+        
         return new Page<E>().withQuery(queryString)
                             .withStart(start + 1)
                             .withItems(result.getResults())
-                            .withFactesSupplier(finalResult::getFacets)
+                            .withTotalItems(total)
+                            .withFactesSupplier(result::getFacets)
                             .withHasMore(hasMore)
                             .withDuration(w.duration())
                             .withPageSize(pageSize);
