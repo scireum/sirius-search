@@ -8,7 +8,7 @@
 
 package sirius.search;
 
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
 import sirius.kernel.nls.NLS;
 import sirius.search.constraints.FieldOperator;
 
