@@ -151,6 +151,17 @@ class QueriesSpec extends BaseSpecification {
         25       | 500   | 1     | 500   | false
     }
 
+    def "queryPage counts number of items correctly, even if failed"() {
+        when:
+        Page<QueryEntity> page
+        and:
+        page = index.select(QueryEntity.class).page(0).fail().queryPage()
+        then:
+        page.getItems().size() == 0
+        page.hasMore() == false
+        page.getTotal() == 0
+    }
+
     def "bulk update combined with version conflict"() {
         given:
         List<QueryEntity> entities = new ArrayList<>()

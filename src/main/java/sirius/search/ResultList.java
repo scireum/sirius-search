@@ -95,7 +95,10 @@ public class ResultList<T> implements Iterable<T> {
      * @return the total number of hits
      */
     public long getTotalNumberOfHits() {
-        return this.response.getHits().getTotalHits();
+        if (response == null || response.getHits() == null) {
+            return 0;
+        }
+        return response.getHits().getTotalHits();
     }
 
     /**
