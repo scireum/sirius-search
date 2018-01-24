@@ -341,6 +341,9 @@ public class RobustQueryParser implements Constraint {
     protected QueryBuilder createTokenizedConstraint(String field, String value) {
         List<List<String>> tokenLists = new ArrayList<>();
         tokenizer.apply(value).forEach(tokenLists::add);
+        if (tokenLists.isEmpty()) {
+            return null;
+        }
         if (tokenLists.size() == 1) {
             return transformTokenList(field, tokenLists.get(0));
         }

@@ -117,7 +117,7 @@ class QueriesSpec extends BaseSpecification {
         and:
         noExceptionThrown()
     }
-    
+
     def queryPageSetup() {
         index.select(QueryEntity.class).delete()
         List<QueryEntity> entities = new ArrayList<>()
@@ -129,7 +129,7 @@ class QueriesSpec extends BaseSpecification {
         index.updateBulk(entities)
         index.blockThreadForUpdate(4)
     }
-    
+
     @SetupOnce("queryPageSetup")
     def "queryPage counts number of items correctly"() {
         when:
@@ -207,6 +207,21 @@ class QueriesSpec extends BaseSpecification {
                 .queryList().get(0).getRanking() == 500L
 
 
+    }
+
+    def "forced query fails if tokenizer only produces empty tokens"() {
+        setup:
+        QueryEntity e = new QueryEntity()
+        e.setContent("forcedQuery")
+        index.update(e)
+        index.blockThreadForUpdate()
+        when:
+        Query qry = index.select(QueryEntity.class)
+        qry.eq(QueryEntity.CONTENT, "forcedQuery").query("§#%", Query.DEFAULT_FIELD, Query.&defaultTokenizer, false, true)
+        then:
+        qry.forceFail
+        and:
+        !qry.exists()
     }
 
 }
