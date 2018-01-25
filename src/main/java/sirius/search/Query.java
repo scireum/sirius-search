@@ -94,7 +94,7 @@ public class Query<E extends Entity> {
     public static final String DEFAULT_FIELD = "_all";
 
     @ConfigValue("index.termFacetLimit")
-    private static int termFacetLimit;
+    private static int defaultTermFacetLimit;
 
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
@@ -109,6 +109,7 @@ public class Query<E extends Entity> {
     private Integer limit = null;
     private String queryString;
     private int pageSize = 25;
+    private int termFacetLimit = defaultTermFacetLimit;
     private boolean primary = false;
     private String index;
     private boolean forceFail = false;
@@ -713,6 +714,11 @@ public class Query<E extends Entity> {
         return this;
     }
 
+    public Query<E> withTermFacetLimit(int limit) {
+        termFacetLimit = limit;
+        return this;
+    }
+
     /**
      * Sets the firsts index of the requested result slice.
      *
@@ -1239,7 +1245,7 @@ public class Query<E extends Entity> {
         }
         int total = Math.toIntExact(result.getTotalNumberOfHits());
         boolean hasMore = total > start + limit;
-        
+
         return new Page<E>().withQuery(queryString)
                             .withStart(start + 1)
                             .withItems(result.getResults())

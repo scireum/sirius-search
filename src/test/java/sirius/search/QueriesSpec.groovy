@@ -18,8 +18,10 @@ import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
 import sirius.search.entities.CustomAnalyzerPropertyEntity
+import sirius.search.entities.NumberQueryEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
+import sirius.web.controller.Facet
 import sirius.web.controller.Page
 
 class QueriesSpec extends BaseSpecification {
@@ -234,5 +236,28 @@ class QueriesSpec extends BaseSpecification {
         and:
         !qry.exists()
     }
+
+    def termFacetLimitSetup() {
+        index.select(NumberQueryEntity.class).delete()
+        List<NumberQueryEntity> entities = new ArrayList<>()
+        for (int i = 0; i < 500; i++) {
+            NumberQueryEntity e = new NumberQueryEntity()
+            e.setNumber(i)
+            entities.add(e)
+        }
+        index.updateBulk(entities)
+        index.blockThreadForUpdate(4)
+    }
+    
+    @SetupOnce("termFacetLimitSetup")
+    def "termFacetLimit limits number of different facet items"() {
+        when:
+        Facet termFacet = index.select(NumberQueryEntity.class).limit(0).withTermFacetLimit(limit).addTermFacet(NumberQueryEntity.NUMBER, "").queryResultList().getFacets().get(0)
+        then:
+        termFacet.items.size() == limit
+        where:
+        limit << [1, 3, 25, 100, 300, 500]
+    }
+    
 
 }
