@@ -132,6 +132,9 @@ public class RobustQueryParser implements Constraint {
 
     private String obtainSingleToken(String input) {
         Iterator<List<String>> tokenIter = tokenizer.apply(input).iterator();
+        if (!tokenIter.hasNext()) {
+            return null;
+        }
         List<String> firstList = tokenIter.next();
         if (tokenIter.hasNext()) {
             // We tokenized into several lists -> give up an return null
