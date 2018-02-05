@@ -32,6 +32,7 @@ public class FieldEqual implements Constraint, SpanConstraint {
     private Object value;
     private boolean ignoreNull = false;
     private float boost = 1f;
+    private String queryName;
 
     /*
      * Use the #on(String, Object) factory method
@@ -113,15 +114,29 @@ public class FieldEqual implements Constraint, SpanConstraint {
         return this;
     }
 
+    /**
+     * Sets the query name for this query.
+     *
+     * @param queryName the name for this query
+     * @return the constraint itself for fluent method calls
+     */
+    public FieldEqual withQueryName(String queryName) {
+        this.queryName = queryName;
+        return this;
+    }
+
     @Override
     public QueryBuilder createQuery() {
         if (Strings.isEmpty(value)) {
             if (ignoreNull) {
                 return null;
             }
-            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)).boost(boost);
+            return QueryBuilders.boolQuery()
+                                .mustNot(QueryBuilders.existsQuery(field))
+                                .boost(boost)
+                                .queryName(queryName);
         }
-        return QueryBuilders.termQuery(field, value).boost(boost);
+        return QueryBuilders.termQuery(field, value).boost(boost).queryName(queryName);
     }
 
     @Override

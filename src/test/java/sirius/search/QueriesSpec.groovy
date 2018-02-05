@@ -18,6 +18,7 @@ import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
 import sirius.search.entities.CustomAnalyzerPropertyEntity
+import sirius.search.entities.POJO
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 import sirius.web.controller.Page
@@ -235,4 +236,22 @@ class QueriesSpec extends BaseSpecification {
         !qry.exists()
     }
 
+    def "named queries work"() {
+        given:
+        QueryEntity e = new QueryEntity()
+        e.setContent("test")
+        e.setRanking(5)
+        when:
+        index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        Optional result = index.select(QueryEntity.class)
+                .eq(QueryEntity.RANKING, 5)
+                .where(FieldEqual.on(QueryEntity.CONTENT, "test").withQueryName("matchedContent"))
+                .first()
+        then:
+        result.isPresent()
+        result.get().getMatchedNamedQueries().size() == 1
+        result.get().getMatchedNamedQueries().contains("matchedContent")
+    }
 }
