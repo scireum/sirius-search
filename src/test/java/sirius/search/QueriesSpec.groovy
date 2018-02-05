@@ -50,6 +50,39 @@ class QueriesSpec extends BaseSpecification {
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
     }
+    
+    def "robust query can produce OR query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("two")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("one OR two").count() == 2
+    }
+
+    def "robust query can produce complex nested query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("entity one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("entity two")
+        ParentEntity e3 = new ParentEntity()
+        e3.setName("entity")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        e3 = index.update(e3)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("(entity AND one) OR (entity AND two)").count() == 2
+    }
 
     def "custom analyzer are created at startup and work"() {
         given:
