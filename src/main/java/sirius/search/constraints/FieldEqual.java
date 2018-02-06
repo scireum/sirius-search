@@ -119,7 +119,9 @@ public class FieldEqual implements Constraint, SpanConstraint {
             if (ignoreNull) {
                 return null;
             }
-            return QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery(field)).boost(boost);
+            return QueryBuilders.boolQuery()
+                                .mustNot(QueryBuilders.existsQuery(field))
+                                .boost(boost);
         }
         return QueryBuilders.termQuery(field, value).boost(boost);
     }

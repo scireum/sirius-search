@@ -14,6 +14,7 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
+import sirius.search.constraints.Constraint
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
@@ -21,6 +22,7 @@ import sirius.search.entities.CustomAnalyzerPropertyEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 import sirius.web.controller.Page
+import sirius.search.constraints.Named
 
 class QueriesSpec extends BaseSpecification {
 
@@ -268,4 +270,21 @@ class QueriesSpec extends BaseSpecification {
         !qry.exists()
     }
 
+    def "named queries work"() {
+        given:
+        QueryEntity e = new QueryEntity()
+        e.setContent("test")
+        e.setRanking(5)
+        when:
+        index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        Optional result = index.select(QueryEntity.class)
+                .eq(QueryEntity.RANKING, 5)
+                .where(Named.of(FieldEqual.on(QueryEntity.CONTENT, "test"), "matchedContent"))
+                .first()
+        then:
+        result.isPresent()
+        result.get().isMatchedNamedQuery("matchedContent")
+    }
 }

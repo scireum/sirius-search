@@ -1035,6 +1035,7 @@ public class Query<E extends Entity> {
             entity.initSourceTracing();
             entity.setId(searchHit.getId());
             entity.setVersion(searchHit.getVersion());
+            entity.setMatchedNamedQueries(searchHit.getMatchedQueries());
             descriptor.readSource(entity, searchHit.getSource());
 
             return entity;
@@ -1150,6 +1151,7 @@ public class Query<E extends Entity> {
             entity.initSourceTracing();
             entity.setId(hit.getId());
             entity.setVersion(hit.getVersion());
+            entity.setMatchedNamedQueries(hit.getMatchedQueries());
             descriptor.readSource(entity, hit.getSource());
             result.getResults().add(entity);
         }
@@ -1183,6 +1185,7 @@ public class Query<E extends Entity> {
             result.initSourceTracing();
             result.setId(hit.getId());
             result.setVersion(hit.getVersion());
+            result.setMatchedNamedQueries(hit.getMatchedQueries());
             indexAccess.getDescriptor(clazz).readSource(result, hit.getSource());
         }
         if (IndexAccess.LOG.isFINE()) {
@@ -1327,6 +1330,7 @@ public class Query<E extends Entity> {
             entity.setId(hit.getId());
             entity.initSourceTracing();
             entity.setVersion(hit.getVersion());
+            entity.setMatchedNamedQueries(hit.getMatchedQueries());
             entityDescriptor.readSource(entity, hit.getSource());
 
             if (lim.nextRow()) {
