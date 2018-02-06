@@ -212,6 +212,10 @@ public class RobustQueryParser implements Constraint {
                 result.add(subQuery);
             }
         }
+        
+        if (result.isEmpty()) {
+            return null;
+        }
 
         if (result.size() == 1) {
             return result.get(0);
