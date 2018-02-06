@@ -196,8 +196,8 @@ public abstract class Entity {
      *
      * @return the list of named queries which matched this entity.
      */
-    public String[] getMatchedNamedQueries() {
-        return matchedNamedQueries;
+    public boolean isMatchedNamedQuery(String queryName) {
+        return Arrays.stream(matchedNamedQueries).anyMatch(query -> Strings.areEqual(query, queryName));
     }
 
     /**

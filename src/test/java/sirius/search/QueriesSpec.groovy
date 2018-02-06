@@ -14,14 +14,15 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
+import sirius.search.constraints.Constraint
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
 import sirius.search.entities.CustomAnalyzerPropertyEntity
-import sirius.search.entities.POJO
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 import sirius.web.controller.Page
+import sirius.search.constraints.Named
 
 class QueriesSpec extends BaseSpecification {
 
@@ -50,6 +51,39 @@ class QueriesSpec extends BaseSpecification {
         then:
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
+    }
+    
+    def "robust query can produce OR query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("two")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("one OR two").count() == 2
+    }
+
+    def "robust query can produce complex nested query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("entity one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("entity two")
+        ParentEntity e3 = new ParentEntity()
+        e3.setName("entity")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        e3 = index.update(e3)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("(entity AND one) OR (entity AND two)").count() == 2
     }
 
     def "custom analyzer are created at startup and work"() {
@@ -247,11 +281,10 @@ class QueriesSpec extends BaseSpecification {
         index.blockThreadForUpdate()
         Optional result = index.select(QueryEntity.class)
                 .eq(QueryEntity.RANKING, 5)
-                .where(FieldEqual.on(QueryEntity.CONTENT, "test").withQueryName("matchedContent"))
+                .where(Named.of(FieldEqual.on(QueryEntity.CONTENT, "test"), "matchedContent"))
                 .first()
         then:
         result.isPresent()
-        result.get().getMatchedNamedQueries().size() == 1
-        result.get().getMatchedNamedQueries().contains("matchedContent")
+        result.get().isMatchedNamedQuery("matchedContent")
     }
 }

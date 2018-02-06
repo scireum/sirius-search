@@ -190,10 +190,9 @@ public class RobustQueryParser implements Constraint {
     private QueryBuilder parseAND(LookaheadReader reader) {
         List<QueryBuilder> result = Lists.newArrayList();
         QueryBuilder subQuery = parseToken(reader);
-        if (subQuery == null) {
-            return null;
+        if (subQuery != null) {
+            result.add(subQuery);
         }
-        result.add(subQuery);
 
         while (!reader.current().isEndOfInput() && !reader.current().is(')')) {
             skipWhitespace(reader);
