@@ -52,11 +52,17 @@ public class IndexReport implements MetricProvider {
                                      "ES-OptimisticLock-Errors",
                                      index.optimisticLockErrors.getCount(),
                                      "/min");
-        collector.metric("index-queryDuration", "ES-QueryDuration", index.queryDuration.getAndClearAverage(), "ms");
-        collector.differentialMetric("index-queries",
-                                     "index-queries",
-                                     "ES-Queries",
-                                     index.queryDuration.getCount(),
+        collector.metric("index-queryModificationDuration", "ES-Modify-Query Duration", index.queryModificationDuration.getAndClearAverage(), "ms");
+        collector.differentialMetric("index-modification-queries",
+                                     "index-modification-queries",
+                                     "ES-Modify-Queries",
+                                     index.queryModificationDuration.getCount(),
+                                     "/min");
+        collector.metric("index-querySelectDuration", "ES-Select-Query Duration", index.querySelectDuration.getAndClearAverage(), "ms");
+        collector.differentialMetric("index-select-queries",
+                                     "index-select-queries",
+                                     "ES-Select-Queries",
+                                     index.querySelectDuration.getCount(),
                                      "/min");
     }
 

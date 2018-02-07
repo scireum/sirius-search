@@ -148,9 +148,15 @@ public class IndexAccess {
     protected boolean traceOptimisticLockErrors;
 
     /*
-     * Average query duration for statistical measures
+     * Average query duration (updates and delete queries) for statistical measures
      */
-    protected Average queryDuration = new Average();
+    protected Average queryModificationDuration = new Average();
+
+    /*
+     * Average query duration (select and count queries) for statistical measures
+     */
+    protected Average querySelectDuration = new Average();
+
     /*
      * Counts how many threads used blockThreadForUpdate
      */
@@ -1135,7 +1141,7 @@ public class IndexAccess {
         if (runSaveChecks) {
             entity.afterSave();
         }
-        queryDuration.addValue(w.elapsedMillis());
+        queryModificationDuration.addValue(w.elapsedMillis());
         w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
         traceChange(entity);
         return entity;
@@ -1163,7 +1169,7 @@ public class IndexAccess {
             traceChange(entity);
         }
 
-        queryDuration.addValue(w.elapsedMillis());
+        queryModificationDuration.addValue(w.elapsedMillis());
         w.submitMicroTiming("ES", "BULK-UPDATE");
 
         return entities;
@@ -1234,7 +1240,7 @@ public class IndexAccess {
                 verifyRoutingForFind(routing, clazz, id, descriptor);
                 return executeFind(indexName, routing, clazz, id, descriptor);
             } finally {
-                queryDuration.addValue(w.elapsedMillis());
+                querySelectDuration.addValue(w.elapsedMillis());
                 w.submitMicroTiming("ES", "UPDATE " + clazz.getName());
             }
         } catch (Exception t) {
@@ -1457,7 +1463,7 @@ public class IndexAccess {
 
             drb.execute().actionGet();
             entity.deleted = true;
-            queryDuration.addValue(w.elapsedMillis());
+            queryModificationDuration.addValue(w.elapsedMillis());
             w.submitMicroTiming("ES", "DELETE " + entity.getClass().getName());
             entity.afterDelete();
             if (LOG.isFINE()) {
@@ -1550,5 +1556,14 @@ public class IndexAccess {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    /**
+     * Adds a timing value for select-queries.
+     *
+     * @param elapsedMillis the timing value
+     */
+    public void addSelectTiming(long elapsedMillis) {
+        querySelectDuration.addValue(elapsedMillis);
     }
 }

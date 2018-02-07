@@ -1017,6 +1017,7 @@ public class Query<E extends Entity> {
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "RAW: " + toString(true));
         }
+        indexAccess.addSelectTiming(w.elapsedMillis());
 
         return response;
     }
@@ -1165,6 +1166,8 @@ public class Query<E extends Entity> {
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "LIST: " + toString(true));
         }
+        indexAccess.addSelectTiming(w.elapsedMillis());
+
         return result;
     }
 
@@ -1219,6 +1222,8 @@ public class Query<E extends Entity> {
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "COUNT: " + toString(true));
         }
+        indexAccess.addSelectTiming(w.elapsedMillis());
+
         return res.getHits().getTotalHits();
     }
 
