@@ -1,0 +1,3 @@
+tische => tisch
+große => groß
+grosse => groß
