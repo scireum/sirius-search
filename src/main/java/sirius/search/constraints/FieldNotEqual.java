@@ -9,6 +9,8 @@
 package sirius.search.constraints;
 
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import sirius.kernel.commons.Strings;
 import sirius.search.Entity;
 import sirius.search.IndexAccess;
 
@@ -18,6 +20,7 @@ import sirius.search.IndexAccess;
 public class FieldNotEqual implements Constraint {
     private final String field;
     private Object value;
+    private boolean ignoreNull = false;
 
     /*
      * Use the #on(String, Object) factory method
@@ -33,6 +36,16 @@ public class FieldNotEqual implements Constraint {
     }
 
     /**
+     * Makes the filter ignore <tt>null</tt> values (no constraint will be created).
+     *
+     * @return the constraint itself for fluent method calls
+     */
+    public FieldNotEqual ignoreNull() {
+        this.ignoreNull = true;
+        return this;
+    }
+
+    /**
      * Creates a new constraint for the given field and value.
      *
      * @param field the field to check
@@ -45,6 +58,13 @@ public class FieldNotEqual implements Constraint {
 
     @Override
     public QueryBuilder createQuery() {
+        if (Strings.isEmpty(value)) {
+            if (ignoreNull || field.equals(IndexAccess.ID_FIELD)) {
+                return null;
+            } else {
+                return QueryBuilders.existsQuery(field);
+            }
+        }
         return Not.on(FieldEqual.on(field, value)).createQuery();
     }
 

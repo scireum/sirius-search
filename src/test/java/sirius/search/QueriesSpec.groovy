@@ -13,16 +13,11 @@ import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuild
 import sirius.kernel.BaseSpecification
 import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
-import sirius.search.constraints.And
-import sirius.search.constraints.Constraint
-import sirius.search.constraints.FieldEqual
-import sirius.search.constraints.NearSpan
-import sirius.search.constraints.Or
+import sirius.search.constraints.*
 import sirius.search.entities.CustomAnalyzerPropertyEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 import sirius.web.controller.Page
-import sirius.search.constraints.Named
 
 class QueriesSpec extends BaseSpecification {
 
@@ -52,7 +47,7 @@ class QueriesSpec extends BaseSpecification {
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
     }
-    
+
     def "robust query can produce OR query"() {
         given:
         ParentEntity e1 = new ParentEntity()
