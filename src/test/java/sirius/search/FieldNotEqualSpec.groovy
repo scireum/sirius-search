@@ -42,7 +42,7 @@ class FieldNotEqualSpec extends BaseSpecification {
         and:
         index.blockThreadForUpdate()
         Optional result = index.select(QueryEntity.class)
-                .notEq(QueryEntity.CONTENT, null)
+                .notEq(QueryEntity.ID, null)
                 .first()
         then:
         result.isPresent()
@@ -71,7 +71,7 @@ class FieldNotEqualSpec extends BaseSpecification {
         and:
         index.blockThreadForUpdate()
         Optional result = index.select(QueryEntity.class)
-                .where(FieldNotEqual.on(QueryEntity.CONTENT, null).ignoreNull())
+                .where(FieldNotEqual.on(QueryEntity.ID, null).ignoreNull())
                 .first()
         then:
         result.isPresent()
