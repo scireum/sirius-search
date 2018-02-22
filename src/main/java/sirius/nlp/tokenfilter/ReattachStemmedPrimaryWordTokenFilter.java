@@ -16,12 +16,12 @@ import sirius.nlp.attribute.PrimaryWordAttribute;
 import java.io.IOException;
 import java.util.Arrays;
 
-public final class ReattachPrimaryWordTokenFilter extends TokenFilter {
+public final class ReattachStemmedPrimaryWordTokenFilter extends TokenFilter {
 
     private final PrimaryWordAttribute primaryWordAttr = addAttribute(PrimaryWordAttribute.class);
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
-    public ReattachPrimaryWordTokenFilter(TokenStream result) {
+    public ReattachStemmedPrimaryWordTokenFilter(TokenStream result) {
         super(result);
     }
 

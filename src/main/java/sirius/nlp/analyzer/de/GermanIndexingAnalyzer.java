@@ -35,7 +35,8 @@ import org.apache.lucene.util.IOUtils;
 import sirius.nlp.tokenfilter.ExtractPrimaryWordTokenFilter;
 import sirius.nlp.tokenfilter.MarkTermTokenFilter;
 import sirius.nlp.tokenfilter.MarkStemAsKeywordTokenFilter;
-import sirius.nlp.tokenfilter.ReattachPrimaryWordTokenFilter;
+import sirius.nlp.tokenfilter.ReattachStemmedPrimaryWordTokenFilter;
+import sirius.nlp.tokenfilter.RemoveLeadingZerosTokenFilter;
 import sirius.nlp.tokenfilter.TransferAttributeTokenFilter;
 
 import java.io.BufferedReader;
@@ -127,7 +128,7 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
         result = new SynonymGraphFilter(result, stemExceptions, true);
         result = new TransferAttributeTokenFilter(result);
         result = new HunspellStemFilter(result, hunspellDict);
-        result = new ReattachPrimaryWordTokenFilter(result);
+        result = new ReattachStemmedPrimaryWordTokenFilter(result);
 
         // TODO: check docs what problems occur doing this while index vs search time
         // inject synonym terms
@@ -137,6 +138,7 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
         // normalize german umlauts etc.
         result = new GermanNormalizationFilter(result);
         result = new RemoveDuplicatesTokenFilter(result); // TODO
+        result = new RemoveLeadingZerosTokenFilter(result); // TODO
 
         return new TokenStreamComponents(source, result);
     }
