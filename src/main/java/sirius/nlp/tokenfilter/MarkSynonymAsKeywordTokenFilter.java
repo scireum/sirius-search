@@ -10,27 +10,25 @@ package sirius.nlp.tokenfilter;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
-import sirius.kernel.commons.Strings;
-import sirius.nlp.attribute.PrimaryWordAttribute;
 
 import java.io.IOException;
 
-public final class MarkTermTokenFilter extends TokenFilter {
+public final class MarkSynonymAsKeywordTokenFilter extends TokenFilter {
 
-    public static final String ORIGINAL_TOKEN_BEFORE_STEMMING = "ORIGINAL_TOKEN_BEFORE_STEMMING";
-
-    private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
-    private final PrimaryWordAttribute primAttribute = addAttribute(PrimaryWordAttribute.class);
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
+    private final KeywordAttribute keywordAttribute = addAttribute(KeywordAttribute.class);
 
     /**
      * Construct a token stream filtering the given input.
      *
      * @param input
      */
-    public MarkTermTokenFilter(TokenStream input) {
+    public MarkSynonymAsKeywordTokenFilter(TokenStream input) {
         super(input);
     }
 
@@ -40,8 +38,9 @@ public final class MarkTermTokenFilter extends TokenFilter {
             return false;
         }
 
-        typeAtt.setType(ORIGINAL_TOKEN_BEFORE_STEMMING);
-        primAttribute.setOriginalToken(termAtt.buffer(), termAtt.length());
+        if (SynonymGraphFilter.TYPE_SYNONYM.equals(typeAtt.type())) {
+            keywordAttribute.setKeyword(true);
+        }
 
         return true;
     }

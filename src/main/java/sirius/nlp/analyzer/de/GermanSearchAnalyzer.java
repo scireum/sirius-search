@@ -33,13 +33,12 @@ import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
 import sirius.nlp.tokenfilter.ExtractPrimaryWordTokenFilter;
-import sirius.nlp.tokenfilter.MarkTermTokenFilter;
+import sirius.nlp.tokenfilter.MarkOriginalTermTokenFilter;
 import sirius.nlp.tokenfilter.MarkStemAsKeywordTokenFilter;
 import sirius.nlp.tokenfilter.ReattachStemmedPrimaryWordTokenFilter;
 import sirius.nlp.tokenfilter.RemoveEmptyTokensTokenFilter;
 import sirius.nlp.tokenfilter.RemoveInitialTermTokenFilter;
-import sirius.nlp.tokenfilter.RemoveLeadingZerosTokenFilter;
-import sirius.nlp.tokenfilter.TransferAttributeTokenFilter;
+import sirius.nlp.tokenfilter.MarkSynonymAsKeywordTokenFilter;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -119,13 +118,13 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
         // start stemming
         result = new SynonymGraphFilter(result, stemExceptions, true);
         result = new FlattenGraphFilter(result);
-        result = new TransferAttributeTokenFilter(result);
-        result = new MarkTermTokenFilter(result);
+        result = new MarkSynonymAsKeywordTokenFilter(result);
+        result = new MarkOriginalTermTokenFilter(result);
         result = new HunspellStemFilter(result, hunspellDict, true, true);
         result = new MarkStemAsKeywordTokenFilter(result);
         result = new ExtractPrimaryWordTokenFilter(result, hyphenationTree, wordlist);
         result = new SynonymGraphFilter(result, stemExceptions, true);
-        result = new TransferAttributeTokenFilter(result);
+        result = new MarkSynonymAsKeywordTokenFilter(result);
         result = new HunspellStemFilter(result, hunspellDict, true, true);
         result = new ReattachStemmedPrimaryWordTokenFilter(result);
 

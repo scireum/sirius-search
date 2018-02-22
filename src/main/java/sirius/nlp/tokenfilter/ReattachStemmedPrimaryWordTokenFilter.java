@@ -32,7 +32,10 @@ public final class ReattachStemmedPrimaryWordTokenFilter extends TokenFilter {
         }
 
         if (primaryWordAttr.isPrimaryWordTokenEmitted()) {
-            char[] prefix = Arrays.copyOfRange(primaryWordAttr.getOriginalToken(), 0, primaryWordAttr.getOriginalTokenLength() - primaryWordAttr.getPrimaryWordTokenLength());
+            char[] prefix = Arrays.copyOfRange(primaryWordAttr.getOriginalToken(),
+                                               0,
+                                               primaryWordAttr.getOriginalTokenLength()
+                                               - primaryWordAttr.getPrimaryWordTokenLength());
             char[] stemmedPrimary = Arrays.copyOfRange(termAtt.buffer(), 0, termAtt.length());
             termAtt.setEmpty().append(new String(prefix)).append(new String(stemmedPrimary));
         }

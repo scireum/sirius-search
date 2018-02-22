@@ -10,6 +10,7 @@ package sirius.nlp.attribute;
 
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
+import sirius.nlp.util.CharArray;
 
 import java.util.Arrays;
 
@@ -52,14 +53,14 @@ public class PrimaryWordAttributeImpl extends AttributeImpl implements PrimaryWo
 
     @Override
     public void setOriginalToken(char[] buffer, int length) {
-        originalToken = assureArrayLenth(originalToken, length);
+        originalToken = CharArray.assureArrayLength(originalToken, length);
         System.arraycopy(buffer, 0, originalToken, 0, length);
         originalTokenLength = length;
     }
 
     @Override
     public void setPrimaryWordToken(char[] buffer, int length) {
-        primaryWordToken = assureArrayLenth(primaryWordToken, length);
+        primaryWordToken = CharArray.assureArrayLength(primaryWordToken, length);
         System.arraycopy(buffer, 0, primaryWordToken, 0, length);
         primaryWordTokenLength = length;
     }
@@ -93,21 +94,17 @@ public class PrimaryWordAttributeImpl extends AttributeImpl implements PrimaryWo
         this.primaryWordTokenHasBeenEmitted = primaryWordTokenEmitted;
     }
 
-    protected char[] assureArrayLenth(char[] array, int length) {
-        if (array.length < length) {
-            char[] newArray = new char[length];
-            System.arraycopy(array, 0, newArray, 0, array.length);
-            return newArray;
-        } else {
-            return array;
-        }
-    }
-
     @Override
     public String toString() {
-        return "PrimaryWordAttributeImpl [primaryWordToken=" + Arrays.toString(primaryWordToken) + ", primaryWordTokenLength="
-                + primaryWordTokenLength + ", originalToken=" + Arrays.toString(originalToken) + ", originalTokenLength="
-                + originalTokenLength + "]";
+        return "PrimaryWordAttributeImpl [primaryWordToken="
+               + Arrays.toString(primaryWordToken)
+               + ", primaryWordTokenLength="
+               + primaryWordTokenLength
+               + ", originalToken="
+               + Arrays.toString(originalToken)
+               + ", originalTokenLength="
+               + originalTokenLength
+               + "]";
     }
 
     @Override

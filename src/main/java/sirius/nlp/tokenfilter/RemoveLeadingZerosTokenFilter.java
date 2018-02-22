@@ -13,6 +13,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import sirius.nlp.util.CharArray;
 
 import java.io.IOException;
 
@@ -51,7 +52,7 @@ public final class RemoveLeadingZerosTokenFilter extends TokenFilter {
         // the term must start with at least one '0'
         if (termAtt.length() > 0 && termAtt.buffer()[0] == '0') {
             int numberOfStartingZeros = findZerosOffset();
-            bufferNumericWithoutZeros = assureArrayLength(bufferNumericWithoutZeros, termAtt.length());
+            bufferNumericWithoutZeros = CharArray.assureArrayLength(bufferNumericWithoutZeros, termAtt.length());
             System.arraycopy(termAtt.buffer(),
                              numberOfStartingZeros,
                              bufferNumericWithoutZeros,
@@ -73,16 +74,5 @@ public final class RemoveLeadingZerosTokenFilter extends TokenFilter {
         }
 
         return offset;
-    }
-
-    // TODO duplicate
-    protected char[] assureArrayLength(char[] array, int length) {
-        if (array.length < length) {
-            char[] newArray = new char[length];
-            System.arraycopy(array, 0, newArray, 0, array.length);
-            return newArray;
-        } else {
-            return array;
-        }
     }
 }

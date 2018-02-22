@@ -10,25 +10,27 @@ package sirius.nlp.tokenfilter;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import sirius.kernel.commons.Strings;
+import sirius.nlp.attribute.PrimaryWordAttribute;
 
 import java.io.IOException;
 
-public final class TransferAttributeTokenFilter extends TokenFilter {
+public final class MarkOriginalTermTokenFilter extends TokenFilter {
 
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    public static final String ORIGINAL_TOKEN_BEFORE_STEMMING = "ORIGINAL_TOKEN_BEFORE_STEMMING";
+
     private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
-    private final KeywordAttribute keywordAttribute = addAttribute(KeywordAttribute.class);
+    private final PrimaryWordAttribute primAttribute = addAttribute(PrimaryWordAttribute.class);
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
     /**
      * Construct a token stream filtering the given input.
      *
      * @param input
      */
-    public TransferAttributeTokenFilter(TokenStream input) {
+    public MarkOriginalTermTokenFilter(TokenStream input) {
         super(input);
     }
 
@@ -37,10 +39,10 @@ public final class TransferAttributeTokenFilter extends TokenFilter {
         if (!input.incrementToken()) {
             return false;
         }
-        if (SynonymGraphFilter.TYPE_SYNONYM.equals(typeAtt.type())) {
-            //System.out.println("Transferring type synonym to keyword attr for word: " + new String(termAtt.buffer()));
-            keywordAttribute.setKeyword(true);
-        }
+
+        typeAtt.setType(ORIGINAL_TOKEN_BEFORE_STEMMING);
+        primAttribute.setOriginalToken(termAtt.buffer(), termAtt.length());
+
         return true;
     }
 }

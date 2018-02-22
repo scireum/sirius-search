@@ -36,7 +36,7 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
                 while (tokens.size() > 1) {
                     tokens.removeFirst();
                 }
-                //System.out.println("Found primary word: " + tokens.get(0).txt + " for word " + new String(termAtt.buffer(), 0, termAtt.length()));
+                
                 primaryWordAttr.setPrimaryWordTokenEmitted(true);
                 primaryWordAttr.setOriginalToken(termAtt.buffer(), termAtt.length());
                 primaryWordAttr.setPrimaryWordToken(tokens.get(0).txt.toString().toCharArray(), tokens.get(0).txt.length());
