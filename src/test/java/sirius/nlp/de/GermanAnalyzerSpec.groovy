@@ -68,4 +68,13 @@ class GermanAnalyzerSpec extends BaseSpecification {
         "D 800 950"     | ["800950", "800", "950", "D800950", "D 800950", "D800 950"] as String[]
         "12 34-56"      | ["1234", "3456", "123456", "12", "34", "56"] as String[]
     }
+
+    def "test synonyms"() {
+        expect:
+        testSearch(textForIndexing, searchTexts)
+        where:
+        textForIndexing | searchTexts
+        "waschtisch"    | ["badtisch"] as String[]
+        "badtisch"      | ["waschtisch"] as String[]
+    }
 }
