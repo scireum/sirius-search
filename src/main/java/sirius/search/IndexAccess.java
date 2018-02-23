@@ -623,7 +623,7 @@ public class IndexAccess {
     /**
      * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
      * <p>
-     * May use a global cache to load the entity.
+     * May use a given cache to load the entity.
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
@@ -642,7 +642,7 @@ public class IndexAccess {
     /**
      * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
      * <p>
-     * May use a given cache to load the entity.
+     * May use a global cache to load the entity.
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
