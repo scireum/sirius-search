@@ -18,6 +18,10 @@ import sirius.nlp.util.CharArray;
 
 import java.io.IOException;
 
+/**
+ * Marks all generated stems of a word with the {@link KeywordAttribute} so that they will not be modified by following {@link TokenFilter}.
+ * Also marks the original token as a keyword, if it has been altered by the hunspell stemmer.
+ */
 public final class MarkStemAsKeywordTokenFilter extends TokenFilter {
 
     private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);

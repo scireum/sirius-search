@@ -16,6 +16,12 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import sirius.nlp.attribute.PrimaryWordAttribute;
 
+/**
+ * Tries to extract the semantic word (primary word) of a german compound-word. This is (in most cases) the most right subword
+ * for a german compound word. E.g. for "dampfschifffahrtskapitänsmützen" this whould be "mützen"
+ * <p>
+ * This can be uses to stem a compound without having all existing compound words in a big stemming wordlist.
+ */
 public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWordTokenFilter {
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -36,10 +42,11 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
                 while (tokens.size() > 1) {
                     tokens.removeFirst();
                 }
-                
+
                 primaryWordAttr.setPrimaryWordTokenEmitted(true);
                 primaryWordAttr.setOriginalToken(termAtt.buffer(), termAtt.length());
-                primaryWordAttr.setPrimaryWordToken(tokens.get(0).txt.toString().toCharArray(), tokens.get(0).txt.length());
+                primaryWordAttr.setPrimaryWordToken(tokens.get(0).txt.toString().toCharArray(),
+                                                    tokens.get(0).txt.length());
                 termAtt.setEmpty().append(tokens.get(0).txt);
             }
 

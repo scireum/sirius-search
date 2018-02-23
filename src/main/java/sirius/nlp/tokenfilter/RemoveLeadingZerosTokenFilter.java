@@ -17,6 +17,10 @@ import sirius.nlp.util.CharArray;
 
 import java.io.IOException;
 
+/**
+ * Removes leading zeros from number tokens, so that a user can query the value without inserting the leading zeros.
+ * E.g. a document term of "0007777" can be queried via "7777".
+ */
 public final class RemoveLeadingZerosTokenFilter extends TokenFilter {
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -31,7 +35,7 @@ public final class RemoveLeadingZerosTokenFilter extends TokenFilter {
     /**
      * Construct a token stream filtering the given input.
      *
-     * @param input
+     * @param input the {@link TokenStream} to consume
      */
     public RemoveLeadingZerosTokenFilter(TokenStream input) {
         super(input);

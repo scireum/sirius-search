@@ -17,6 +17,13 @@ import sirius.nlp.util.CharArray;
 import java.io.IOException;
 import java.util.LinkedList;
 
+/**
+ * A {@link TokenFilter} which is able to close the whitespace-"gap" between numbers, so that they can be queried
+ * later if the user doesn't input enough whitespace
+ * <p>
+ * Example: a document contains "12 34 56" and the user wants to query via "1234" or "3456". In this case we have to
+ * remove the whitespace between adjacent number pairs
+ */
 public final class CloseGapBetweenNumbersTokenFilter extends TokenFilter {
 
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
@@ -29,7 +36,7 @@ public final class CloseGapBetweenNumbersTokenFilter extends TokenFilter {
     /**
      * Construct a token stream filtering the given input.
      *
-     * @param input
+     * @param input the {@link TokenStream} to consume
      */
     public CloseGapBetweenNumbersTokenFilter(TokenStream input) {
         super(input);

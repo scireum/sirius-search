@@ -28,7 +28,7 @@ public final class MarkOriginalTermTokenFilter extends TokenFilter {
     /**
      * Construct a token stream filtering the given input.
      *
-     * @param input
+     * @param input the {@link TokenStream} to consume
      */
     public MarkOriginalTermTokenFilter(TokenStream input) {
         super(input);

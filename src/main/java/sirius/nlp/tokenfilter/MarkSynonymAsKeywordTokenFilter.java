@@ -17,6 +17,10 @@ import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 
 import java.io.IOException;
 
+/**
+ * Transforms the {@link TypeAttribute} with value {@link SynonymGraphFilter#TYPE_SYNONYM} to the
+ * {@link KeywordAttribute} so that the token will not be altered in following {@link TokenFilter}.
+ */
 public final class MarkSynonymAsKeywordTokenFilter extends TokenFilter {
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -26,7 +30,7 @@ public final class MarkSynonymAsKeywordTokenFilter extends TokenFilter {
     /**
      * Construct a token stream filtering the given input.
      *
-     * @param input
+     * @param input the {@link TokenStream} to consume
      */
     public MarkSynonymAsKeywordTokenFilter(TokenStream input) {
         super(input);

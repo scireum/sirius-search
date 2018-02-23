@@ -14,6 +14,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import java.io.IOException;
 
+/**
+ * Removes empty tokens from the tokenstream.
+ */
 public class RemoveEmptyTokensTokenFilter extends FilteringTokenFilter {
 
     protected final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
