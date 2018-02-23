@@ -36,4 +36,14 @@ public class CharArray {
 
         return true;
     }
+
+    public static boolean containsOnlyDigitsOrSpecialChar(char[] buffer, int length) {
+        for (int i = 0; i < length; i++) {
+            if (Character.isAlphabetic(buffer[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

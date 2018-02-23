@@ -56,7 +56,7 @@ class GermanAnalyzerSpec extends BaseSpecification {
         textForIndexing | searchTexts
         "VCW204/3-E"    | ["VCW204/3-E", "vcw", "204", "2043", "vcw204", "VCW204", "vcw2043e", "vcw2043E", "3e", "2043E"] as String[]
         "GBH5-40"       | ["gbh", "GBH", "GBH5", "GBH 40", "GBH5-40", "GBH5 40", "gbh5 40", "GBH540"] as String[]
-        "RH 370 170"    | ["RH 370 170", "RH370 170", "rh 170"/* TODO , "RH 370170",  "RH370170", "rh370170", "370170"*/] as String[]
+        "RH 370 170"    | ["RH 370 170", "RH370 170", "rh 170", "RH 370170",  "RH370170", "rh370170", "370170"] as String[]
         "0.00815"       | ["0.00815", "815", "00815", ".00815"] as String[]
     }
 }

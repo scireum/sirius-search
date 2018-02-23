@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
+import sirius.nlp.tokenfilter.CloseGapBetweenNumbersTokenFilter;
 import sirius.nlp.tokenfilter.ExtractPrimaryWordTokenFilter;
 import sirius.nlp.tokenfilter.MarkOriginalTermTokenFilter;
 import sirius.nlp.tokenfilter.MarkStemAsKeywordTokenFilter;
@@ -107,8 +108,10 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
 
         final Tokenizer source = new WhitespaceTokenizer();
 
+        TokenStream result = new CloseGapBetweenNumbersTokenFilter(source);
+
         // split up terms at special chars, transissions or technical terms and merge them if appropriate
-        TokenStream result = new WordDelimiterGraphFilter(source, configFlag, null);
+        result = new WordDelimiterGraphFilter(result, configFlag, null);
         result = new FlattenGraphFilter(result);
 
         result = new LowerCaseFilter(result);
