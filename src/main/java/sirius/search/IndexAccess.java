@@ -70,6 +70,7 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -617,6 +618,42 @@ public class IndexAccess {
     @Nullable
     public <E extends Entity> E fetchFromCache(@Nullable String routing, @Nonnull Class<E> type, @Nullable String id) {
         return fetch(routing, type, id).getFirst();
+    }
+
+    /**
+     * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
+     * <p>
+     * May use a global cache to load the entity.
+     *
+     * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
+     * @param type    the type of the desired entity
+     * @param id      the id of the desired entity
+     * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     */
+    public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
+                                                                 @Nonnull Class<E> type,
+                                                                 @Nullable String id,
+                                                                 @Nonnull com.google.common.cache.Cache<String, Object> cache) {
+        return Optional.ofNullable(fetch(routing, type, id).getFirst());
+    }
+
+    /**
+     * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
+     * <p>
+     * May use a given cache to load the entity.
+     *
+     * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
+     * @param type    the type of the desired entity
+     * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     */
+    public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
+                                                                 @Nonnull Class<E> type,
+                                                                 @Nullable String id) {
+        return Optional.ofNullable(fetch(routing, type, id).getFirst());
     }
 
     /**
@@ -1192,6 +1229,19 @@ public class IndexAccess {
      */
     public <E extends Entity> E find(String routing, final Class<E> clazz, String id) {
         return find(null, routing, clazz, id);
+    }
+
+    /**
+     * Tries to find the entity of the given type with the given id and routing.
+     *
+     * @param routing the value used to compute the routing hash
+     * @param clazz   the type of the entity
+     * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
+     * @return the entity wrapped in an {@link Optional} of the given class with the given id or {@link Optional#EMPTY} if no such entity exists
+     */
+    public <E extends Entity> Optional<E> findOptional(String routing, final Class<E> clazz, String id) {
+        return Optional.ofNullable(find(null, routing, clazz, id));
     }
 
     /**
