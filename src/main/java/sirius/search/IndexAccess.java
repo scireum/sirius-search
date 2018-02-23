@@ -623,7 +623,7 @@ public class IndexAccess {
     /**
      * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
      * <p>
-     * May use a global cache to load the entity.
+     * May use a given cache to load the entity.
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
@@ -636,13 +636,13 @@ public class IndexAccess {
                                                                  @Nonnull Class<E> type,
                                                                  @Nullable String id,
                                                                  @Nonnull com.google.common.cache.Cache<String, Object> cache) {
-        return Optional.ofNullable(fetch(routing, type, id).getFirst());
+        return Optional.ofNullable(fetch(routing, type, id, cache).getFirst());
     }
 
     /**
      * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
      * <p>
-     * May use a given cache to load the entity.
+     * May use a global cache to load the entity.
      *
      * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
      * @param type    the type of the desired entity
