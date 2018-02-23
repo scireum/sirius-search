@@ -36,7 +36,14 @@ class GermanAnalyzerSpec extends BaseSpecification {
         textForIndexing                   | searchTexts
         "Dampfschifffahrtskapitänsmützen" | ["dampfschiff", "kapitänsmütze", "kapitaensmütze", "kapitänsmützen",
                                              "schifffahrtskapitänsmütze", "Dampfschifffahrtskapitänsmützen", "Dampfschifffahrtskapitänsmütze"] as String[]
+        "Steckdosenleiste"                | ["steckdose", "steckdosen", "leiste", "leisten", "Steckdosenleiste", "Steckdosenleisten"] as String[]
 
+    }
+
+    def "mixed terms"() {
+        "Spiralbohrer SDS500" | ["spiralbohrer", "spiralbohrer sds", "spiralbohrer sds 500", "spiralbohrer sds500", "bohrer sds 500"] as String[]
+        "Adapter zur Holmbefestigung, passend zu Artikel E 824107" | ["adapter", "holmbefestigung", "adapter E824107"] as String[]
+        "Stufenbohrer mit Spiralnut HSS, 6 - 36 mm" | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
     }
 
     def "test terms with separator"() {
@@ -56,7 +63,8 @@ class GermanAnalyzerSpec extends BaseSpecification {
         textForIndexing | searchTexts
         "VCW204/3-E"    | ["VCW204/3-E", "vcw", "204", "2043", "vcw204", "VCW204", "vcw2043e", "vcw2043E", "3e", "2043E"] as String[]
         "GBH5-40"       | ["gbh", "GBH", "GBH5", "GBH 40", "GBH5-40", "GBH5 40", "gbh5 40", "GBH540"] as String[]
-        "RH 370 170"    | ["RH 370 170", "RH370 170", "rh 170", "RH 370170",  "RH370170", "rh370170", "370170"] as String[]
+        "RH 370 170"    | ["RH 370 170", "RH370 170", "rh 170", "RH 370170", "RH370170", "rh370170", "370170"] as String[]
         "0.00815"       | ["0.00815", "815", "00815", ".00815"] as String[]
+        "D 800 950"     | ["800950", "800", "950", "D800950", "D 800950", "D800 950"] as String[]
     }
 }
