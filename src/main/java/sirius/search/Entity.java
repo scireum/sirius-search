@@ -194,6 +194,7 @@ public abstract class Entity {
     /**
      * Gets the list of all named queries which matched this entity.
      *
+     * @param queryName the name of the query to check
      * @return the list of named queries which matched this entity.
      */
     public boolean isMatchedNamedQuery(String queryName) {
