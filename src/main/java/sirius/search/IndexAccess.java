@@ -1238,7 +1238,8 @@ public class IndexAccess {
      * @param clazz   the type of the entity
      * @param id      the id of the entity
      * @param <E>     the type of the entity to find
-     * @return the entity wrapped in an {@link Optional} of the given class with the given id or {@link Optional#EMPTY} if no such entity exists
+     * @return the entity wrapped in an {@link Optional} of the given class with the given id or
+     * {@link Optional#EMPTY} if no such entity exists
      */
     public <E extends Entity> Optional<E> findOptional(String routing, final Class<E> clazz, String id) {
         return Optional.ofNullable(find(null, routing, clazz, id));

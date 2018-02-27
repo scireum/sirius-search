@@ -57,14 +57,24 @@ public class EntityDescriptor {
             throw new IllegalArgumentException("Missing @Indexed-Annotation: " + clazz.getName());
         }
 
-        this.annotatedIndexName = clazz.getAnnotation(Indexed.class).index();
+        Indexed indexedAnnotation = clazz.getAnnotation(Indexed.class);
+        this.annotatedIndexName = indexedAnnotation.index();
         if (annotatedIndexName.isEmpty()) {
             this.indexName = clazz.getSimpleName().toLowerCase();
+            if (indexedAnnotation.useIndexPerType()) {
+                IndexAccess.LOG.WARN(
+                        "Invalid @Indexed for type %s: Cannot enforce 'useIndexPerType' without index name!",
+                        clazz.getName());
+            }
         } else {
-            this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
+            if (indexedAnnotation.useIndexPerType()) {
+                this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
+            } else {
+                this.indexName = annotatedIndexName;
+            }
         }
-        this.typeName = Strings.firstFilled(clazz.getAnnotation(Indexed.class).type(), clazz.getSimpleName());
-        this.routing = clazz.getAnnotation(Indexed.class).routing();
+        this.typeName = Strings.firstFilled(indexedAnnotation.type(), clazz.getSimpleName());
+        this.routing = indexedAnnotation.routing();
         if (Strings.isEmpty(routing)) {
             routing = null;
         }
