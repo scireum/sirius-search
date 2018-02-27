@@ -1242,7 +1242,7 @@ public class Query<E extends Entity> {
         }
         int total = Math.toIntExact(result.getTotalNumberOfHits());
         boolean hasMore = total > start + limit;
-        
+
         return new Page<E>().withQuery(queryString)
                             .withStart(start + 1)
                             .withItems(result.getResults())
