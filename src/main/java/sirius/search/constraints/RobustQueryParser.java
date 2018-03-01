@@ -97,7 +97,7 @@ public class RobustQueryParser implements Constraint {
         return createQuery() == null;
     }
 
-    private void skipWhitespace(LookaheadReader reader) {
+    protected void skipWhitespace(LookaheadReader reader) {
         while (reader.current().isWhitepace()) {
             reader.consume();
         }
@@ -106,7 +106,7 @@ public class RobustQueryParser implements Constraint {
     /*
      * Entry point of the recursive descendant parser. Parses all input until a ) or its end is reached
      */
-    private QueryBuilder parseQuery(LookaheadReader reader) {
+    protected QueryBuilder parseQuery(LookaheadReader reader) {
         if (autoExpand) {
             QueryBuilder qry = tryAutoExpansion();
             if (qry != null) {
@@ -117,7 +117,7 @@ public class RobustQueryParser implements Constraint {
         return parseOR(reader);
     }
 
-    private QueryBuilder tryAutoExpansion() {
+    protected QueryBuilder tryAutoExpansion() {
         if (!EXPANDABLE_INPUT.matcher(input).matches()) {
             return null;
         }
@@ -127,10 +127,10 @@ public class RobustQueryParser implements Constraint {
             return null;
         }
 
-        return QueryBuilders.prefixQuery(defaultField, singleToken).rewrite("top_terms_256");
+        return compileTokenWithAsterisk(singleToken);
     }
 
-    private String obtainSingleToken(String input) {
+    protected String obtainSingleToken(String input) {
         Iterator<List<String>> tokenIter = tokenizer.apply(input).iterator();
         if (!tokenIter.hasNext()) {
             return null;
@@ -151,7 +151,7 @@ public class RobustQueryParser implements Constraint {
      * Parses all tokens which are combined with AND and creates a subquery for each occurence of
      * OR. This way operator precedence is handled correctly.
      */
-    private QueryBuilder parseOR(LookaheadReader reader) {
+    protected QueryBuilder parseOR(LookaheadReader reader) {
         List<QueryBuilder> result = Lists.newArrayList();
         QueryBuilder subQuery = parseAND(reader);
         if (subQuery == null) {
@@ -187,7 +187,7 @@ public class RobustQueryParser implements Constraint {
     /*
      * Parses all tokens and occurrences of AND into a list of queries to be combined with the AND operator.
      */
-    private QueryBuilder parseAND(LookaheadReader reader) {
+    protected QueryBuilder parseAND(LookaheadReader reader) {
         List<QueryBuilder> result = Lists.newArrayList();
         QueryBuilder subQuery = parseToken(reader);
         if (subQuery != null) {
@@ -229,15 +229,15 @@ public class RobustQueryParser implements Constraint {
         return qry;
     }
 
-    private boolean isAtBinaryAND(LookaheadReader reader) {
+    protected boolean isAtBinaryAND(LookaheadReader reader) {
         return reader.current().is('&') && reader.next().is('&');
     }
 
-    private boolean isAtAND(LookaheadReader reader) {
+    protected boolean isAtAND(LookaheadReader reader) {
         return reader.current().is('a', 'A') && reader.next().is('n', 'N') && reader.next(2).is('d', 'D');
     }
 
-    private boolean isAtOR(LookaheadReader reader) {
+    protected boolean isAtOR(LookaheadReader reader) {
         return (reader.current().is('o', 'O') && reader.next().is('r', 'R')) || (reader.current().is('|')
                                                                                  && reader.next().is('|'));
     }
@@ -245,7 +245,7 @@ public class RobustQueryParser implements Constraint {
     /*
      * Parses a token or an expression in brackets
      */
-    private QueryBuilder parseToken(LookaheadReader reader) {
+    protected QueryBuilder parseToken(LookaheadReader reader) {
         if (reader.current().is('(')) {
             return parseTokenInBrackets(reader);
         }
@@ -265,7 +265,7 @@ public class RobustQueryParser implements Constraint {
         }
     }
 
-    private Tuple<String, String> parseFieldAndValue(LookaheadReader reader) {
+    protected Tuple<String, String> parseFieldAndValue(LookaheadReader reader) {
         String field = defaultField;
         boolean couldBeFieldNameSoFar = true;
         StringBuilder valueBuilder = new StringBuilder();
@@ -288,7 +288,7 @@ public class RobustQueryParser implements Constraint {
         return Tuple.create(field, valueBuilder.toString());
     }
 
-    private boolean checkIfNegated(LookaheadReader reader) {
+    protected boolean checkIfNegated(LookaheadReader reader) {
         if (reader.current().is('-')) {
             reader.consume();
             return true;
@@ -302,7 +302,7 @@ public class RobustQueryParser implements Constraint {
         return false;
     }
 
-    private QueryBuilder parseTokenInBrackets(LookaheadReader reader) {
+    protected QueryBuilder parseTokenInBrackets(LookaheadReader reader) {
         reader.consume();
         QueryBuilder qb = parseOR(reader);
         if (reader.current().is(')')) {
@@ -316,7 +316,7 @@ public class RobustQueryParser implements Constraint {
         if (value.endsWith("*")) {
             // + 1 to compensate for the "*" in the string
             if (value.length() >= EXPANSION_TOKEN_MIN_LENGTH + 1 && Strings.areEqual(field, defaultField)) {
-                return compileTokenWithAsterisk(value);
+                return compileTokenWithAsterisk(value.substring(0, value.length() - 1));
             } else if (value.length() == 1) {
                 return null;
             } else {
@@ -366,8 +366,7 @@ public class RobustQueryParser implements Constraint {
     }
 
     protected QueryBuilder compileTokenWithAsterisk(String value) {
-        return QueryBuilders.prefixQuery(defaultField, value.substring(0, value.length() - 1).toLowerCase())
-                            .rewrite("top_terms_256");
+        return QueryBuilders.prefixQuery(defaultField, value.toLowerCase()).rewrite("top_terms_256");
     }
 
     protected QueryBuilder transformTokenList(String field, List<String> tokens) {
