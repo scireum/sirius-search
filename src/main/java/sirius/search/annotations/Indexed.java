@@ -28,14 +28,6 @@ public @interface Indexed {
     String index();
 
     /**
-     * Determines if an index per document type should be created (which is advisable).
-     *
-     * @return <tt>true</tt> to create a separate index per type (to preserve field mappings per type),
-     * <tt>false</tt> otherwise.
-     */
-    boolean useIndexPerType() default true;
-
-    /**
      * The type name used for the entities of the class.
      *
      * @return the type name used for entities of the given class. If left empty (default), the simple name of the
