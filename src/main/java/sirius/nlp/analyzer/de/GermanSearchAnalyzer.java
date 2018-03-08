@@ -16,8 +16,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
-import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
-import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.de.GermanNormalizationFilter;
@@ -25,22 +23,16 @@ import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.analysis.synonym.SolrSynonymParser;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
-import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.util.IOUtils;
 import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveEmptyTokensTokenFilter;
 import sirius.nlp.tokenfilter.RemoveInitialTermTokenFilter;
+import sirius.nlp.util.RessourceLoading;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.Charset;
-import java.text.ParseException;
 
 public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
     public static final String DEFAULT_STOPWORD_FILE = "german_stop.txt";
@@ -67,26 +59,12 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
 
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-        HyphenationTree hyphenationTree = null;
-        CharArraySet wordlist = null;
-        SynonymMap stemExceptions = null;
         // split up terms at special chars or technical terms and merge them
         int configFlag = WordDelimiterGraphFilter.GENERATE_NUMBER_PARTS
                          | WordDelimiterGraphFilter.SPLIT_ON_CASE_CHANGE
                          | WordDelimiterGraphFilter.SPLIT_ON_NUMERICS
                          | WordDelimiterGraphFilter.STEM_ENGLISH_POSSESSIVE
                          | WordDelimiterGraphFilter.GENERATE_WORD_PARTS;
-
-        try {
-            SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
-            solrSynonymParser.parse(new BufferedReader(new FileReader(new File("src/main/resources/stemexceptions.txt"))));
-            stemExceptions = solrSynonymParser.build();
-            hyphenationTree = HyphenationCompoundWordTokenFilter.getHyphenationTree("src/main/resources/hyph_de.xml");
-            wordlist = WordlistLoader.getWordSet(new BufferedReader(new FileReader(new File(
-                    "src/main/resources/wordlist/de/wordlist.txt"))));
-        } catch (IOException | ParseException e) {
-            e.printStackTrace();
-        }
 
         final Tokenizer source = new WhitespaceTokenizer();
 
@@ -98,11 +76,17 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
         result = new SetKeywordMarkerFilter(result, exclusionSet); // TODO: needed?
 
         // decompound words
-        result = new RemoveInitialTermTokenFilter(result, hyphenationTree, wordlist, 3, 2, 15, true);
+        result = new RemoveInitialTermTokenFilter(result,
+                                                  RessourceLoading.getGermanHyphen(),
+                                                  RessourceLoading.getGermanWordlist(),
+                                                  3,
+                                                  2,
+                                                  15,
+                                                  true);
         result = new RemoveEmptyTokensTokenFilter(result);
 
         // start stemming
-        result = new SynonymGraphFilter(result, stemExceptions, true);
+        result = new SynonymGraphFilter(result, RessourceLoading.getStemExceptions(), true);
         result = new GermanStemmingTokenFilter(result,
                                                "true",
                                                "true"); // TODO longstOnly mit in kombi mit GermanStemmingFilter checken
