@@ -20,8 +20,6 @@ import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.de.GermanNormalizationFilter;
-import org.apache.lucene.analysis.hunspell.Dictionary;
-import org.apache.lucene.analysis.hunspell.HunspellStemFilter;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
@@ -30,24 +28,17 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.synonym.SolrSynonymParser;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
-import sirius.nlp.tokenfilter.ExtractPrimaryWordTokenFilter;
-import sirius.nlp.tokenfilter.MarkOriginalTermTokenFilter;
-import sirius.nlp.tokenfilter.MarkStemAsKeywordTokenFilter;
-import sirius.nlp.tokenfilter.ReattachStemmedPrimaryWordTokenFilter;
+import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveEmptyTokensTokenFilter;
 import sirius.nlp.tokenfilter.RemoveInitialTermTokenFilter;
-import sirius.nlp.tokenfilter.MarkSynonymAsKeywordTokenFilter;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Paths;
 import java.text.ParseException;
-import java.util.Collections;
 
 public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
     public static final String DEFAULT_STOPWORD_FILE = "german_stop.txt";
@@ -68,9 +59,6 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
     }
 
     protected TokenStreamComponents createComponents(String fieldName) {
-        SynonymMap synonyms = null;
-        ClassLoader cl = GermanIndexingAnalyzer.class.getClassLoader();
-        Dictionary hunspellDict = null;
         HyphenationTree hyphenationTree = null;
         CharArraySet wordlist = null;
         SynonymMap stemExceptions = null;
@@ -83,18 +71,8 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
 
         try {
             SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
-            solrSynonymParser.parse(new BufferedReader(new FileReader(new File("src/main/resources/synonyms.txt"))));
-            synonyms = solrSynonymParser.build();
-
-            solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
             solrSynonymParser.parse(new BufferedReader(new FileReader(new File("src/main/resources/stemexceptions.txt"))));
             stemExceptions = solrSynonymParser.build();
-
-            hunspellDict = new Dictionary(FSDirectory.open(Paths.get("/tmp/")),
-                                          "analyzer",
-                                          cl.getResourceAsStream("hunspell/de_DE_frami.aff"),
-                                          Collections.singletonList(cl.getResourceAsStream("hunspell/de_DE_frami.dic")),
-                                          true);
             hyphenationTree = HyphenationCompoundWordTokenFilter.getHyphenationTree("src/main/resources/hyph_de.xml");
             wordlist = WordlistLoader.getWordSet(new BufferedReader(new FileReader(new File(
                     "src/main/resources/wordlist.txt"))));
@@ -117,16 +95,9 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
 
         // start stemming
         result = new SynonymGraphFilter(result, stemExceptions, true);
-        result = new FlattenGraphFilter(result);
-        result = new MarkSynonymAsKeywordTokenFilter(result);
-        result = new MarkOriginalTermTokenFilter(result);
-        result = new HunspellStemFilter(result, hunspellDict, true, true);
-        result = new MarkStemAsKeywordTokenFilter(result);
-        result = new ExtractPrimaryWordTokenFilter(result, hyphenationTree, wordlist);
-        result = new SynonymGraphFilter(result, stemExceptions, true);
-        result = new MarkSynonymAsKeywordTokenFilter(result);
-        result = new HunspellStemFilter(result, hunspellDict, true, true);
-        result = new ReattachStemmedPrimaryWordTokenFilter(result);
+        result = new GermanStemmingTokenFilter(result,
+                                               "true",
+                                               "true"); // TODO longstOnly mit in kombi mit GermanStemmingFilter checken
 
         // normalize german umlauts etc.
         result = new GermanNormalizationFilter(result);

@@ -14,7 +14,6 @@ import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
-import sirius.nlp.attribute.PrimaryWordAttribute;
 
 /**
  * Tries to extract the semantic word (primary word) of a german compound-word. This is (in most cases) the most right subword
@@ -24,17 +23,18 @@ import sirius.nlp.attribute.PrimaryWordAttribute;
  */
 public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWordTokenFilter {
 
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final PrimaryWordAttribute primaryWordAttr = addAttribute(PrimaryWordAttribute.class);
     private final KeywordAttribute keywordAttribute = addAttribute(KeywordAttribute.class);
 
-    public ExtractPrimaryWordTokenFilter(TokenStream input, HyphenationTree hyphenator, CharArraySet dictionary) {
-        super(input, hyphenator, dictionary);
+    public ExtractPrimaryWordTokenFilter(TokenStream input,
+                                         HyphenationTree hyphenator,
+                                         CharArraySet dictionary,
+                                         boolean onlyLongestMatch) {
+        super(input, hyphenator, dictionary, 3, 3, 20, onlyLongestMatch);
     }
 
     @Override
     protected void decompose() {
-        if (!keywordAttribute.isKeyword()) {
+        if (!keywordAttribute.isKeyword()) { // TODO keyword check necessary?
             super.decompose();
 
             if (tokens.size() > 1) {
@@ -43,10 +43,6 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
                     tokens.removeFirst();
                 }
 
-                primaryWordAttr.setPrimaryWordTokenEmitted(true);
-                primaryWordAttr.setOriginalToken(termAtt.buffer(), termAtt.length());
-                primaryWordAttr.setPrimaryWordToken(tokens.get(0).txt.toString().toCharArray(),
-                                                    tokens.get(0).txt.length());
                 termAtt.setEmpty().append(tokens.get(0).txt);
             }
 

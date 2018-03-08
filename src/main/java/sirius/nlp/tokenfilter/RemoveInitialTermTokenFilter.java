@@ -12,14 +12,11 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
  * Removes the token, which could be decomposed, from the token stream.
  */
 public class RemoveInitialTermTokenFilter extends HyphenationCompoundWordTokenFilter {
-
-    protected final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
     public RemoveInitialTermTokenFilter(TokenStream input, HyphenationTree hyphenator, CharArraySet dictionary) {
         super(input, hyphenator, dictionary);
