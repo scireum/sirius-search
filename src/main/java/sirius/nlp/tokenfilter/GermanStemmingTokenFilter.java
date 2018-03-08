@@ -44,7 +44,7 @@ public final class GermanStemmingTokenFilter extends TokenFilter {
             e.printStackTrace();
         }
         Map<String, String> extractPrimaryWordArgs = new HashMap<>();
-        extractPrimaryWordArgs.put("dictionary", "wordlist.txt");
+        extractPrimaryWordArgs.put("dictionary", "wordlist/de/wordlist.txt");
         extractPrimaryWordArgs.put("hyphenator", "hyph_de.xml");
         extractPrimaryWordArgs.put("onlyLongestMatch", "false");
 

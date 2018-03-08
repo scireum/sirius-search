@@ -69,6 +69,15 @@ class GermanAnalyzerSpec extends BaseSpecification {
         "12 34-56"      | ["1234", "3456", "123456", "12", "34", "56"] as String[]
     }
 
+    def "test html stripping works"() {
+        expect:
+        testSearch(textForIndexing, searchTexts)
+        where:
+        textForIndexing                                          | searchTexts
+        "<em>Steckdosenleiste</em>"                              | ["steckdose", "steckdosen", "leiste", "leisten", "Steckdosenleiste", "Steckdosenleisten"] as String[]
+        "<b>Stufenbohrer<b> mit Spiralnut <i>HSS</i>, 6 - 36 mm" | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
+    }
+
     def "test synonyms"() {
         expect:
         testSearch(textForIndexing, searchTexts)

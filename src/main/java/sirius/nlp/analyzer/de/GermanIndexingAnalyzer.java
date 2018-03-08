@@ -15,6 +15,7 @@ import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.WordlistLoader;
+import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
@@ -37,6 +38,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 
@@ -59,6 +61,12 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
         exclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
     }
 
+    @Override
+    protected Reader initReader(String fieldName, Reader reader) {
+        return new HTMLStripCharFilter(reader);
+    }
+
+    @Override
     protected TokenStreamComponents createComponents(String fieldName) {
         SynonymMap synonyms = null;
         HyphenationTree hyphenationTree = null;
@@ -82,13 +90,12 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
             stemExceptions = solrSynonymParser.build();
             hyphenationTree = HyphenationCompoundWordTokenFilter.getHyphenationTree("src/main/resources/hyph_de.xml");
             wordlist = WordlistLoader.getWordSet(new BufferedReader(new FileReader(new File(
-                    "src/main/resources/wordlist.txt"))));
+                    "src/main/resources/wordlist/de/wordlist.txt"))));
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
 
         final Tokenizer source = new WhitespaceTokenizer();
-
         TokenStream result = new CloseGapBetweenNumbersTokenFilter(source);
 
         // split up terms at special chars, transissions or technical terms and merge them if appropriate
