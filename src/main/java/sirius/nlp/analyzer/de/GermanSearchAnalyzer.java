@@ -14,7 +14,6 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
@@ -22,25 +21,20 @@ import org.apache.lucene.analysis.de.GermanNormalizationFilter;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
-import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
-import org.apache.lucene.util.IOUtils;
 import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveEmptyTokensTokenFilter;
 import sirius.nlp.tokenfilter.RemoveInitialTermTokenFilter;
 import sirius.nlp.util.RessourceLoading;
 
-import java.io.IOException;
 import java.io.Reader;
-import java.nio.charset.Charset;
 
 public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
-    public static final String DEFAULT_STOPWORD_FILE = "german_stop.txt";
 
     private final CharArraySet exclusionSet;
 
     public GermanSearchAnalyzer() {
-        this(GermanSearchAnalyzer.DefaultSetHolder.DEFAULT_SET);
+        this(RessourceLoading.getGermanStopWords());
     }
 
     public GermanSearchAnalyzer(CharArraySet stopwords) {
@@ -78,7 +72,7 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
         // decompound words
         result = new RemoveInitialTermTokenFilter(result,
                                                   RessourceLoading.getGermanHyphen(),
-                                                  RessourceLoading.getGermanWordlist(),
+                                                  RessourceLoading.getGermanWordList(),
                                                   3,
                                                   2,
                                                   15,
@@ -96,21 +90,5 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
         result = new RemoveDuplicatesTokenFilter(result); // TODO
 
         return new TokenStreamComponents(source, result);
-    }
-
-    private static class DefaultSetHolder {
-        private static final CharArraySet DEFAULT_SET;
-
-        static {
-            try {
-                DEFAULT_SET = WordlistLoader.getSnowballWordSet(IOUtils.getDecodingReader(SnowballFilter.class,
-                                                                                          DEFAULT_STOPWORD_FILE,
-                                                                                          Charset.forName("UTF-8")));
-            } catch (IOException ex) {
-                // default set should always be present as it is part of the
-                // distribution (JAR)
-                throw new RuntimeException("Unable to load default stopword set");
-            }
-        }
     }
 }

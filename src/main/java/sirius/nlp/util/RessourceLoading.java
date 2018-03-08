@@ -12,14 +12,17 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
+import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.synonym.SolrSynonymParser;
 import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.util.IOUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 
 public class RessourceLoading {
@@ -27,6 +30,7 @@ public class RessourceLoading {
     private static volatile CharArraySet germanWordList;
     private static volatile SynonymMap stemExceptions;
     private static volatile SynonymMap synonyms;
+    private static volatile CharArraySet germanStopWords;
 
     public static HyphenationTree getGermanHyphen() {
         if (germanHyphen == null) {
@@ -44,7 +48,7 @@ public class RessourceLoading {
         return germanHyphen;
     }
 
-    public static CharArraySet getGermanWordlist() {
+    public static CharArraySet getGermanWordList() {
         if (germanWordList == null) {
             synchronized (RessourceLoading.class) {
                 try {
@@ -94,5 +98,22 @@ public class RessourceLoading {
             }
         }
         return synonyms;
+    }
+
+    public static CharArraySet getGermanStopWords(){
+        if (germanStopWords == null) {
+            synchronized (RessourceLoading.class) {
+                try {
+                    if (germanStopWords == null) {
+                        germanStopWords = WordlistLoader.getSnowballWordSet(IOUtils.getDecodingReader(SnowballFilter.class,
+                                                                                    "german_stop.txt",
+                                                                                    Charset.forName("UTF-8")));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return germanStopWords;
     }
 }
