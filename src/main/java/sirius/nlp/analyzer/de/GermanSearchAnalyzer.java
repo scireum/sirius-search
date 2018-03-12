@@ -80,7 +80,7 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
         result = new RemoveEmptyTokensTokenFilter(result);
 
         // start stemming
-        result = new SynonymGraphFilter(result, RessourceLoading.getStemExceptions(), true);
+        result = new SynonymGraphFilter(result, RessourceLoading.getGermanStemExceptions(), true);
         result = new GermanStemmingTokenFilter(result,
                                                "true",
                                                "true"); // TODO longstOnly mit in kombi mit GermanStemmingFilter checken

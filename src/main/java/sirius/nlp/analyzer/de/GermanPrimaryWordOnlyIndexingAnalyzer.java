@@ -8,6 +8,7 @@
 
 package sirius.nlp.analyzer.de;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.StopFilter;
@@ -15,7 +16,6 @@ import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
-import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.de.GermanNormalizationFilter;
@@ -24,25 +24,26 @@ import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import sirius.nlp.tokenfilter.CloseGapBetweenNumbersTokenFilter;
+import sirius.nlp.tokenfilter.ExtractPrimaryWordTokenFilter;
 import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveLeadingZerosTokenFilter;
 import sirius.nlp.util.RessourceLoading;
 
 import java.io.Reader;
 
-public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
+public class GermanPrimaryWordOnlyIndexingAnalyzer extends StopwordAnalyzerBase {
 
     private final CharArraySet exclusionSet;
 
-    public GermanIndexingAnalyzer() {
+    public GermanPrimaryWordOnlyIndexingAnalyzer() {
         this(RessourceLoading.getGermanStopWords());
     }
 
-    public GermanIndexingAnalyzer(CharArraySet stopwords) {
+    public GermanPrimaryWordOnlyIndexingAnalyzer(CharArraySet stopwords) {
         this(stopwords, CharArraySet.EMPTY_SET);
     }
 
-    public GermanIndexingAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
+    public GermanPrimaryWordOnlyIndexingAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
         super(stopwords);
         exclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
     }
@@ -53,7 +54,7 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
     }
 
     @Override
-    protected TokenStreamComponents createComponents(String fieldName) {
+    protected Analyzer.TokenStreamComponents createComponents(String fieldName) {
         int configFlag = WordDelimiterGraphFilter.GENERATE_WORD_PARTS
                          | WordDelimiterGraphFilter.CATENATE_ALL
                          | WordDelimiterGraphFilter.GENERATE_NUMBER_PARTS
@@ -75,13 +76,11 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
         result = new StopFilter(result, stopwords);
         result = new SetKeywordMarkerFilter(result, exclusionSet); // TODO: needed?
         // decompound words
-        result = new HyphenationCompoundWordTokenFilter(result,
-                                                        RessourceLoading.getGermanHyphen(),
-                                                        RessourceLoading.getGermanWordList(),
-                                                        3,
-                                                        2,
-                                                        15,
-                                                        false);
+        result = new ExtractPrimaryWordTokenFilter(result,
+                                                   RessourceLoading.getGermanHyphen(),
+                                                   RessourceLoading.getGermanWordList(),
+                                                   true,
+                                                   true);
 
         // start stemming
         result = new SynonymGraphFilter(result, RessourceLoading.getGermanStemExceptions(), true);
@@ -98,6 +97,6 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
         result = new RemoveDuplicatesTokenFilter(result); // TODO
         result = new RemoveLeadingZerosTokenFilter(result); // TODO
 
-        return new TokenStreamComponents(source, result);
+        return new Analyzer.TokenStreamComponents(source, result);
     }
 }

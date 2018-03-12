@@ -10,6 +10,7 @@ package sirius.nlp.de
 
 import sirius.kernel.BaseSpecification
 import sirius.nlp.analyzer.de.GermanIndexingAnalyzer
+import sirius.nlp.analyzer.de.GermanPrimaryWordOnlyIndexingAnalyzer
 import sirius.nlp.analyzer.de.GermanSearchAnalyzer
 
 
@@ -17,15 +18,24 @@ class GermanAnalyzerSpec extends BaseSpecification {
 
     static GermanIndexingAnalyzer indexingAnalyzer
     static GermanSearchAnalyzer searchAnalyzer
+    static GermanPrimaryWordOnlyIndexingAnalyzer primaryWordOnlyIndexingAnalyzer
 
     def setupSpec() {
         indexingAnalyzer = new GermanIndexingAnalyzer()
         searchAnalyzer = new GermanSearchAnalyzer()
+        primaryWordOnlyIndexingAnalyzer = new GermanPrimaryWordOnlyIndexingAnalyzer()
     }
 
     def testSearch(String textForIndexing, String[] searchTexts) {
         AnalyzerEvaluationHelper analyzerEvaluationHelper = AnalyzerEvaluationHelper.withInput(indexingAnalyzer, textForIndexing)
         Arrays.stream(searchTexts).forEach({ searchText -> analyzerEvaluationHelper.canSearchWith(searchAnalyzer, searchText) })
+        return analyzerEvaluationHelper.evaluate()
+    }
+
+    def testPrimaryWordsOnlySearch(String textForIndexing, String[] searchTexts, String[] prohibitedTexts) {
+        AnalyzerEvaluationHelper analyzerEvaluationHelper = AnalyzerEvaluationHelper.withInput(primaryWordOnlyIndexingAnalyzer, textForIndexing)
+        Arrays.stream(searchTexts).forEach({ searchText -> analyzerEvaluationHelper.canSearchWith(primaryWordOnlyIndexingAnalyzer, searchText) })
+        Arrays.stream(prohibitedTexts).forEach({ prohibitedText -> analyzerEvaluationHelper.cannotSearchWith(searchAnalyzer, prohibitedText) })
         return analyzerEvaluationHelper.evaluate()
     }
 
@@ -41,9 +51,13 @@ class GermanAnalyzerSpec extends BaseSpecification {
     }
 
     def "mixed terms"() {
-        "Spiralbohrer SDS500" | ["spiralbohrer", "spiralbohrer sds", "spiralbohrer sds 500", "spiralbohrer sds500", "bohrer sds 500"] as String[]
+        expect:
+        testSearch(textForIndexing, searchTexts)
+        where:
+        textForIndexing                                            | searchTexts
+        "Spiralbohrer SDS500"                                      | ["spiralbohrer", "spiralbohrer sds", "spiralbohrer sds 500", "spiralbohrer sds500", "bohrer sds 500"] as String[]
         "Adapter zur Holmbefestigung, passend zu Artikel E 824107" | ["adapter", "holmbefestigung", "adapter E824107"] as String[]
-        "Stufenbohrer mit Spiralnut HSS, 6 - 36 mm" | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
+        "Stufenbohrer mit Spiralnut HSS, 6 - 36 mm"                | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
     }
 
     def "test terms with separator"() {
@@ -73,9 +87,9 @@ class GermanAnalyzerSpec extends BaseSpecification {
         expect:
         testSearch(textForIndexing, searchTexts)
         where:
-        textForIndexing                                          | searchTexts
-        "<em>Steckdosenleiste</em>"                              | ["steckdose", "steckdosen", "leiste", "leisten", "Steckdosenleiste", "Steckdosenleisten"] as String[]
-        "<b>Stufenbohrer<b> mit Spiralnut <i>HSS</i>, 6 - 36 mm" | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
+        textForIndexing                                           | searchTexts
+        "<em>Steckdosenleiste</em>"                               | ["steckdose", "steckdosen", "leiste", "leisten", "Steckdosenleiste", "Steckdosenleisten"] as String[]
+        "<b>Stufenbohrer</b> mit Spiralnut <i>HSS</i>, 6 - 36 mm" | ["bohrer hss", "stufenbohrer", "stufenbohrer hss", "stufenbohrer 6-36mm", "stufenbohrer hss 6-36"] as String[]
     }
 
     def "test synonyms"() {
@@ -85,5 +99,17 @@ class GermanAnalyzerSpec extends BaseSpecification {
         textForIndexing | searchTexts
         "waschtisch"    | ["badtisch"] as String[]
         "badtisch"      | ["waschtisch"] as String[]
+    }
+
+    def "test"() {
+        expect:
+        testPrimaryWordsOnlySearch(textForIndexing, searchTexts, prohibitedSearchTexts)
+        where:
+        textForIndexing     | searchTexts                                                          | prohibitedSearchTexts
+        "Steckdosenleiste"  | ["leisten", "dosenleiste", "dosenleisten"] as String[]               | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
+        "Steckdosenleisten" | ["leiste", "dosenleiste", "dosenleisten"] as String[]                | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
+        "Kühlschrankdose"   | ["dose", "dosen", "kühlschrankdosen", "kühlschrankdose"] as String[] | ["Kühlschrank", "schrank", "kühlen"] as String[]
+        "Waschtisch"        | ["waschtisch"] as String[]                                           | ["tisch"] as String[]
+        "Spiralbohrer"      | ["bohrer"] as String[]                                               | ["spiral"] as String[]
     }
 }

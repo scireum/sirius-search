@@ -53,6 +53,6 @@ public class ExtractPrimaryWordTokenFilterFactory extends TokenFilterFactory imp
 
     @Override
     public TokenFilter create(TokenStream tokenStream) {
-        return new ExtractPrimaryWordTokenFilter(tokenStream, hyphenator, dictionary, onlyLongestMatch);
+        return new ExtractPrimaryWordTokenFilter(tokenStream, hyphenator, dictionary, onlyLongestMatch, false); // TODO config
     }
 }

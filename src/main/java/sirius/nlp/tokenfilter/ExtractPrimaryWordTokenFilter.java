@@ -25,11 +25,15 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
 
     private final KeywordAttribute keywordAttribute = addAttribute(KeywordAttribute.class);
 
+    private boolean onlyLongestPrimaryWord;
+
     public ExtractPrimaryWordTokenFilter(TokenStream input,
                                          HyphenationTree hyphenator,
                                          CharArraySet dictionary,
-                                         boolean onlyLongestMatch) {
+                                         boolean onlyLongestMatch,
+                                         boolean onlyLongestPrimaryWord) {
         super(input, hyphenator, dictionary, 3, 3, 20, onlyLongestMatch);
+        this.onlyLongestPrimaryWord = onlyLongestPrimaryWord;
     }
 
     @Override
@@ -38,12 +42,22 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
             super.decompose();
 
             if (tokens.size() > 1) {
-                // just keep the last word => the primary word
-                while (tokens.size() > 1) {
-                    tokens.removeFirst();
-                }
+                if (onlyLongestPrimaryWord) {
+                    // we want to have the longest primary word => find the first token which a suffix of the termAttribute
+                    for (CompoundToken token : tokens) {
+                        if (new String(termAtt.buffer(), 0, termAtt.length()).endsWith(token.txt.toString())) {
+                            termAtt.setEmpty().append(token.txt);
+                            break;
+                        }
+                    }
+                } else {
+                    // we don't want the longest primary word => just pick the last one which is the shortest primary word
+                    while (tokens.size() > 1) {
+                        tokens.removeFirst();
+                    }
 
-                termAtt.setEmpty().append(tokens.get(0).txt);
+                    termAtt.setEmpty().append(tokens.get(0).txt);
+                }
             }
 
             tokens.clear();

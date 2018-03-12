@@ -20,9 +20,12 @@ import java.util.List;
 
 public class AnalyzerEvaluationHelper {
     private List<String> searchTerms;
+    private List<String> prohibitedTerms;
     private String input;
 
     private AnalyzerEvaluationHelper() {
+        this.searchTerms = new ArrayList<>();
+        this.prohibitedTerms = new ArrayList<>();
     }
 
     public void setInput(String input) {
@@ -36,13 +39,16 @@ public class AnalyzerEvaluationHelper {
     }
 
     public AnalyzerEvaluationHelper canSearchWith(Analyzer analyzer, String searchTerm) {
-        if (this.searchTerms == null) {
-            this.searchTerms = new ArrayList<>();
-        }
-
         this.searchTerms.add(analyze(analyzer, searchTerm));
         return this;
     }
+
+
+    public AnalyzerEvaluationHelper cannotSearchWith(Analyzer analyzer, String searchTerm) {
+        this.prohibitedTerms.add(analyze(analyzer, searchTerm));
+        return this;
+    }
+
 
     private String analyze(Analyzer analyzer, String text) {
         TokenStream tokenStream = analyzer.tokenStream("test", text);
@@ -63,11 +69,24 @@ public class AnalyzerEvaluationHelper {
 
     public boolean evaluate() {
         String[] inputTerms = input.split(" ");
+
         for (String searchTerm : searchTerms) {
             for (String subTerm : searchTerm.split(" ")) {
                 if (Arrays.stream(inputTerms).noneMatch(inputTerm -> inputTerm.equals(subTerm))) {
                     throw Exceptions.handle()
                                     .withSystemErrorMessage("Cannot search with term '%s' in input '%s", subTerm, input)
+                                    .handle();
+                }
+            }
+        }
+
+        for (String prohibitedTerm : prohibitedTerms) {
+            for (String subTerm : prohibitedTerm.split(" ")) {
+                if (Arrays.stream(inputTerms).anyMatch(inputTerm -> inputTerm.equals(subTerm))) {
+                    throw Exceptions.handle()
+                                    .withSystemErrorMessage("Should not be able to search with term '%s' in input '%s",
+                                                            subTerm,
+                                                            input)
                                     .handle();
                 }
             }

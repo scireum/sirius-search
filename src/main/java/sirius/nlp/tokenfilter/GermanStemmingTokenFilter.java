@@ -30,7 +30,7 @@ public final class GermanStemmingTokenFilter extends TokenFilter {
      */
     public GermanStemmingTokenFilter(TokenStream input, String longestOnly, String ignoreCase) {
         super(input);
-        ResourceLoader loader = new ClasspathResourceLoader();
+        ResourceLoader loader = new ClasspathResourceLoader(); // TODO filesystemloader
 
         Map<String, String> hunspellArgs = new HashMap<>();
         hunspellArgs.put("dictionary", "hunspell/de_DE_frami.dic"); // TODO config value

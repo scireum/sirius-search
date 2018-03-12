@@ -28,8 +28,8 @@ import java.text.ParseException;
 public class RessourceLoading {
     private static volatile HyphenationTree germanHyphen;
     private static volatile CharArraySet germanWordList;
-    private static volatile SynonymMap stemExceptions;
-    private static volatile SynonymMap synonyms;
+    private static volatile SynonymMap germanStemExceptions;
+    private static volatile SynonymMap germanSynonyms;
     private static volatile CharArraySet germanStopWords;
 
     public static HyphenationTree getGermanHyphen() {
@@ -64,40 +64,40 @@ public class RessourceLoading {
         return germanWordList;
     }
 
-    public static SynonymMap getStemExceptions() {
-        if (stemExceptions == null) {
+    public static SynonymMap getGermanStemExceptions() {
+        if (germanStemExceptions == null) {
             synchronized (RessourceLoading.class) {
                 try {
-                    if (stemExceptions == null) {
+                    if (germanStemExceptions == null) {
                         SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
                         solrSynonymParser.parse(new BufferedReader(new FileReader(new File(
-                                "src/main/resources/stemexceptions.txt"))));
-                        stemExceptions = solrSynonymParser.build();
+                                "src/main/resources/germanStemexceptions.txt"))));
+                        germanStemExceptions = solrSynonymParser.build();
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();
                 }
             }
         }
-        return stemExceptions;
+        return germanStemExceptions;
     }
 
-    public static SynonymMap getSynonyms() {
-        if (synonyms == null) {
+    public static SynonymMap getGermanSynonyms() {
+        if (germanSynonyms == null) {
             synchronized (RessourceLoading.class) {
                 try {
-                    if (synonyms == null) {
+                    if (germanSynonyms == null) {
                         SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
                         solrSynonymParser.parse(new BufferedReader(new FileReader(new File(
-                                "src/main/resources/synonyms.txt"))));
-                        synonyms = solrSynonymParser.build();
+                                "src/main/resources/germanSynonyms.txt"))));
+                        germanSynonyms = solrSynonymParser.build();
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();
                 }
             }
         }
-        return synonyms;
+        return germanSynonyms;
     }
 
     public static CharArraySet getGermanStopWords(){
