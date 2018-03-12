@@ -37,8 +37,7 @@ public class RessourceLoading {
             synchronized (RessourceLoading.class) {
                 try {
                     if (germanHyphen == null) {
-                        germanHyphen =
-                                HyphenationCompoundWordTokenFilter.getHyphenationTree("src/main/resources/hyph_de.xml");
+                        germanHyphen = HyphenationCompoundWordTokenFilter.getHyphenationTree(filePath);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -53,8 +52,8 @@ public class RessourceLoading {
             synchronized (RessourceLoading.class) {
                 try {
                     if (germanWordList == null) {
-                        germanWordList = WordlistLoader.getWordSet(new BufferedReader(new FileReader(new File(
-                                "src/main/resources/wordlist/de/wordlist.txt"))));
+                        germanWordList =
+                                WordlistLoader.getWordSet(new BufferedReader(new FileReader(new File(filePath))));
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -69,10 +68,7 @@ public class RessourceLoading {
             synchronized (RessourceLoading.class) {
                 try {
                     if (germanStemExceptions == null) {
-                        SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
-                        solrSynonymParser.parse(new BufferedReader(new FileReader(new File(
-                                "src/main/resources/germanStemexceptions.txt"))));
-                        germanStemExceptions = solrSynonymParser.build();
+                        germanStemExceptions = loadFile(filePath);
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();
@@ -87,10 +83,7 @@ public class RessourceLoading {
             synchronized (RessourceLoading.class) {
                 try {
                     if (germanSynonyms == null) {
-                        SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
-                        solrSynonymParser.parse(new BufferedReader(new FileReader(new File(
-                                "src/main/resources/germanSynonyms.txt"))));
-                        germanSynonyms = solrSynonymParser.build();
+                        germanSynonyms = loadFile(filePath);
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();
@@ -100,20 +93,9 @@ public class RessourceLoading {
         return germanSynonyms;
     }
 
-    public static CharArraySet getGermanStopWords(String filePath){
-        if (germanStopWords == null) {
-            synchronized (RessourceLoading.class) {
-                try {
-                    if (germanStopWords == null) {
-                        germanStopWords = WordlistLoader.getSnowballWordSet(IOUtils.getDecodingReader(SnowballFilter.class,
-                                                                                    "german_stop.txt",
-                                                                                    Charset.forName("UTF-8")));
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return germanStopWords;
+    private static SynonymMap loadFile(String filePath) throws IOException, ParseException {
+        SolrSynonymParser solrSynonymParser = new SolrSynonymParser(true, true, new StandardAnalyzer());
+        solrSynonymParser.parse(new BufferedReader(new FileReader(new File(filePath))));
+        return solrSynonymParser.build();
     }
 }
