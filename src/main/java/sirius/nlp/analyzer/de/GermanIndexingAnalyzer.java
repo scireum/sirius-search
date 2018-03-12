@@ -16,35 +16,37 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
 import org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilter;
+import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.de.GermanAnalyzer;
 import org.apache.lucene.analysis.de.GermanNormalizationFilter;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilter;
-import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
+import org.apache.lucene.analysis.synonym.SynonymMap;
 import sirius.nlp.tokenfilter.CloseGapBetweenNumbersTokenFilter;
 import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveLeadingZerosTokenFilter;
-import sirius.nlp.util.RessourceLoading;
 
 import java.io.Reader;
 
 public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
 
-    private final CharArraySet exclusionSet;
+    private final SynonymMap stemExceptions;
+    private final HyphenationTree hyphen;
+    private final SynonymMap synonyms;
+    private final CharArraySet dictionary;
 
-    public GermanIndexingAnalyzer() {
-        this(RessourceLoading.getGermanStopWords());
-    }
-
-    public GermanIndexingAnalyzer(CharArraySet stopwords) {
-        this(stopwords, CharArraySet.EMPTY_SET);
-    }
-
-    public GermanIndexingAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
-        super(stopwords);
-        exclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
+    public GermanIndexingAnalyzer(SynonymMap stemExceptions,
+                                  HyphenationTree hyphen,
+                                  SynonymMap synonyms,
+                                  CharArraySet dictionary) {
+        super(GermanAnalyzer.getDefaultStopSet());
+        this.stemExceptions = stemExceptions;
+        this.dictionary = dictionary;
+        this.hyphen = hyphen;
+        this.synonyms = synonyms;
     }
 
     @Override
@@ -73,24 +75,17 @@ public class GermanIndexingAnalyzer extends StopwordAnalyzerBase {
 
         result = new LowerCaseFilter(result);
         result = new StopFilter(result, stopwords);
-        result = new SetKeywordMarkerFilter(result, exclusionSet); // TODO: needed?
         // decompound words
-        result = new HyphenationCompoundWordTokenFilter(result,
-                                                        RessourceLoading.getGermanHyphen(),
-                                                        RessourceLoading.getGermanWordList(),
-                                                        3,
-                                                        2,
-                                                        15,
-                                                        false);
+        result = new HyphenationCompoundWordTokenFilter(result, hyphen, dictionary, 3, 2, 15, false);
 
         // start stemming
-        result = new SynonymGraphFilter(result, RessourceLoading.getGermanStemExceptions(), true);
+        result = new SynonymGraphFilter(result, stemExceptions, true);
         result = new FlattenGraphFilter(result);
         result = new GermanStemmingTokenFilter(result, "true", "true");
 
         // TODO: check docs what problems occur doing this while index vs search time
         // inject synonym terms
-        result = new SynonymGraphFilter(result, RessourceLoading.getGermanSynonyms(), true);
+        result = new SynonymGraphFilter(result, synonyms, true);
         result = new FlattenGraphFilter(result);
 
         // normalize german umlauts etc.

@@ -43,7 +43,7 @@ public final class ExtractPrimaryWordTokenFilter extends HyphenationCompoundWord
 
             if (tokens.size() > 1) {
                 if (onlyLongestPrimaryWord) {
-                    // we want to have the longest primary word => find the first token which a suffix of the termAttribute
+                    // we want to have the longest primary word => find the first token which is a suffix of the termAttribute
                     for (CompoundToken token : tokens) {
                         if (new String(termAtt.buffer(), 0, termAtt.length()).endsWith(token.txt.toString())) {
                             termAtt.setEmpty().append(token.txt);

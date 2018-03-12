@@ -12,6 +12,7 @@ import sirius.kernel.BaseSpecification
 import sirius.nlp.analyzer.de.GermanIndexingAnalyzer
 import sirius.nlp.analyzer.de.GermanPrimaryWordOnlyIndexingAnalyzer
 import sirius.nlp.analyzer.de.GermanSearchAnalyzer
+import sirius.nlp.util.RessourceLoading
 
 
 class GermanAnalyzerSpec extends BaseSpecification {
@@ -21,9 +22,12 @@ class GermanAnalyzerSpec extends BaseSpecification {
     static GermanPrimaryWordOnlyIndexingAnalyzer primaryWordOnlyIndexingAnalyzer
 
     def setupSpec() {
-        indexingAnalyzer = new GermanIndexingAnalyzer()
-        searchAnalyzer = new GermanSearchAnalyzer()
-        primaryWordOnlyIndexingAnalyzer = new GermanPrimaryWordOnlyIndexingAnalyzer()
+        indexingAnalyzer = new GermanIndexingAnalyzer(RessourceLoading.getGermanStemExceptions("src/main/resources/germanStemexceptions.txt"), RessourceLoading.getGermanHyphen("src/main/resources/hyph_de.xml"),
+                RessourceLoading.getGermanSynonyms("src/main/resources/germanSynonyms.txt"), RessourceLoading.getGermanWordList("src/main/resources/wordlist/de/wordlist.txt"))
+        searchAnalyzer = new GermanSearchAnalyzer(RessourceLoading.getGermanStemExceptions("src/main/resources/germanStemexceptions.txt"), RessourceLoading.getGermanHyphen("src/main/resources/hyph_de.xml"),
+                RessourceLoading.getGermanSynonyms("src/main/resources/germanSynonyms.txt"), RessourceLoading.getGermanWordList("src/main/resources/wordlist/de/wordlist.txt"))
+        primaryWordOnlyIndexingAnalyzer = new GermanPrimaryWordOnlyIndexingAnalyzer(RessourceLoading.getGermanStemExceptions("src/main/resources/germanStemexceptions.txt"), RessourceLoading.getGermanHyphen("src/main/resources/hyph_de.xml"),
+                RessourceLoading.getGermanSynonyms("src/main/resources/germanSynonyms.txt"), RessourceLoading.getGermanWordList("src/main/resources/wordlist/de/wordlist.txt"))
     }
 
     def testSearch(String textForIndexing, String[] searchTexts) {
@@ -68,6 +72,7 @@ class GermanAnalyzerSpec extends BaseSpecification {
         "T-Stück"         | ["stück", "stueck", "t-stück", "t stück", "T-stück", "tstück", "t-stueck"] as String[]
         "GroßeXXL-Klappe" | ["xxl klappe", "GroßeXXL-Klappe", "GrosseXXL-Klappe", "GroßeXXL-Klappe", /* TODO "großexxl klappe",*/
                              "große xxl klappe", "XXL-Klappe", "XXL Klappe"] as String[]
+        "T-Verbinder"     | ["t verbinder", "t-Verbinder", "tverbinder", "T-Verbinder"] as String[]
     }
 
     def "test technical terms"() {

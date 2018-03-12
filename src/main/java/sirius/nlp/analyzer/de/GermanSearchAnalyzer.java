@@ -15,35 +15,36 @@ import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.HTMLStripCharFilter;
-import org.apache.lucene.analysis.core.FlattenGraphFilter;
+import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.de.GermanAnalyzer;
 import org.apache.lucene.analysis.de.GermanNormalizationFilter;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilter;
-import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
+import org.apache.lucene.analysis.synonym.SynonymMap;
 import sirius.nlp.tokenfilter.GermanStemmingTokenFilter;
 import sirius.nlp.tokenfilter.RemoveEmptyTokensTokenFilter;
 import sirius.nlp.tokenfilter.RemoveInitialTermTokenFilter;
-import sirius.nlp.util.RessourceLoading;
 
 import java.io.Reader;
 
 public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
 
-    private final CharArraySet exclusionSet;
+    private final SynonymMap stemExceptions;
+    private final HyphenationTree hyphen;
+    private final SynonymMap synonyms;
+    private final CharArraySet dictionary;
 
-    public GermanSearchAnalyzer() {
-        this(RessourceLoading.getGermanStopWords());
-    }
-
-    public GermanSearchAnalyzer(CharArraySet stopwords) {
-        this(stopwords, CharArraySet.EMPTY_SET);
-    }
-
-    public GermanSearchAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
-        super(stopwords);
-        exclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
+    public GermanSearchAnalyzer(SynonymMap stemExceptions,
+                                HyphenationTree hyphen,
+                                SynonymMap synonyms,
+                                CharArraySet dictionary) {
+        super(GermanAnalyzer.getDefaultStopSet());
+        this.stemExceptions = stemExceptions;
+        this.dictionary = dictionary;
+        this.hyphen = hyphen;
+        this.synonyms = synonyms;
     }
 
     @Override
@@ -61,26 +62,17 @@ public class GermanSearchAnalyzer extends StopwordAnalyzerBase {
                          | WordDelimiterGraphFilter.GENERATE_WORD_PARTS;
 
         final Tokenizer source = new WhitespaceTokenizer();
-
         TokenStream result = new WordDelimiterGraphFilter(source, configFlag, null);
-        result = new FlattenGraphFilter(result);
 
         result = new LowerCaseFilter(result);
         result = new StopFilter(result, stopwords);
-        result = new SetKeywordMarkerFilter(result, exclusionSet); // TODO: needed?
 
         // decompound words
-        result = new RemoveInitialTermTokenFilter(result,
-                                                  RessourceLoading.getGermanHyphen(),
-                                                  RessourceLoading.getGermanWordList(),
-                                                  3,
-                                                  2,
-                                                  15,
-                                                  true);
+        result = new RemoveInitialTermTokenFilter(result, hyphen, dictionary, 3, 2, 15, true);
         result = new RemoveEmptyTokensTokenFilter(result);
 
         // start stemming
-        result = new SynonymGraphFilter(result, RessourceLoading.getGermanStemExceptions(), true);
+        result = new SynonymGraphFilter(result, stemExceptions, true);
         result = new GermanStemmingTokenFilter(result,
                                                "true",
                                                "true"); // TODO longstOnly mit in kombi mit GermanStemmingFilter checken

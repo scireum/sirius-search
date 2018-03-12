@@ -32,7 +32,7 @@ public class RessourceLoading {
     private static volatile SynonymMap germanSynonyms;
     private static volatile CharArraySet germanStopWords;
 
-    public static HyphenationTree getGermanHyphen() {
+    public static HyphenationTree getGermanHyphen(String filePath) {
         if (germanHyphen == null) {
             synchronized (RessourceLoading.class) {
                 try {
@@ -48,7 +48,7 @@ public class RessourceLoading {
         return germanHyphen;
     }
 
-    public static CharArraySet getGermanWordList() {
+    public static CharArraySet getGermanWordList(String filePath) {
         if (germanWordList == null) {
             synchronized (RessourceLoading.class) {
                 try {
@@ -64,7 +64,7 @@ public class RessourceLoading {
         return germanWordList;
     }
 
-    public static SynonymMap getGermanStemExceptions() {
+    public static SynonymMap getGermanStemExceptions(String filePath) {
         if (germanStemExceptions == null) {
             synchronized (RessourceLoading.class) {
                 try {
@@ -82,7 +82,7 @@ public class RessourceLoading {
         return germanStemExceptions;
     }
 
-    public static SynonymMap getGermanSynonyms() {
+    public static SynonymMap getGermanSynonyms(String filePath) {
         if (germanSynonyms == null) {
             synchronized (RessourceLoading.class) {
                 try {
@@ -100,7 +100,7 @@ public class RessourceLoading {
         return germanSynonyms;
     }
 
-    public static CharArraySet getGermanStopWords(){
+    public static CharArraySet getGermanStopWords(String filePath){
         if (germanStopWords == null) {
             synchronized (RessourceLoading.class) {
                 try {
