@@ -101,15 +101,17 @@ class GermanAnalyzerSpec extends BaseSpecification {
         "badtisch"      | ["waschtisch"] as String[]
     }
 
-    def "test"() {
+    def "test primary word extraction works"() {
         expect:
         testPrimaryWordsOnlySearch(textForIndexing, searchTexts, prohibitedSearchTexts)
         where:
-        textForIndexing     | searchTexts                                                          | prohibitedSearchTexts
-        "Steckdosenleiste"  | ["leisten", "dosenleiste", "dosenleisten"] as String[]               | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
-        "Steckdosenleisten" | ["leiste", "dosenleiste", "dosenleisten"] as String[]                | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
-        "Kühlschrankdose"   | ["dose", "dosen", "kühlschrankdosen", "kühlschrankdose"] as String[] | ["Kühlschrank", "schrank", "kühlen"] as String[]
-        "Waschtisch"        | ["waschtisch"] as String[]                                           | ["tisch"] as String[]
-        "Spiralbohrer"      | ["bohrer"] as String[]                                               | ["spiral"] as String[]
+        textForIndexing            | searchTexts                                                          | prohibitedSearchTexts
+        "Steckdosenleiste"         | ["leisten", "dosenleiste", "dosenleisten"] as String[]               | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
+        "Steckdosenleisten"        | ["leiste", "dosenleiste", "dosenleisten"] as String[]                | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
+        "<i>Steckdosenleisten</i>" | ["leiste", "dosenleiste", "dosenleisten"] as String[]                | ["steckdose", "steckdosen", "dose", "dosen"] as String[]
+        "Kühlschrankdose"          | ["dose", "dosen", "kühlschrankdosen", "kühlschrankdose"] as String[] | ["Kühlschrank", "schrank", "kühlen"] as String[]
+        "Waschtisch"               | ["waschtisch"] as String[]                                           | ["tisch"] as String[]
+        "<em>Waschtisch</em>"      | ["waschtisch"] as String[]                                           | ["tisch"] as String[]
+        "Spiralbohrer"             | ["bohrer"] as String[]                                               | ["spiral"] as String[]
     }
 }
