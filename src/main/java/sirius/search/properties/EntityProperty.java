@@ -86,6 +86,7 @@ public class EntityProperty extends Property {
             EntityRef<?> entityRef = (EntityRef<?>) getField().get(entity);
             entityRef.setId((String) value);
             entityRef.clearDirty();
+            entity.setSource(getField().getName(), value);
         } catch (IllegalAccessException e) {
             throw Exceptions.handle(IndexAccess.LOG, e);
         }
