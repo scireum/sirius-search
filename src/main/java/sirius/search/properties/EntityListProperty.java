@@ -86,6 +86,7 @@ public class EntityListProperty extends Property {
     public void readFromSource(Entity entity, Object value) {
         try {
             ((EntityRefList<?>) getField().get(entity)).setIds((List<String>) value);
+            entity.setSource(getField().getName(), value);
         } catch (IllegalAccessException e) {
             Exceptions.handle(IndexAccess.LOG, e);
         }
