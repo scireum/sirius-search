@@ -583,8 +583,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> groupBy(String field) {
-        this.groupBy = new CollapseBuilder(field);
-        return this;
+        return groupBy(new CollapseBuilder(field));
     }
 
     /**
