@@ -1612,12 +1612,24 @@ public class Query<E extends Entity> {
      * Deletes all entities which are matched by this query.
      */
     public void delete() {
+        delete(false);
+    }
+
+    /**
+     * Deletes all entities which are matched by this query without any change tracking.
+     * Therefore the entity will also be deleted, if it was modified since the last read.
+     */
+    public void forceDelete() {
+        delete(true);
+    }
+
+    private void delete(boolean force) {
         try {
             if (forceFail) {
                 return;
             }
             Watch w = Watch.start();
-            deleteByIteration();
+            deleteByIteration(force);
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
@@ -1626,11 +1638,15 @@ public class Query<E extends Entity> {
         }
     }
 
-    protected void deleteByIteration() throws Exception {
+    protected void deleteByIteration(boolean force) throws Exception {
         ValueHolder<Exception> error = ValueHolder.of(null);
         iterate(e -> {
             try {
-                indexAccess.delete(e);
+                if (force) {
+                    indexAccess.forceDelete(e);
+                } else {
+                    indexAccess.delete(e);
+                }
             } catch (Exception ex) {
                 error.set(ex);
             }
