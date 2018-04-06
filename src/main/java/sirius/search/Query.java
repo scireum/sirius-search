@@ -26,6 +26,7 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
+import org.elasticsearch.search.collapse.CollapseBuilder;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
@@ -98,6 +99,7 @@ public class Query<E extends Entity> {
 
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
+    private CollapseBuilder groupBy = null;
     private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
     private List<AggregationBuilder> aggregations = Lists.newArrayList();
@@ -564,6 +566,31 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Groups by an arbitrary {@link CollapseBuilder}.
+     *
+     * @param groupBy the collapse builder to group by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> groupBy(CollapseBuilder groupBy) {
+        if (this.groupBy != null) {
+            throw new IllegalStateException("Cannot set multiple group by's!");
+        }
+
+        this.groupBy = groupBy;
+        return this;
+    }
+
+    /**
+     * Groups by the given field.
+     *
+     * @param field the field to group by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> groupBy(String field) {
+        return groupBy(new CollapseBuilder(field));
+    }
+
+    /**
      * Adds the given aggregation.
      *
      * @param aggregationBuilder the aggegration to add
@@ -848,6 +875,7 @@ public class Query<E extends Entity> {
         }
 
         applyRouting(ed, srb::setRouting);
+        applyGroupBy(srb);
         applyOrderBys(srb);
         applyFacets(srb);
         applyAggregations(srb);
@@ -889,6 +917,12 @@ public class Query<E extends Entity> {
                                                       .field(field.getName())
                                                       .size(termFacetLimit));
             }
+        }
+    }
+
+    private void applyGroupBy(SearchRequestBuilder srb) {
+        if (groupBy != null) {
+            srb.setCollapse(groupBy);
         }
     }
 
