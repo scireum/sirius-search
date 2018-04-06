@@ -27,7 +27,10 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
 import org.elasticsearch.search.collapse.CollapseBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
+import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -38,7 +41,6 @@ import sirius.kernel.commons.Limit;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.RateLimit;
 import sirius.kernel.commons.Strings;
-import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.ValueHolder;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
@@ -100,7 +102,7 @@ public class Query<E extends Entity> {
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
     private CollapseBuilder groupBy = null;
-    private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
+    private List<SortBuilder<?>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
     private List<AggregationBuilder> aggregations = Lists.newArrayList();
     private List<PipelineAggregationBuilder> pipelineAggregations = Lists.newArrayList();
@@ -519,25 +521,46 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a {@link SortBuilder} to do an arbitrary sort.
+     *
+     * @param sortBuilder the {@link SortBuilder} used for sorting
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> orderBy(SortBuilder<?> sortBuilder) {
+        orderBys.add(sortBuilder);
+        return this;
+    }
+
+    /**
      * Adds an order by clause for the given field in ascending order.
+     * <p>
+     * Copies the behavior from {@link SearchRequestBuilder#addSort(String, SortOrder)} to handle order by _score.
      *
      * @param field the field to order by
      * @return the query itself for fluent method calls
      */
     public Query<E> orderByAsc(String field) {
-        orderBys.add(Tuple.create(field, true));
-        return this;
+        if (field.equals(ScoreSortBuilder.NAME)) {
+            return orderBy(SortBuilders.scoreSort().order(SortOrder.ASC));
+        }
+
+        return orderBy(SortBuilders.fieldSort(field).order(SortOrder.ASC));
     }
 
     /**
      * Adds an order by clause for the given field in descending order.
+     * <p>
+     * Copies the behavior from {@link SearchRequestBuilder#addSort(String, SortOrder)} to handle order by _score.
      *
      * @param field the field to order by
      * @return the query itself for fluent method calls
      */
     public Query<E> orderByDesc(String field) {
-        orderBys.add(Tuple.create(field, false));
-        return this;
+        if (field.equals(ScoreSortBuilder.NAME)) {
+            return orderBy(SortBuilders.scoreSort().order(SortOrder.DESC));
+        }
+
+        return orderBy(SortBuilders.fieldSort(field).order(SortOrder.DESC));
     }
 
     /**
@@ -936,9 +959,7 @@ public class Query<E extends Entity> {
                                                     ScriptSortBuilder.ScriptSortType.NUMBER).order(SortOrder.ASC));
             }
         } else {
-            for (Tuple<String, Boolean> sort : orderBys) {
-                srb.addSort(sort.getFirst(), sort.getSecond() ? SortOrder.ASC : SortOrder.DESC);
-            }
+            orderBys.forEach(srb::addSort);
         }
     }
 
@@ -1614,11 +1635,16 @@ public class Query<E extends Entity> {
             sb.append(" RANDOMIZED");
         } else if (!orderBys.isEmpty()) {
             sb.append(" ORDER BY");
-            for (Tuple<String, Boolean> orderBy : orderBys) {
-                sb.append(" ");
-                sb.append(orderBy.getFirst());
-                sb.append(orderBy.getSecond() ? " ASC" : " DESC");
-            }
+
+            orderBys.forEach(sortBuilder -> {
+                if (sortBuilder instanceof FieldSortBuilder) {
+                    sb.append(" ").append(((FieldSortBuilder) sortBuilder).getFieldName());
+                } else {
+                    sb.append(" ").append(sortBuilder.getWriteableName());
+                }
+
+                sb.append(" ").append(sortBuilder.order().name());
+            });
         }
     }
 
