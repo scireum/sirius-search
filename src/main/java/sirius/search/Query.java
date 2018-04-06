@@ -568,11 +568,15 @@ public class Query<E extends Entity> {
     /**
      * Groups by an arbitrary {@link CollapseBuilder}.
      *
-     * @param collapseBuilder the collapse builder to group by
+     * @param groupBy the collapse builder to group by
      * @return the query itself for fluent method calls
      */
-    public Query<E> groupBy(CollapseBuilder collapseBuilder) {
-        this.groupBy = collapseBuilder;
+    public Query<E> groupBy(CollapseBuilder groupBy) {
+        if (this.groupBy != null) {
+            throw new IllegalStateException("Cannot set multiple group by's!");
+        }
+
+        this.groupBy = groupBy;
         return this;
     }
 
