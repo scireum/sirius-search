@@ -1328,7 +1328,7 @@ public class Query<E extends Entity> {
      * @return the result of the query along with all facets and paging-metadata
      */
     public Page<E> queryPage(WebContext ctx, int pageSize) {
-        return this.withPageSize(pageSize).page(ctx.get("start").asInt(1)).queryPage();
+        return this.withPageSize(pageSize).queryPage(ctx);
     }
 
     /**
