@@ -1309,6 +1309,29 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result.
+     *
+     * @param ctx the Webcontext in which to look for the start parameter
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx) {
+        return this.page(ctx.get("start").asInt(1)).queryPage();
+    }
+
+    /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result and with the given page size.
+     *
+     * @param ctx      the Webcontext in which to look for the start parameter
+     * @param pageSize the desired number of elements in one page
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx, int pageSize) {
+        return this.withPageSize(pageSize).page(ctx.get("start").asInt(1)).queryPage();
+    }
+
+    /**
      * Sets the max. duration for a scroll request kept open by the elasticsearch cluster.
      * <p>
      * {@link #iterate(ResultHandler)} and {@link #iterateAll(Consumer)} internally use scroll requests. These
