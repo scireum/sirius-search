@@ -338,6 +338,36 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> query(WebContext ctx) {
+        return query(ctx.get("query").asString());
+    }
+
+    /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(WebContext ctx) {
+        return expandedQuery(ctx.get("query").asString());
+    }
+
+    /**
      * Adds a textual query to a specific field.
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
