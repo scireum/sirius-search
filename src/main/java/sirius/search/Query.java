@@ -101,6 +101,7 @@ public class Query<E extends Entity> {
 
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
+    private QueryBuilder postAggregationQuery = null;
     private CollapseBuilder groupBy = null;
     private List<SortBuilder<?>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
@@ -614,6 +615,21 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Filters by an arbitrary {@link QueryBuilder} after the aggregations where done.
+     *
+     * @param postAggregationQuery the query builder to filter by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> postAggregationQuery(QueryBuilder postAggregationQuery) {
+        if (this.postAggregationQuery != null) {
+            throw new IllegalStateException("Cannot set multiple post aggregation queries!");
+        }
+
+        this.postAggregationQuery = postAggregationQuery;
+        return this;
+    }
+
+    /**
      * Adds the given aggregation.
      *
      * @param aggregationBuilder the aggegration to add
@@ -903,6 +919,7 @@ public class Query<E extends Entity> {
         applyFacets(srb);
         applyAggregations(srb);
         applyQueries(srb);
+        applyPostAggreationQuery(srb);
         applyLimit(srb);
 
         if (logQuery) {
@@ -972,6 +989,12 @@ public class Query<E extends Entity> {
             } else {
                 srb.setQuery(qb);
             }
+        }
+    }
+
+    private void applyPostAggreationQuery(SearchRequestBuilder srb) {
+        if (postAggregationQuery != null) {
+            srb.setPostFilter(postAggregationQuery);
         }
     }
 
@@ -1306,6 +1329,29 @@ public class Query<E extends Entity> {
                             .withHasMore(hasMore)
                             .withDuration(w.duration())
                             .withPageSize(pageSize);
+    }
+
+    /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result.
+     *
+     * @param ctx the Webcontext in which to look for the start parameter
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx) {
+        return this.page(ctx.get("start").asInt(1)).queryPage();
+    }
+
+    /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result and with the given page size.
+     *
+     * @param ctx      the Webcontext in which to look for the start parameter
+     * @param pageSize the desired number of elements in one page
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx, int pageSize) {
+        return this.withPageSize(pageSize).queryPage(ctx);
     }
 
     /**
