@@ -1184,8 +1184,8 @@ public class IndexAccess {
 
         if (!indexResponse.hasFailures() && LOG.isFINE()) {
             LOG.FINE("BULK-SAVE SUCCEEDED");
-        } else if (indexResponse.hasFailures() && LOG.isFINE()) {
-            LOG.FINE(indexResponse.buildFailureMessage());
+        } else if (indexResponse.hasFailures()) {
+            Exceptions.handle().withSystemErrorMessage(indexResponse.buildFailureMessage()).handle();
         }
 
         for (int i = 0; i < indexResponse.getItems().length; i++) {
