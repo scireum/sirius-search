@@ -95,6 +95,7 @@ public class Query<E extends Entity> {
      * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
     public static final String DEFAULT_FIELD = "_all";
+    private static final String PARAM_QUERY = "query";
 
     @ConfigValue("index.termFacetLimit")
     private static int termFacetLimit;
@@ -348,7 +349,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> query(WebContext ctx) {
-        return query(ctx.get("query").asString());
+        return query(ctx.get(PARAM_QUERY).asString());
     }
 
     /**
@@ -364,7 +365,7 @@ public class Query<E extends Entity> {
      * @return the query itself for fluent method calls
      */
     public Query<E> expandedQuery(WebContext ctx) {
-        return expandedQuery(ctx.get("query").asString());
+        return expandedQuery(ctx.get(PARAM_QUERY).asString());
     }
 
     /**
