@@ -95,6 +95,7 @@ public class Query<E extends Entity> {
      * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
     public static final String DEFAULT_FIELD = "_all";
+    private static final String PARAM_QUERY = "query";
 
     @ConfigValue("index.termFacetLimit")
     private static int termFacetLimit;
@@ -336,6 +337,36 @@ public class Query<E extends Entity> {
      */
     public Query<E> expandedQuery(String query) {
         return query(query, DEFAULT_FIELD, Query::defaultTokenizer, true, false);
+    }
+
+    /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> query(WebContext ctx) {
+        return query(ctx.get(PARAM_QUERY).asString());
+    }
+
+    /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(WebContext ctx) {
+        return expandedQuery(ctx.get(PARAM_QUERY).asString());
     }
 
     /**
