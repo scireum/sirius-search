@@ -70,6 +70,7 @@ import java.time.Duration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -619,6 +620,42 @@ public class IndexAccess {
     }
 
     /**
+     * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
+     * <p>
+     * May use a given cache to load the entity.
+     *
+     * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
+     * @param type    the type of the desired entity
+     * @param id      the id of the desired entity
+     * @param cache   the cache to resolve the entity.
+     * @param <E>     the type of entities to fetch
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     */
+    public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
+                                                                 @Nonnull Class<E> type,
+                                                                 @Nullable String id,
+                                                                 @Nonnull com.google.common.cache.Cache<String, Object> cache) {
+        return Optional.ofNullable(fetch(routing, type, id, cache).getFirst());
+    }
+
+    /**
+     * Fetches the entity wrapped in an {@link java.util.Optional} of given type with the given id.
+     * <p>
+     * May use a global cache to load the entity.
+     *
+     * @param routing the routing info used to lookup the entity (might be <tt>null</tt> if no routing is required).
+     * @param type    the type of the desired entity
+     * @param id      the id of the desired entity
+     * @param <E>     the type of entities to fetch
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     */
+    public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
+                                                                 @Nonnull Class<E> type,
+                                                                 @Nullable String id) {
+        return Optional.ofNullable(fetch(routing, type, id).getFirst());
+    }
+
+    /**
      * Used to delay an action for at least one second
      */
     private class WaitingBlock {
@@ -760,6 +797,31 @@ public class IndexAccess {
     }
 
     /**
+     * Tries to apply the given changes and to save the resulting entity without running the entities save checks and handlers.
+     * <p>
+     * Tries to perform the given modifications and then to update the entity. If an optimistic lock error occurs,
+     * the entity is refreshed and the modifications are re-executed along with another update.
+     *
+     * @param entity          the entity to update
+     * @param preSaveModifier the changes to perform on the entity
+     * @param <E>             the type of the entity to update
+     * @throws HandledException if either any other exception occurs, or if all three attempts fail with an optimistic
+     *                          lock error.
+     */
+    public <E extends Entity> void retryUpdateUnchecked(E entity, Callback<E> preSaveModifier) {
+        Monoflop mf = Monoflop.create();
+        retry(() -> {
+            E entityToUpdate = entity;
+            if (mf.successiveCall()) {
+                entityToUpdate = refreshIfPossible(entity);
+            }
+
+            preSaveModifier.invoke(entityToUpdate);
+            tryUpdateUnchecked(entityToUpdate);
+        });
+    }
+
+    /**
      * Creates this entity by storing an initial copy in the database.
      *
      * @param entity the entity to be stored in the database
@@ -768,7 +830,7 @@ public class IndexAccess {
      */
     public <E extends Entity> E create(E entity) {
         try {
-            return update(entity, false, true);
+            return update(entity, false, true, true);
         } catch (OptimisticLockException e) {
             // Should never happen - but who knows...
             throw Exceptions.handle(LOG, e);
@@ -789,7 +851,24 @@ public class IndexAccess {
      *                                 by the entity to be saved
      */
     public <E extends Entity> E tryUpdate(E entity) throws OptimisticLockException {
-        return update(entity, true, false);
+        return update(entity, true, false, true);
+    }
+
+    /**
+     * Tries to update the given entity in the database without running the entities save checks and handlers.
+     * <p>
+     * If the same entity was modified in the database already, an
+     * <tt>OptimisticLockException</tt> will be thrown
+     *
+     * @param entity the entity to save
+     * @param <E>    the type of the entity to update
+     * @return the saved entity
+     * @throws OptimisticLockException if the entity was modified in the database and those changes where
+     *                                 not reflected
+     *                                 by the entity to be saved
+     */
+    public <E extends Entity> E tryUpdateUnchecked(E entity) throws OptimisticLockException {
+        return update(entity, true, false, false);
     }
 
     /**
@@ -804,7 +883,7 @@ public class IndexAccess {
      */
     public <E extends Entity> E update(E entity) {
         try {
-            return update(entity, true, false);
+            return update(entity, true, false, true);
         } catch (OptimisticLockException e) {
             reportClash(entity);
             throw Exceptions.handle()
@@ -925,7 +1004,7 @@ public class IndexAccess {
      */
     public <E extends Entity> E override(E entity) {
         try {
-            return update(entity, false, false);
+            return update(entity, false, false, true);
         } catch (OptimisticLockException e) {
             // Should never happen as version checking is disabled....
             throw Exceptions.handle(LOG, e);
@@ -939,15 +1018,20 @@ public class IndexAccess {
      * @param entity              the entity to save
      * @param performVersionCheck determines if change tracking will be enabled
      * @param forceCreate         determines if a new entity should be created
+     * @param runSaveChecks       determines if the entities save checks and handlers should be executed
      * @param <E>                 the type of the entity to update
      * @return the saved entity
      * @throws OptimisticLockException if change tracking is enabled and an intermediary change took place
      */
-    protected <E extends Entity> E update(final E entity, final boolean performVersionCheck, final boolean forceCreate)
-            throws OptimisticLockException {
+    protected <E extends Entity> E update(final E entity,
+                                          final boolean performVersionCheck,
+                                          final boolean forceCreate,
+                                          final boolean runSaveChecks) throws OptimisticLockException {
         try {
             final Map<String, Object> source = Maps.newTreeMap();
-            entity.beforeSave();
+            if (runSaveChecks) {
+                entity.beforeSave();
+            }
             EntityDescriptor descriptor = getDescriptor(entity.getClass());
             descriptor.writeTo(entity, source);
 
@@ -977,7 +1061,7 @@ public class IndexAccess {
 
             applyRouting("Updating", entity, descriptor, irb::setRouting);
 
-            return executeUpdate(entity, descriptor, irb);
+            return executeUpdate(entity, descriptor, irb, runSaveChecks);
         } catch (VersionConflictEngineException e) {
             if (LOG.isFINE()) {
                 LOG.FINE("Version conflict on updating: %s", entity);
@@ -1069,7 +1153,10 @@ public class IndexAccess {
         }
     }
 
-    private <E extends Entity> E executeUpdate(E entity, EntityDescriptor descriptor, IndexRequestBuilder irb) {
+    private <E extends Entity> E executeUpdate(E entity,
+                                               EntityDescriptor descriptor,
+                                               IndexRequestBuilder irb,
+                                               final boolean runSaveChecks) {
         Watch w = Watch.start();
         IndexResponse indexResponse = irb.execute().actionGet();
         if (LOG.isFINE()) {
@@ -1081,7 +1168,9 @@ public class IndexAccess {
         }
         entity.id = indexResponse.getId();
         entity.version = indexResponse.getVersion();
-        entity.afterSave();
+        if (runSaveChecks) {
+            entity.afterSave();
+        }
         queryDuration.addValue(w.elapsedMillis());
         w.submitMicroTiming("ES", "UPDATE " + entity.getClass().getName());
         traceChange(entity);
@@ -1094,8 +1183,8 @@ public class IndexAccess {
 
         if (!indexResponse.hasFailures() && LOG.isFINE()) {
             LOG.FINE("BULK-SAVE SUCCEEDED");
-        } else if (indexResponse.hasFailures() && LOG.isFINE()) {
-            LOG.FINE(indexResponse.buildFailureMessage());
+        } else if (indexResponse.hasFailures()) {
+            Exceptions.handle().withSystemErrorMessage(indexResponse.buildFailureMessage()).handle();
         }
 
         for (int i = 0; i < indexResponse.getItems().length; i++) {
@@ -1139,6 +1228,20 @@ public class IndexAccess {
      */
     public <E extends Entity> E find(String routing, final Class<E> clazz, String id) {
         return find(null, routing, clazz, id);
+    }
+
+    /**
+     * Tries to find the entity of the given type with the given id and routing.
+     *
+     * @param routing the value used to compute the routing hash
+     * @param clazz   the type of the entity
+     * @param id      the id of the entity
+     * @param <E>     the type of the entity to find
+     * @return the entity wrapped in an {@link Optional} of the given class with the given id or
+     * {@link Optional#EMPTY} if no such entity exists
+     */
+    public <E extends Entity> Optional<E> findOptional(String routing, final Class<E> clazz, String id) {
+        return Optional.ofNullable(find(null, routing, clazz, id));
     }
 
     /**

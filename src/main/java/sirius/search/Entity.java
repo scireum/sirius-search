@@ -76,6 +76,12 @@ public abstract class Entity {
     @Transient
     protected boolean skipForeignKeys;
 
+    /**
+     * Contains all named queries which matched this entity
+     */
+    @Transient
+    protected String[] matchedNamedQueries;
+
     @Part
     private static IndexAccess index;
 
@@ -183,6 +189,28 @@ public abstract class Entity {
      */
     protected void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    /**
+     * Gets the list of all named queries which matched this entity.
+     *
+     * @param queryName the name of the query to check
+     * @return the list of named queries which matched this entity.
+     */
+    public boolean isMatchedNamedQuery(String queryName) {
+        return Arrays.stream(matchedNamedQueries).anyMatch(query -> Strings.areEqual(query, queryName));
+    }
+
+    /**
+     * Sets the name of the queries which matched this entity.
+     * <p>
+     * ElasticSearch allows to name/alias a sub-query so that we can signal whether a sub-query matched an entity
+     * or not to prevent additional queries.
+     *
+     * @param matchedNamedQueries the list of named queries which matched this entity
+     */
+    protected void setMatchedNamedQueries(String[] matchedNamedQueries) {
+        this.matchedNamedQueries = matchedNamedQueries;
     }
 
     /**

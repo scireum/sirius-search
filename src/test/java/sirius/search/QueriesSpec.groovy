@@ -14,6 +14,7 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
+import sirius.search.constraints.Constraint
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
@@ -21,6 +22,7 @@ import sirius.search.entities.CustomAnalyzerPropertyEntity
 import sirius.search.entities.ParentEntity
 import sirius.search.entities.QueryEntity
 import sirius.web.controller.Page
+import sirius.search.constraints.Named
 
 class QueriesSpec extends BaseSpecification {
 
@@ -49,6 +51,39 @@ class QueriesSpec extends BaseSpecification {
         then:
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
+    }
+    
+    def "robust query can produce OR query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("two")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("one OR two").count() == 2
+    }
+
+    def "robust query can produce complex nested query"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("entity one")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("entity two")
+        ParentEntity e3 = new ParentEntity()
+        e3.setName("entity")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        e3 = index.update(e3)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("(entity AND one) OR (entity AND two)").count() == 2
     }
 
     def "custom analyzer are created at startup and work"() {
@@ -117,7 +152,7 @@ class QueriesSpec extends BaseSpecification {
         and:
         noExceptionThrown()
     }
-    
+
     def queryPageSetup() {
         index.select(QueryEntity.class).delete()
         List<QueryEntity> entities = new ArrayList<>()
@@ -129,7 +164,7 @@ class QueriesSpec extends BaseSpecification {
         index.updateBulk(entities)
         index.blockThreadForUpdate(4)
     }
-    
+
     @SetupOnce("queryPageSetup")
     def "queryPage counts number of items correctly"() {
         when:
@@ -149,6 +184,17 @@ class QueriesSpec extends BaseSpecification {
         200      | 301   | 200   | 500   | false
         200      | 300   | 200   | 500   | true
         25       | 500   | 1     | 500   | false
+    }
+
+    def "queryPage counts number of items correctly, even if failed"() {
+        when:
+        Page<QueryEntity> page
+        and:
+        page = index.select(QueryEntity.class).page(0).fail().queryPage()
+        then:
+        page.getItems().size() == 0
+        page.hasMore() == false
+        page.getTotal() == 0
     }
 
     def "bulk update combined with version conflict"() {
@@ -209,4 +255,36 @@ class QueriesSpec extends BaseSpecification {
 
     }
 
+    def "forced query fails if tokenizer only produces empty tokens"() {
+        setup:
+        QueryEntity e = new QueryEntity()
+        e.setContent("forcedQuery")
+        index.update(e)
+        index.blockThreadForUpdate()
+        when:
+        Query qry = index.select(QueryEntity.class)
+        qry.eq(QueryEntity.CONTENT, "forcedQuery").query("§#%", Query.DEFAULT_FIELD, Query.&defaultTokenizer, false, true)
+        then:
+        qry.forceFail
+        and:
+        !qry.exists()
+    }
+
+    def "named queries work"() {
+        given:
+        QueryEntity e = new QueryEntity()
+        e.setContent("test")
+        e.setRanking(5)
+        when:
+        index.update(e)
+        and:
+        index.blockThreadForUpdate()
+        Optional result = index.select(QueryEntity.class)
+                .eq(QueryEntity.RANKING, 5)
+                .where(Named.of(FieldEqual.on(QueryEntity.CONTENT, "test"), "matchedContent"))
+                .first()
+        then:
+        result.isPresent()
+        result.get().isMatchedNamedQuery("matchedContent")
+    }
 }

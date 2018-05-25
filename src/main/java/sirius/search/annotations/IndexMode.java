@@ -74,6 +74,8 @@ public @interface IndexMode {
      * Permits to exclude the contents of this field from the _source field. This should be used with care!
      * <p>
      * See the elasticsearch docs for a detailed description of the behaviour.
+     *
+     * @return <tt>true</tt> if the value is excluded from source, <tt>false</tt> otherwise
      */
     boolean excludeFromSource() default false;
 }

@@ -26,7 +26,11 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
+import org.elasticsearch.search.collapse.CollapseBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
+import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import sirius.kernel.async.ExecutionPoint;
@@ -37,7 +41,6 @@ import sirius.kernel.commons.Limit;
 import sirius.kernel.commons.Monoflop;
 import sirius.kernel.commons.RateLimit;
 import sirius.kernel.commons.Strings;
-import sirius.kernel.commons.Tuple;
 import sirius.kernel.commons.ValueHolder;
 import sirius.kernel.commons.Watch;
 import sirius.kernel.di.std.ConfigValue;
@@ -81,6 +84,8 @@ import java.util.function.Function;
  */
 public class Query<E extends Entity> {
 
+    public static final String DEFAULT_FIELD = "custom_all";
+
     private static final int DEFAULT_LIMIT = 999;
     private static final int SCROLL_TTL_SECONDS = 60 * 5;
     private static final int MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD = 50;
@@ -91,14 +96,16 @@ public class Query<E extends Entity> {
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
-    public static final String DEFAULT_FIELD = "custom_all";
+    private static final String PARAM_QUERY = "query";
 
     @ConfigValue("index.termFacetLimit")
     private static int termFacetLimit;
 
     private Class<E> clazz;
     private List<Constraint> constraints = Lists.newArrayList();
-    private List<Tuple<String, Boolean>> orderBys = Lists.newArrayList();
+    private QueryBuilder postAggregationQuery = null;
+    private CollapseBuilder groupBy = null;
+    private List<SortBuilder<?>> orderBys = Lists.newArrayList();
     private List<Facet> termFacets = Lists.newArrayList();
     private List<AggregationBuilder> aggregations = Lists.newArrayList();
     private List<PipelineAggregationBuilder> pipelineAggregations = Lists.newArrayList();
@@ -334,6 +341,36 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> query(WebContext ctx) {
+        return query(ctx.get(PARAM_QUERY).asString());
+    }
+
+    /**
+     * Adds a textual query across all searchable fields.
+     * The query itself is taken from the 'query' parameter of the given WebContext.
+     * <p>
+     * If a single term query is given, an expansion like "term*" will be added.
+     * <p>
+     * Uses the DEFAULT_FIELD and DEFAULT_ANALYZER while calling
+     * {@link #query(String, String, java.util.function.Function, boolean, boolean)}.
+     *
+     * @param ctx the WebContext that contains the query parameter
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> expandedQuery(WebContext ctx) {
+        return expandedQuery(ctx.get(PARAM_QUERY).asString());
+    }
+
+    /**
      * Adds a textual query to a specific field.
      * <p>
      * If a single term query is given, an expansion like "term*" will be added.
@@ -517,25 +554,46 @@ public class Query<E extends Entity> {
     }
 
     /**
+     * Adds a {@link SortBuilder} to do an arbitrary sort.
+     *
+     * @param sortBuilder the {@link SortBuilder} used for sorting
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> orderBy(SortBuilder<?> sortBuilder) {
+        orderBys.add(sortBuilder);
+        return this;
+    }
+
+    /**
      * Adds an order by clause for the given field in ascending order.
+     * <p>
+     * Copies the behavior from {@link SearchRequestBuilder#addSort(String, SortOrder)} to handle order by _score.
      *
      * @param field the field to order by
      * @return the query itself for fluent method calls
      */
     public Query<E> orderByAsc(String field) {
-        orderBys.add(Tuple.create(field, true));
-        return this;
+        if (field.equals(ScoreSortBuilder.NAME)) {
+            return orderBy(SortBuilders.scoreSort().order(SortOrder.ASC));
+        }
+
+        return orderBy(SortBuilders.fieldSort(field).order(SortOrder.ASC));
     }
 
     /**
      * Adds an order by clause for the given field in descending order.
+     * <p>
+     * Copies the behavior from {@link SearchRequestBuilder#addSort(String, SortOrder)} to handle order by _score.
      *
      * @param field the field to order by
      * @return the query itself for fluent method calls
      */
     public Query<E> orderByDesc(String field) {
-        orderBys.add(Tuple.create(field, false));
-        return this;
+        if (field.equals(ScoreSortBuilder.NAME)) {
+            return orderBy(SortBuilders.scoreSort().order(SortOrder.DESC));
+        }
+
+        return orderBy(SortBuilders.fieldSort(field).order(SortOrder.DESC));
     }
 
     /**
@@ -560,6 +618,46 @@ public class Query<E extends Entity> {
     public Query<E> randomizeWeightened(String field) {
         randomize = true;
         randomizeField = field;
+        return this;
+    }
+
+    /**
+     * Groups by an arbitrary {@link CollapseBuilder}.
+     *
+     * @param groupBy the collapse builder to group by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> groupBy(CollapseBuilder groupBy) {
+        if (this.groupBy != null) {
+            throw new IllegalStateException("Cannot set multiple group by's!");
+        }
+
+        this.groupBy = groupBy;
+        return this;
+    }
+
+    /**
+     * Groups by the given field.
+     *
+     * @param field the field to group by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> groupBy(String field) {
+        return groupBy(new CollapseBuilder(field));
+    }
+
+    /**
+     * Filters by an arbitrary {@link QueryBuilder} after the aggregations where done.
+     *
+     * @param postAggregationQuery the query builder to filter by
+     * @return the query itself for fluent method calls
+     */
+    public Query<E> postAggregationQuery(QueryBuilder postAggregationQuery) {
+        if (this.postAggregationQuery != null) {
+            throw new IllegalStateException("Cannot set multiple post aggregation queries!");
+        }
+
+        this.postAggregationQuery = postAggregationQuery;
         return this;
     }
 
@@ -848,10 +946,12 @@ public class Query<E extends Entity> {
         }
 
         applyRouting(ed, srb::setRouting);
+        applyGroupBy(srb);
         applyOrderBys(srb);
         applyFacets(srb);
         applyAggregations(srb);
         applyQueries(srb);
+        applyPostAggreationQuery(srb);
         applyLimit(srb);
 
         if (logQuery) {
@@ -892,6 +992,12 @@ public class Query<E extends Entity> {
         }
     }
 
+    private void applyGroupBy(SearchRequestBuilder srb) {
+        if (groupBy != null) {
+            srb.setCollapse(groupBy);
+        }
+    }
+
     private void applyOrderBys(SearchRequestBuilder srb) {
         if (randomize) {
             if (randomizeField != null) {
@@ -902,9 +1008,7 @@ public class Query<E extends Entity> {
                                                     ScriptSortBuilder.ScriptSortType.NUMBER).order(SortOrder.ASC));
             }
         } else {
-            for (Tuple<String, Boolean> sort : orderBys) {
-                srb.addSort(sort.getFirst(), sort.getSecond() ? SortOrder.ASC : SortOrder.DESC);
-            }
+            orderBys.forEach(srb::addSort);
         }
     }
 
@@ -917,6 +1021,12 @@ public class Query<E extends Entity> {
             } else {
                 srb.setQuery(qb);
             }
+        }
+    }
+
+    private void applyPostAggreationQuery(SearchRequestBuilder srb) {
+        if (postAggregationQuery != null) {
+            srb.setPostFilter(postAggregationQuery);
         }
     }
 
@@ -1035,6 +1145,7 @@ public class Query<E extends Entity> {
             entity.initSourceTracing();
             entity.setId(searchHit.getId());
             entity.setVersion(searchHit.getVersion());
+            entity.setMatchedNamedQueries(searchHit.getMatchedQueries());
             descriptor.readSource(entity, searchHit.getSourceAsMap());
 
             return entity;
@@ -1150,7 +1261,9 @@ public class Query<E extends Entity> {
             entity.initSourceTracing();
             entity.setId(hit.getId());
             entity.setVersion(hit.getVersion());
+            entity.setMatchedNamedQueries(hit.getMatchedQueries());
             descriptor.readSource(entity, hit.getSourceAsMap());
+
             result.getResults().add(entity);
         }
         if (IndexAccess.LOG.isFINE()) {
@@ -1183,6 +1296,7 @@ public class Query<E extends Entity> {
             result.initSourceTracing();
             result.setId(hit.getId());
             result.setVersion(hit.getVersion());
+            result.setMatchedNamedQueries(hit.getMatchedQueries());
             indexAccess.getDescriptor(clazz).readSource(result, hit.getSourceAsMap());
         }
         if (IndexAccess.LOG.isFINE()) {
@@ -1239,7 +1353,7 @@ public class Query<E extends Entity> {
         }
         int total = Math.toIntExact(result.getTotalNumberOfHits());
         boolean hasMore = total > start + limit;
-        
+
         return new Page<E>().withQuery(queryString)
                             .withStart(start + 1)
                             .withItems(result.getResults())
@@ -1248,6 +1362,29 @@ public class Query<E extends Entity> {
                             .withHasMore(hasMore)
                             .withDuration(w.duration())
                             .withPageSize(pageSize);
+    }
+
+    /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result.
+     *
+     * @param ctx the Webcontext in which to look for the start parameter
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx) {
+        return this.page(ctx.get("start").asInt(1)).queryPage();
+    }
+
+    /**
+     * Executes the query and returns the resulting items as a {@link sirius.web.controller.Page}.
+     * Using the Parameter 'start' in the given WebContext as the effectiveStart of the result and with the given page size.
+     *
+     * @param ctx      the Webcontext in which to look for the start parameter
+     * @param pageSize the desired number of elements in one page
+     * @return the result of the query along with all facets and paging-metadata
+     */
+    public Page<E> queryPage(WebContext ctx, int pageSize) {
+        return this.withPageSize(pageSize).queryPage(ctx);
     }
 
     /**
@@ -1327,6 +1464,7 @@ public class Query<E extends Entity> {
             entity.setId(hit.getId());
             entity.initSourceTracing();
             entity.setVersion(hit.getVersion());
+            entity.setMatchedNamedQueries(hit.getMatchedQueries());
             entityDescriptor.readSource(entity, hit.getSourceAsMap());
 
             if (lim.nextRow()) {
@@ -1576,11 +1714,16 @@ public class Query<E extends Entity> {
             sb.append(" RANDOMIZED");
         } else if (!orderBys.isEmpty()) {
             sb.append(" ORDER BY");
-            for (Tuple<String, Boolean> orderBy : orderBys) {
-                sb.append(" ");
-                sb.append(orderBy.getFirst());
-                sb.append(orderBy.getSecond() ? " ASC" : " DESC");
-            }
+
+            orderBys.forEach(sortBuilder -> {
+                if (sortBuilder instanceof FieldSortBuilder) {
+                    sb.append(" ").append(((FieldSortBuilder) sortBuilder).getFieldName());
+                } else {
+                    sb.append(" ").append(sortBuilder.getWriteableName());
+                }
+
+                sb.append(" ").append(sortBuilder.order().name());
+            });
         }
     }
 
@@ -1608,12 +1751,24 @@ public class Query<E extends Entity> {
      * Deletes all entities which are matched by this query.
      */
     public void delete() {
+        delete(false);
+    }
+
+    /**
+     * Deletes all entities which are matched by this query without any change tracking.
+     * Therefore the entity will also be deleted, if it was modified since the last read.
+     */
+    public void forceDelete() {
+        delete(true);
+    }
+
+    private void delete(boolean force) {
         try {
             if (forceFail) {
                 return;
             }
             Watch w = Watch.start();
-            deleteByIteration();
+            deleteByIteration(force);
             if (Microtiming.isEnabled()) {
                 w.submitMicroTiming("ES", "DELETE: " + toString(true));
             }
@@ -1622,11 +1777,15 @@ public class Query<E extends Entity> {
         }
     }
 
-    protected void deleteByIteration() throws Exception {
+    protected void deleteByIteration(boolean force) throws Exception {
         ValueHolder<Exception> error = ValueHolder.of(null);
         iterate(e -> {
             try {
-                indexAccess.delete(e);
+                if (force) {
+                    indexAccess.forceDelete(e);
+                } else {
+                    indexAccess.delete(e);
+                }
             } catch (Exception ex) {
                 error.set(ex);
             }
