@@ -9,7 +9,7 @@
         <version>3.11.2</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.0</version>
+    <version>12.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>11.3</version>
+            <version>16.1.1</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
@@ -37,8 +37,12 @@
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>transport</artifactId>
-            <version>6.1.0</version>
+            <version>6.2.4</version>
             <exclusions>
+                <exclusion>
+                    <artifactId>netty-common</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
                 <exclusion>
                     <artifactId>netty-codec-http</artifactId>
                     <groupId>io.netty</groupId>
