@@ -36,6 +36,13 @@ public @interface Indexed {
     String type() default "";
 
     /**
+     * Determines whether the entity should provide a _all-field emulation (as this is deprecated since ES-6.0).
+     *
+     * @return <tt>true</tt> if a _all-field emulation should be provided <tt>false</tt> otherwise.
+     */
+    boolean useAllField() default true;
+
+    /**
      * Determines the field used for custom routing.
      *
      * @return the field name used for custom routing (Note that routing values for search requests need to be

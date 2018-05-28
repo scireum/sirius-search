@@ -40,7 +40,7 @@ import java.util.List;
  */
 public class ForeignKey {
 
-    private static final String LANGUAGE_GROOVY = "groovy";
+    private static final String LANGUAGE_PAINLESS = "painless";
 
     private final RefType refType;
     private String otherType;
@@ -378,7 +378,7 @@ public class ForeignKey {
         for (Reference ref : references) {
             sb.append("ctx._source.");
             sb.append(ref.getLocalProperty().getName());
-            sb.append("=");
+            sb.append("=params.");
             sb.append(ref.getLocalProperty().getName());
             sb.append(";");
             ctx.put(ref.getLocalProperty().getName(),
@@ -387,12 +387,12 @@ public class ForeignKey {
         if (updateParent) {
             sb.append("ctx._source.");
             sb.append(getName());
-            sb.append("=");
+            sb.append("=params.");
             sb.append(getName());
             sb.append(";");
             ctx.put(getName(), parent != null ? parent.getId() : null);
         }
-        return new Script(ScriptType.INLINE, LANGUAGE_GROOVY, sb.toString(), ctx);
+        return new Script(ScriptType.INLINE, LANGUAGE_PAINLESS, sb.toString(), ctx);
     }
 
     /**

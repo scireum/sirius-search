@@ -10,6 +10,7 @@ package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import sirius.kernel.commons.Context;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
@@ -104,10 +105,16 @@ public class StringMapProperty extends StringProperty {
 
         builder.startObject(KEY);
         builder.field("type", "keyword");
+        if (Strings.areEqual("true", includeInAll.getValue())) {
+            builder.field("copy_to", "custom_all");
+        }
         builder.endObject();
 
         builder.startObject(VALUE);
         builder.field("type", super.getMappingType());
+        if (Strings.areEqual("true", includeInAll.getValue())) {
+            builder.field("copy_to", "custom_all");
+        }
         builder.endObject();
 
         builder.endObject();

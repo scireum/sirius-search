@@ -25,7 +25,7 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.range.date.DateRangeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
 import org.elasticsearch.search.collapse.CollapseBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.ScoreSortBuilder;
@@ -84,6 +84,8 @@ import java.util.function.Function;
  */
 public class Query<E extends Entity> {
 
+    public static final String DEFAULT_FIELD = "custom_all";
+
     private static final int DEFAULT_LIMIT = 999;
     private static final int SCROLL_TTL_SECONDS = 60 * 5;
     private static final int MAX_SCROLL_RESULTS_FOR_SINGLE_SHARD = 50;
@@ -94,7 +96,6 @@ public class Query<E extends Entity> {
      * Specifies tbe default field to search in used by {@link #query(String)}. Use
      * {@link #query(String, String, Function, boolean, boolean)} to specify a custom field.
      */
-    public static final String DEFAULT_FIELD = "_all";
     private static final String PARAM_QUERY = "query";
 
     @ConfigValue("index.termFacetLimit")
@@ -1114,7 +1115,7 @@ public class Query<E extends Entity> {
                                  indexAccess.getIndex(clazz),
                                  indexAccess.getDescriptor(clazz).getType(),
                                  response.getHits().getTotalHits(),
-                                 response.getTookInMillis());
+                                 response.getTook().millis());
         }
 
         if (defaultLimitEnforced && response.getHits().getHits().length == DEFAULT_LIMIT) {
@@ -1145,7 +1146,7 @@ public class Query<E extends Entity> {
             entity.setId(searchHit.getId());
             entity.setVersion(searchHit.getVersion());
             entity.setMatchedNamedQueries(searchHit.getMatchedQueries());
-            descriptor.readSource(entity, searchHit.getSource());
+            descriptor.readSource(entity, searchHit.getSourceAsMap());
 
             return entity;
         } catch (Exception e) {
@@ -1261,7 +1262,8 @@ public class Query<E extends Entity> {
             entity.setId(hit.getId());
             entity.setVersion(hit.getVersion());
             entity.setMatchedNamedQueries(hit.getMatchedQueries());
-            descriptor.readSource(entity, hit.getSource());
+            descriptor.readSource(entity, hit.getSourceAsMap());
+
             result.getResults().add(entity);
         }
         if (IndexAccess.LOG.isFINE()) {
@@ -1269,7 +1271,7 @@ public class Query<E extends Entity> {
                                  indexAccess.getIndex(clazz),
                                  indexAccess.getDescriptor(clazz).getType(),
                                  searchResponse.getHits().getTotalHits(),
-                                 searchResponse.getTookInMillis());
+                                 searchResponse.getTook().millis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "LIST: " + toString(true));
@@ -1295,14 +1297,14 @@ public class Query<E extends Entity> {
             result.setId(hit.getId());
             result.setVersion(hit.getVersion());
             result.setMatchedNamedQueries(hit.getMatchedQueries());
-            indexAccess.getDescriptor(clazz).readSource(result, hit.getSource());
+            indexAccess.getDescriptor(clazz).readSource(result, hit.getSourceAsMap());
         }
         if (IndexAccess.LOG.isFINE()) {
             IndexAccess.LOG.FINE("SEARCH-FIRST: %s.%s: SUCCESS: %d - %d ms",
                                  indexAccess.getIndex(clazz),
                                  indexAccess.getDescriptor(clazz).getType(),
                                  searchResponse.getHits().getTotalHits(),
-                                 searchResponse.getTookInMillis());
+                                 searchResponse.getTook().millis());
         }
         if (Microtiming.isEnabled()) {
             w.submitMicroTiming("ES", "FIRST: " + toString(true));
@@ -1463,7 +1465,7 @@ public class Query<E extends Entity> {
             entity.initSourceTracing();
             entity.setVersion(hit.getVersion());
             entity.setMatchedNamedQueries(hit.getMatchedQueries());
-            entityDescriptor.readSource(entity, hit.getSource());
+            entityDescriptor.readSource(entity, hit.getSourceAsMap());
 
             if (lim.nextRow()) {
                 if (!handler.handleRow(entity)) {
@@ -1526,7 +1528,7 @@ public class Query<E extends Entity> {
                                  entityDescriptor.getType(),
                                  searchResponse.getHits().getHits().length,
                                  searchResponse.getHits().getTotalHits(),
-                                 searchResponse.getTookInMillis());
+                                 searchResponse.getTook().millis());
         }
         return searchResponse;
     }

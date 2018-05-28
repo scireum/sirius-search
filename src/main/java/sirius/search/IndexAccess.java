@@ -27,7 +27,7 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import sirius.kernel.Sirius;
@@ -488,8 +488,7 @@ public class IndexAccess {
         Settings settings = Settings.builder().put("cluster.name", clusterName).build();
         TransportClient transportClient = new PreBuiltTransportClient(settings);
         try {
-            transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAddress),
-                                                                               port));
+            transportClient.addTransportAddress(new TransportAddress(InetAddress.getByName(hostAddress), port));
         } catch (UnknownHostException e) {
             Exceptions.handle(LOG, e);
         }

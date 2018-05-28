@@ -17,6 +17,7 @@ import sirius.kernel.nls.NLS;
 import sirius.search.Entity;
 import sirius.search.EntityDescriptor;
 import sirius.search.IndexAccess;
+import sirius.search.annotations.Analyzed;
 import sirius.search.annotations.IndexMode;
 import sirius.search.annotations.Indexed;
 import sirius.search.annotations.NotNull;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -328,12 +330,18 @@ public abstract class Property {
                 builder.field("index", isIndexed());
             }
         }
-        if (isIncludeInAll() != ESOption.ES_DEFAULT) {
-            builder.field("include_in_all", isIncludeInAll());
+
+        if (!isMapProperty() && isIncludeInAll() == ESOption.TRUE) {
+            builder.field("copy_to", "custom_all");
         }
+
         if (isDocValuesEnabled() != ESOption.ES_DEFAULT) {
             builder.field("doc_values", isDocValuesEnabled());
         }
+    }
+
+    private boolean isMapProperty() {
+        return this instanceof StringMapProperty || this instanceof StringListMapProperty;
     }
 
     /**

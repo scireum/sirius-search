@@ -41,6 +41,7 @@ public class EntityDescriptor {
     private final String annotatedIndexName;
     private String typeName;
     private String routing;
+    private boolean useAllField;
     private final Class<?> clazz;
     protected List<Property> properties;
     protected List<ForeignKey> foreignKeys;
@@ -64,8 +65,11 @@ public class EntityDescriptor {
         } else {
             this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
         }
+
+        this.useAllField = clazz.getAnnotation(Indexed.class).useAllField();
         this.typeName = Strings.firstFilled(indexedAnnotation.type(), clazz.getSimpleName());
         this.routing = indexedAnnotation.routing();
+
         if (Strings.isEmpty(routing)) {
             routing = null;
         }
@@ -291,9 +295,15 @@ public class EntityDescriptor {
             }
 
             builder.startObject("properties");
+
+            if (useAllField) {
+                createCustomAllField(builder);
+            }
+
             for (Property p : getProperties()) {
                 p.createMapping(builder);
             }
+
             builder.endObject();
 
             builder.startArray("dynamic_templates");
@@ -304,6 +314,18 @@ public class EntityDescriptor {
 
             return builder.endObject().endObject();
         }
+    }
+
+    private void createCustomAllField(XContentBuilder builder) throws IOException {
+        builder.startObject("custom_all")
+               .field("type", "text")
+               .field("store", "false")
+               .field("index", "true")
+               .field("doc_values", "false")
+               .field("index_options", "docs")
+               .field("analyzer", "standard")
+               .field("norms", "false")
+               .endObject();
     }
 
     /**
@@ -360,5 +382,9 @@ public class EntityDescriptor {
      */
     public boolean hasForeignKeys() {
         return !foreignKeys.isEmpty();
+    }
+
+    public boolean isUseAllField() {
+        return useAllField;
     }
 }

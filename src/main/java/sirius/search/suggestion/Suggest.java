@@ -8,6 +8,7 @@
 
 package sirius.search.suggestion;
 
+import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -43,7 +44,7 @@ public class Suggest<E extends Entity> {
     private Map<String, Object> collateParams;
     private boolean collatePrune;
     private Tuple<String, String> highlightTags;
-    private ListenableActionFuture<SearchResponse> future;
+    private ActionFuture<SearchResponse> future;
 
     /**
      * Used to create a new suggestion for entities of the given class
