@@ -16,21 +16,26 @@
     <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)
     </description>
 
+    <properties>
+        <sirius.kernel>9.10</sirius.kernel>
+        <sirius.web>16.3.1</sirius.web>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>16.0.1</version>
+            <version>${sirius.web}</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>9.0.0</version>
+            <version>${sirius.kernel}</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>9.0.0</version>
+            <version>${sirius.kernel}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
