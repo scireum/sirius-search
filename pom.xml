@@ -17,8 +17,8 @@
     </description>
 
     <properties>
-        <sirius.kernel>9.10</sirius.kernel>
-        <sirius.web>16.3.1</sirius.web>
+        <sirius.kernel>10.0</sirius.kernel>
+        <sirius.web>17.0</sirius.web>
     </properties>
 
     <dependencies>

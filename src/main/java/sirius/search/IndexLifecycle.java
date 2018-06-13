@@ -8,8 +8,10 @@
 
 package sirius.search;
 
-import sirius.kernel.Lifecycle;
+import sirius.kernel.Killable;
 import sirius.kernel.Sirius;
+import sirius.kernel.Startable;
+import sirius.kernel.Stoppable;
 import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Part;
 import sirius.kernel.di.std.Register;
@@ -19,8 +21,8 @@ import static sirius.search.IndexAccess.LOG;
 /**
  * Starts and stops the elasticsearch client.
  */
-@Register(classes = Lifecycle.class)
-public class IndexLifecycle implements Lifecycle {
+@Register(classes = {Startable.class, Stoppable.class, Killable.class})
+public class IndexLifecycle implements Startable, Stoppable, Killable {
 
     @Part
     private IndexAccess index;
@@ -69,10 +71,5 @@ public class IndexLifecycle implements Lifecycle {
         // other stopping lifecycles access until the very end...
         index.ready = false;
         index.client.close();
-    }
-
-    @Override
-    public String getName() {
-        return "index (ElasticSearch)";
     }
 }
