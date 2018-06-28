@@ -52,12 +52,8 @@ public class IndexReport implements MetricProvider {
                                      "ES-OptimisticLock-Errors",
                                      index.optimisticLockErrors.getCount(),
                                      "/min");
+        collector.metric("index-queries", "ES-Queries", index.queryDuration.getCount(), "/min");
         collector.metric("index-queryDuration", "ES-QueryDuration", index.queryDuration.getAndClear(), "ms");
-        collector.differentialMetric("index-queries",
-                                     "index-queries",
-                                     "ES-Queries",
-                                     index.queryDuration.getCount(),
-                                     "/min");
     }
 
     private MetricState asMetricState(ClusterHealthStatus status) {
