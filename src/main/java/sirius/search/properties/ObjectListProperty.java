@@ -9,6 +9,7 @@
 package sirius.search.properties;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import sirius.kernel.commons.Amount;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.kernel.nls.NLS;
@@ -134,6 +135,12 @@ public class ObjectListProperty extends Property {
         try {
             if (map.containsKey(innerField.getName())) {
                 innerField.setAccessible(true);
+
+                if (Amount.class.equals(innerField.getType())) {
+                    innerField.set(obj, Amount.ofMachineString(map.get(innerField.getName())));
+                    return;
+                }
+
                 innerField.set(obj, NLS.parseMachineString(innerField.getType(), map.get(innerField.getName())));
             }
         } catch (Exception e) {
