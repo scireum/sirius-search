@@ -187,6 +187,11 @@ public class ObjectListProperty extends Property {
             innerField.setAccessible(true);
             Object val = innerField.get(obj);
             if (val != null) {
+                if (val instanceof Amount) {
+                    valueMap.put(innerField.getName(), ((Amount) val).getAmount().toPlainString());
+                    return;
+                }
+
                 valueMap.put(innerField.getName(), NLS.toMachineString(val));
             }
         } catch (Exception e) {
