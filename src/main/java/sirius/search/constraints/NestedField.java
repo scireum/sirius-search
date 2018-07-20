@@ -20,6 +20,7 @@ public class NestedField implements Constraint {
     private Constraint constraint;
     private String path;
     private ScoreMode scoreMode = ScoreMode.None;
+    private float boost = 1f;
 
     /*
      * Use the #on(Constraint[]) factory method
@@ -51,9 +52,20 @@ public class NestedField implements Constraint {
         return this;
     }
 
+    /**
+     * Sets the boost value that should be used for matching terms.
+     *
+     * @param boost the boost value
+     * @return the constraint itself for fluent method calls
+     */
+    public NestedField withBoost(float boost) {
+        this.boost = boost;
+        return this;
+    }
+
     @Override
     public QueryBuilder createQuery() {
-        return QueryBuilders.nestedQuery(path, constraint.createQuery(), scoreMode);
+        return QueryBuilders.nestedQuery(path, constraint.createQuery(), scoreMode).boost(boost);
     }
 
     @Override
