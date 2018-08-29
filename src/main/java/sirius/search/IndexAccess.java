@@ -135,7 +135,7 @@ public class IndexAccess {
     /**
      * Can be used to cache frequently used entities.
      */
-    private Cache<String, Object> globalCache = CacheManager.createCache("entity-cache");
+    private Cache<String, Object> globalCache = CacheManager.createLocalCache("entity-cache");
 
     /**
      * Used when optimistic lock tracing is enabled to record all changes

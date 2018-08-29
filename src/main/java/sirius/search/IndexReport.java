@@ -31,20 +31,27 @@ public class IndexReport implements MetricProvider {
             return;
         }
         ClusterHealthResponse res = index.getClient().admin().cluster().prepareHealth().execute().actionGet();
-        collector.metric("ES-Nodes", res.getNumberOfNodes(), null, asMetricState(res.getStatus()));
-        collector.metric("ES-InitializingShards",
+        collector.metric("es_nodes", "ES-Nodes", res.getNumberOfNodes(), null, asMetricState(res.getStatus()));
+        collector.metric("es_initializing_shards",
+                         "ES-InitializingShards",
                          res.getInitializingShards(),
                          null,
                          res.getInitializingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
-        collector.metric("ES-RelocatingShards",
+        collector.metric("es_relocating_shards",
+                         "ES-RelocatingShards",
                          res.getRelocatingShards(),
                          null,
                          res.getRelocatingShards() > 0 ? MetricState.YELLOW : MetricState.GRAY);
-        collector.metric("ES-UnassignedShards",
+        collector.metric("es_unassigned_shards",
+                         "ES-UnassignedShards",
                          res.getUnassignedShards(),
                          null,
                          res.getUnassignedShards() > 0 ? MetricState.RED : MetricState.GRAY);
-        collector.metric("index-delay-line", "ES-DelayLine", IndexAccess.oneSecondDelayLine.size(), null);
+        collector.metric("index_delay_line",
+                         "index-delay-line",
+                         "ES-DelayLine",
+                         IndexAccess.oneSecondDelayLine.size(),
+                         null);
         collector.differentialMetric("index-blocks", "index-blocks", "ES-DelayBlocks", index.blocks.getCount(), "/min");
         collector.differentialMetric("index-delays", "index-delays", "ES-Delays", index.delays.getCount(), "/min");
         collector.differentialMetric("index-locking-errors",
@@ -52,8 +59,16 @@ public class IndexReport implements MetricProvider {
                                      "ES-OptimisticLock-Errors",
                                      index.optimisticLockErrors.getCount(),
                                      "/min");
-        collector.metric("index-queries", "ES-Queries", index.queryDuration.getCount(), "/min");
-        collector.metric("index-queryDuration", "ES-QueryDuration", index.queryDuration.getAndClear(), "ms");
+        collector.metric("index_query_duration",
+                         "index-queryDuration",
+                         "ES-QueryDuration",
+                         index.queryDuration.getAndClear(),
+                         "ms");
+        collector.differentialMetric("index-queries",
+                                     "index-queries",
+                                     "ES-Queries",
+                                     index.queryDuration.getCount(),
+                                     "/min");
     }
 
     private MetricState asMetricState(ClusterHealthStatus status) {

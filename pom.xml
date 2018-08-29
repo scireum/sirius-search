@@ -9,28 +9,33 @@
         <version>3.14</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.9.1</version>
+    <version>11.10.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
     <description>Provides a thin layer above Elasticsearch (Fluent Query API, Automatic Mapping, Utilities)
     </description>
 
+    <properties>
+        <sirius.kernel>12.0-rc26</sirius.kernel>
+        <sirius.web>19.0-rc23</sirius.web>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-web</artifactId>
-            <version>18.0</version>
+            <version>${sirius.web}</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>11.0</version>
+            <version>${sirius.kernel}</version>
         </dependency>
         <dependency>
             <groupId>com.scireum</groupId>
             <artifactId>sirius-kernel</artifactId>
-            <version>11.0</version>
+            <version>${sirius.kernel}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
