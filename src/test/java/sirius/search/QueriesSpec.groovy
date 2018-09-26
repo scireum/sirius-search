@@ -14,7 +14,6 @@ import sirius.kernel.BaseSpecification
 import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
-import sirius.search.constraints.Constraint
 import sirius.search.constraints.FieldEqual
 import sirius.search.constraints.NearSpan
 import sirius.search.constraints.Or
@@ -66,6 +65,21 @@ class QueriesSpec extends BaseSpecification {
         index.blockThreadForUpdate()
         then:
         index.select(ParentEntity.class).query("one OR two").count() == 2
+    }
+
+    def "robust query won't mistake tokens beginning with boolean operations as such"() {
+        given:
+        ParentEntity e1 = new ParentEntity()
+        e1.setName("quote order")
+        ParentEntity e2 = new ParentEntity()
+        e2.setName("der")
+        when:
+        e1 = index.update(e1)
+        e2 = index.update(e2)
+        and:
+        index.blockThreadForUpdate()
+        then:
+        index.select(ParentEntity.class).query("quote AND order").count() == 1
     }
 
     def "robust query can produce complex nested query"() {
