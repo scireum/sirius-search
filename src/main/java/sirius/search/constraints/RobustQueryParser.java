@@ -189,12 +189,12 @@ public class RobustQueryParser implements Constraint {
      */
     protected QueryBuilder parseAND(LookaheadReader reader) {
         List<QueryBuilder> result = Lists.newArrayList();
-        QueryBuilder subQuery = parseToken(reader);
-        if (subQuery != null) {
-            result.add(subQuery);
-        }
 
         while (!reader.current().isEndOfInput() && !reader.current().is(')')) {
+            QueryBuilder subQuery = parseToken(reader);
+            if (subQuery != null) {
+                result.add(subQuery);
+            }
             skipWhitespace(reader);
             if (isAtOR(reader)) {
                 break;
@@ -206,10 +206,6 @@ public class RobustQueryParser implements Constraint {
             if (isAtBinaryAND(reader)) {
                 // && is the default operation -> ignore
                 reader.consume(2);
-            }
-            subQuery = parseToken(reader);
-            if (subQuery != null) {
-                result.add(subQuery);
             }
         }
 
@@ -246,6 +242,8 @@ public class RobustQueryParser implements Constraint {
      * Parses a token or an expression in brackets
      */
     protected QueryBuilder parseToken(LookaheadReader reader) {
+        skipWhitespace(reader);
+
         if (reader.current().is('(')) {
             return parseTokenInBrackets(reader);
         }
