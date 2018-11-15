@@ -634,8 +634,7 @@ public class IndexAccess {
     public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
                                                                  @Nonnull Class<E> type,
                                                                  @Nullable String id,
-                                                                 @Nonnull
-                                                                         com.google.common.cache.Cache<String, Object> cache) {
+                                                                 @Nonnull com.google.common.cache.Cache<String, Object> cache) {
         return Optional.ofNullable(fetch(routing, type, id, cache).getFirst());
     }
 
@@ -997,7 +996,7 @@ public class IndexAccess {
      * Updates the entity in the database.
      * <p>
      * As change tracking is disabled, this operation will override all previous changes which are not reflected
-     * by the entity to be saved
+     * by the entity to be saved.
      *
      * @param entity the entity to be written into the DB
      * @param <E>    the type of the entity to override
