@@ -996,7 +996,7 @@ public class IndexAccess {
      * Updates the entity in the database.
      * <p>
      * As change tracking is disabled, this operation will override all previous changes which are not reflected
-     * by the entity to be saved
+     * by the entity to be saved.
      *
      * @param entity the entity to be written into the DB
      * @param <E>    the type of the entity to override
@@ -1005,6 +1005,25 @@ public class IndexAccess {
     public <E extends Entity> E override(E entity) {
         try {
             return update(entity, false, false, true);
+        } catch (OptimisticLockException e) {
+            // Should never happen as version checking is disabled....
+            throw Exceptions.handle(LOG, e);
+        }
+    }
+
+    /**
+     * Updates the entity in the database without running the entities save checks and handlers.
+     * <p>
+     * As change tracking is disabled, this operation will override all previous changes which are not reflected
+     * by the entity to be saved.
+     *
+     * @param entity the entity to be written into the DB
+     * @param <E>    the type of the entity to override
+     * @return the updated entity
+     */
+    public <E extends Entity> E overrideUnchecked(E entity) {
+        try {
+            return update(entity, false, false, false);
         } catch (OptimisticLockException e) {
             // Should never happen as version checking is disabled....
             throw Exceptions.handle(LOG, e);
