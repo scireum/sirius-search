@@ -78,6 +78,9 @@ public class StringListProperty extends StringProperty {
     @Override
     public void readFromRequest(Entity entity, WebContext ctx) {
         try {
+            if (!ctx.hasParameter(getName())) {
+                return;
+            }
             List<Object> list = (List<Object>) getField().get(entity);
             if (list == null) {
                 list = Lists.newArrayList();
