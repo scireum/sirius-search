@@ -9,6 +9,7 @@
 package sirius.search.properties;
 
 import com.google.common.collect.Lists;
+import sirius.kernel.commons.Strings;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
 import sirius.search.Entity;
@@ -19,6 +20,7 @@ import sirius.web.http.WebContext;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents a property which contains a list of strings. Such fields must wear a {@link ListType} annotation with
@@ -95,6 +97,6 @@ public class StringListProperty extends StringProperty {
 
     @Override
     protected Object transformFromRequest(String name, WebContext ctx) {
-        return ctx.getParameters(name);
+        return ctx.getParameters(name).stream().filter(Strings::isFilled).collect(Collectors.toList());
     }
 }
