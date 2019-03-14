@@ -747,7 +747,7 @@ public abstract class Entity {
      * @return <tt>true</tt> if the value loaded from the database is not equal to the given value, <tt>false</tt>
      * otherwise.
      */
-    protected boolean isChanged(String field, Object value) {
+    public boolean isChanged(String field, Object value) {
         return source != null && !Objects.equal(value, source.get(field));
     }
 
