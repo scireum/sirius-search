@@ -23,10 +23,6 @@
 
     <repositories>
         <repository>
-            <id>jenkins</id>
-            <url>http://jenkins.scireum.local/plugin/repository/everything/</url>
-        </repository>
-        <repository>
             <id>scireum-mvn</id>
             <url>https://mvn.scireum.com</url>
         </repository>
