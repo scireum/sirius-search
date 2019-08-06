@@ -27,10 +27,6 @@ class QueriesSpec extends BaseSpecification {
     @Part
     private static IndexAccess index
 
-    def setupSpec() {
-        queryPageSetup()
-    }
-
     def "robust query can filter on fields"() {
         given:
         ParentEntity e = new ParentEntity()
@@ -184,6 +180,8 @@ class QueriesSpec extends BaseSpecification {
     }
 
     def "queryPage counts number of items correctly"() {
+        setup:
+        queryPageSetup()
         when:
         Page<QueryEntity> page
         and:
