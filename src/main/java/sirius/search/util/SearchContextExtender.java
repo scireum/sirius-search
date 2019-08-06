@@ -13,8 +13,6 @@ import sirius.kernel.di.std.Register;
 import sirius.search.IndexAccess;
 import sirius.web.templates.GlobalContextExtender;
 
-import java.util.function.BiConsumer;
-
 /**
  * Provides access to {@link IndexAccess} as "index" in scripts.
  */
@@ -25,12 +23,12 @@ public class SearchContextExtender implements GlobalContextExtender {
     private IndexAccess index;
 
     @Override
-    public void collectTemplate(BiConsumer<String, Object> globalParameterCollector) {
+    public void collectTemplate(Collector globalParameterCollector) {
         // Nothing provided
     }
 
     @Override
-    public void collectScripting(BiConsumer<String, Object> globalParameterCollector) {
-        globalParameterCollector.accept("index", index);
+    public void collectScripting(Collector globalParameterCollector) {
+        globalParameterCollector.collect("index", index);
     }
 }

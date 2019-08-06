@@ -9,7 +9,7 @@
         <version>3.14</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.12</version>
+    <version>11.12.1</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -17,9 +17,20 @@
     </description>
 
     <properties>
-        <sirius.kernel>12.0-rc26</sirius.kernel>
-        <sirius.web>19.0-rc23</sirius.web>
+        <sirius.kernel>13.7</sirius.kernel>
+        <sirius.web>24.0-rc16</sirius.web>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>jenkins</id>
+            <url>http://jenkins.scireum.local/plugin/repository/everything/</url>
+        </repository>
+        <repository>
+            <id>scireum-mvn</id>
+            <url>https://mvn.scireum.com</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
