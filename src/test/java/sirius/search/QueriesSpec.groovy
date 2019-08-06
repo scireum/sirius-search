@@ -11,7 +11,6 @@ package sirius.search
 import org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder
 import sirius.kernel.BaseSpecification
-import sirius.kernel.annotations.SetupOnce
 import sirius.kernel.di.std.Part
 import sirius.search.constraints.And
 import sirius.search.constraints.FieldEqual
@@ -51,7 +50,7 @@ class QueriesSpec extends BaseSpecification {
         index.select(ParentEntity.class).query("name:- id:" + e.getId()).count() == 1
         index.select(ParentEntity.class).query("-name:- id:" + e.getId()).count() == 0
     }
-    
+
     def "robust query can produce OR query"() {
         given:
         ParentEntity e1 = new ParentEntity()
@@ -168,6 +167,7 @@ class QueriesSpec extends BaseSpecification {
     }
 
     def queryPageSetup() {
+        index.waitForReady()
         index.select(QueryEntity.class).delete()
         List<QueryEntity> entities = new ArrayList<>()
         for (int i = 0; i < 500; i++) {
@@ -179,8 +179,9 @@ class QueriesSpec extends BaseSpecification {
         index.blockThreadForUpdate(4)
     }
 
-    @SetupOnce("queryPageSetup")
     def "queryPage counts number of items correctly"() {
+        setup:
+        queryPageSetup()
         when:
         Page<QueryEntity> page
         and:
