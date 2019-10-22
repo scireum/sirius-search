@@ -11,8 +11,10 @@ package sirius.search.macros;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import parsii.tokenizer.Position;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
+import sirius.tagliatelle.compiler.CompilationContext;
 import sirius.tagliatelle.expression.Expression;
 import sirius.tagliatelle.macros.Macro;
 import sirius.tagliatelle.rendering.LocalRenderContext;
@@ -32,7 +34,7 @@ public class ToXContentMacro implements Macro {
     }
 
     @Override
-    public void verifyArguments(List<Expression> args) {
+    public void verifyArguments(CompilationContext context, Position position, List<Expression> args) {
         if ((args.size() != 1) || !(ToXContent.class.isAssignableFrom(args.get(0).getType()))) {
             throw new IllegalArgumentException("One parameter that must implement ToXContent is expected");
         }
