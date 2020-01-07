@@ -1356,7 +1356,7 @@ public class Query<E extends Entity> {
                             .withStart(start + 1)
                             .withItems(result.getResults())
                             .withTotalItems(total)
-                            .withFactesSupplier(result::getFacets)
+                            .withFacetsSupplier(result::getFacets)
                             .withHasMore(hasMore)
                             .withDuration(w.duration())
                             .withPageSize(pageSize);
