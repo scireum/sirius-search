@@ -15,7 +15,7 @@
             <td>
                 <i:for type="java.util.Map$Entry"
                        var="shardRouting"
-                       items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).entrySet()">
+                       items="@allShardRoutings.get(indexHealth.getIndex()).as(java.util.Map.class).entrySet()">
                     <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
                            items="@shardRouting.getValue().as(java.util.List.class)">
                         <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
