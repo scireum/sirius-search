@@ -11,10 +11,10 @@
             <i:local name="nodeInfoId" value="@toUserString(call.generateLocalId())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeStatId"
                       titleKey="IndexHealth.nodeStats"
-                      content="@nodeStatsMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+                      content="@nodeStatsMap.get(nodeStats.getNode().getName())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeInfoId"
                       titleKey="IndexHealth.nodeInfo"
-                      content="@nodeInfoMap.get(nodeStats.getNode().getName()).as(String.class)"/>
+                      content="@nodeInfoMap.get(nodeStats.getNode().getName())"/>
 
             <td style="vertical-align:middle">
                 @nodeStats.getNode().getName()

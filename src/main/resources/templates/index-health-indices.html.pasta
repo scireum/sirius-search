@@ -5,17 +5,17 @@
 <i:arg name="indexMetaData" type="java.util.Map"/>
 
 <i:for type="org.elasticsearch.cluster.health.ClusterIndexHealth" var="indexHealth"
-       items="@clusterHealth.getIndices().as(java.util.Map.class).values().as(java.util.Collection.class)">
+       items="@clusterHealth.getIndices().values()">
     <table class="table table-striped">
         <tr>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString()"
                 style="vertical-align:middle">
                 @indexHealth.getIndex()
             </td>
             <td>
                 <i:for type="java.util.Map$Entry"
                        var="shardRouting"
-                       items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).as(java.util.Map.class).entrySet()">
+                       items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).entrySet()">
                     <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
                            items="@shardRouting.getValue().as(java.util.List.class)">
                         <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
@@ -23,7 +23,7 @@
                                   titleKey="IndexHealth.shardRouting"
                                   content="@toXContent(routing)"/>
                         <a class="@routing.state().toString()" style="width:40px; height:40px; border: 3px solid black; display:inline-block; text-align:center;
-                                      cursor:pointer" data-toggle="modal" data-target="#@shardId.as(String.class)">
+                                      cursor:pointer" data-toggle="modal" data-target="#@shardId">
                             <p style="font-size:35px; position:relative; bottom:8px; color: #000000;">
                                 @shardRouting.getKey()</p>
                         </a>
@@ -58,16 +58,16 @@
             <td colspan="2" style="overflow: hidden">
                 Status
             </td>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString() align-right"
                 style="overflow: hidden">
-                @clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString()
+                @clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString()
             </td>
         </tr>
         <tr>
             <td colspan="2" style="overflow: hidden">
                 # Shards
             </td>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString() align-right"
                 style="overflow: hidden">
                 @indexHealth.getNumberOfShards()
             </td>
@@ -76,7 +76,7 @@
             <td colspan="2" style="overflow: hidden">
                 # Replicas
             </td>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString() align-right"
                 style="overflow: hidden">
                 @indexHealth.getNumberOfReplicas()
             </td>
@@ -85,7 +85,7 @@
             <td colspan="2" style="overflow: hidden">
                 # Docs
             </td>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString() align-right"
                 style="overflow: hidden">
                 @toUserString(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getDocs().getCount())
             </td>
@@ -94,7 +94,7 @@
             <td colspan="2" style="overflow: hidden">
                 Size
             </td>
-            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).as(org.elasticsearch.cluster.health.ClusterIndexHealth.class).getStatus().toString() align-right"
+            <td class="@clusterHealth.getIndices().get(indexHealth.getIndex()).getStatus().toString() align-right"
                 style="overflow: hidden">
                 @formatSize(indicesStats.getIndex(indexHealth.getIndex()).getPrimaries().getTotalMemory().getBytes())
             </td>
