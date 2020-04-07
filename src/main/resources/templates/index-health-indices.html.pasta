@@ -15,9 +15,9 @@
             <td>
                 <i:for type="java.util.Map$Entry"
                        var="shardRouting"
-                       items="@allShardRoutings.as(java.util.Map.class).get(indexHealth.getIndex()).entrySet()">
+                       items="@allShardRoutings.get(indexHealth.getIndex()).entrySet()">
                     <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
-                           items="@shardRouting.getValue().as(java.util.List.class)">
+                           items="@shardRouting.getValue()">
                         <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
                         <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@shardId"
                                   titleKey="IndexHealth.shardRouting"
@@ -34,10 +34,10 @@
             <i:local name="metaDataId" value="@toUserString(call.generateLocalId())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@statusId"
                       titleKey="IndexHealth.indexStatus"
-                      content="@indexStatusMap.get(indexHealth.getIndex()).as(String.class)"/>
+                      content="@indexStatusMap.get(indexHealth.getIndex())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@metaDataId"
                       titleKey="IndexHealth.indexMetadata"
-                      content="@indexMetaData.get(indexHealth.getIndex()).as(String.class)"/>
+                      content="@indexMetaData.get(indexHealth.getIndex())"/>
             <td class="align-right" style="vertical-align:middle">
                 <div class="dropdown" style="float:right">
                     <button class="btn btn-default dropdown-toggle" type="button"
