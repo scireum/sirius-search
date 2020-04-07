@@ -9,7 +9,7 @@
         <version>3.14</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.13.4</version>
+    <version>11.13.3</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -18,7 +18,7 @@
 
     <properties>
         <sirius.kernel>dev-16.4</sirius.kernel>
-        <sirius.web>dev-26.3.4</sirius.web>
+        <sirius.web>DEVELOPMENT-SNAPSHOT</sirius.web>
         <sirius.db>dev-14.3</sirius.db>
     </properties>
 
