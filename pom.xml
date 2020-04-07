@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.scireum</groupId>
         <artifactId>sirius-parent</artifactId>
-        <version>3.14</version>
+        <version>7.0.1</version>
     </parent>
     <artifactId>sirius-search</artifactId>
     <version>11.12.3</version>
@@ -17,9 +17,9 @@
     </description>
 
     <properties>
-        <sirius.kernel>13.18</sirius.kernel>
-        <sirius.web>25.1</sirius.web>
-        <sirius.db>10.3</sirius.db>
+        <sirius.kernel>dev-16.4</sirius.kernel>
+        <sirius.web>dev-26.3.4</sirius.web>
+        <sirius.db>dev-14.3</sirius.db>
     </properties>
 
     <repositories>
