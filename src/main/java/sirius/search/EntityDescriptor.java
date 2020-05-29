@@ -59,12 +59,12 @@ public class EntityDescriptor {
 
         Indexed indexedAnnotation = clazz.getAnnotation(Indexed.class);
         this.annotatedIndexName = indexedAnnotation.index();
-        if (annotatedIndexName.isEmpty()) {
-            this.indexName = clazz.getSimpleName().toLowerCase();
-        } else {
-            this.indexName = annotatedIndexName + "-" + clazz.getSimpleName().toLowerCase();
-        }
         this.typeName = Strings.firstFilled(indexedAnnotation.type(), clazz.getSimpleName());
+        if (annotatedIndexName.isEmpty()) {
+            this.indexName = typeName;
+        } else {
+            this.indexName = annotatedIndexName + "-" + typeName;
+        }
         this.routing = indexedAnnotation.routing();
         if (Strings.isEmpty(routing)) {
             routing = null;
