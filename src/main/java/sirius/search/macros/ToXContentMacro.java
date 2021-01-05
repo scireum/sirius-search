@@ -14,10 +14,9 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import parsii.tokenizer.Position;
 import sirius.kernel.di.std.Register;
 import sirius.kernel.health.Exceptions;
-import sirius.tagliatelle.compiler.CompilationContext;
-import sirius.tagliatelle.expression.Expression;
-import sirius.tagliatelle.macros.Macro;
-import sirius.tagliatelle.rendering.LocalRenderContext;
+import sirius.pasta.noodle.Environment;
+import sirius.pasta.noodle.compiler.CompilationContext;
+import sirius.pasta.noodle.macros.BasicMacro;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -27,32 +26,27 @@ import java.util.List;
  * Wraps the static methods needed to produce XContent and output as String
  */
 @Register
-public class ToXContentMacro implements Macro {
+public class ToXContentMacro extends BasicMacro {
     @Override
     public Class<?> getType() {
         return String.class;
     }
 
     @Override
-    public void verifyArguments(CompilationContext context, Position position, List<Expression> args) {
-        if ((args.size() != 1) || !(ToXContent.class.isAssignableFrom(args.get(0).getType()))) {
+    protected void verifyArguments(CompilationContext compilationContext, Position position, List<Class<?>> args) {
+        if ((args.size() != 1) || !(ToXContent.class.isAssignableFrom(args.get(0)))) {
             throw new IllegalArgumentException("One parameter that must implement ToXContent is expected");
         }
     }
 
     @Override
-    public Object eval(LocalRenderContext ctx, Expression[] args) {
+    public Object invoke(Environment environment, Object[] args) {
         try (XContentBuilder builder = XContentFactory.jsonBuilder().prettyPrint()) {
-            return ((ToXContent) args[0].eval(ctx)).toXContent(builder, ToXContent.EMPTY_PARAMS).string();
+            return ((ToXContent) args[0]).toXContent(builder, ToXContent.EMPTY_PARAMS).string();
         } catch (IOException e) {
             Exceptions.handle(e);
         }
         return "";
-    }
-
-    @Override
-    public boolean isConstant(Expression[] args) {
-        return true;
     }
 
     @Nonnull
