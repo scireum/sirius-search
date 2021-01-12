@@ -44,7 +44,7 @@ import java.util.Map;
 /**
  * Provides various health/state/performance informations about the cluster.
  */
-@Register(classes = Controller.class)
+@Register
 public class IndexHealthController extends BasicController {
 
     /**
