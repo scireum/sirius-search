@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Provides a page for easily inspecting all json fields of a stored entity.
  */
-@Register(classes = Controller.class)
+@Register
 public class InspectController extends BasicController {
 
     /**
