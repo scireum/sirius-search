@@ -7,8 +7,8 @@
     <i:for type="org.elasticsearch.action.admin.cluster.node.stats.NodeStats" var="nodeStats"
            items="@nodesStats.getNodes()">
         <tr>
-            <i:local name="nodeStatId" value="@toUserString(call.generateLocalId())"/>
-            <i:local name="nodeInfoId" value="@toUserString(call.generateLocalId())"/>
+            <i:local name="nodeStatId" value="@toUserString(generateId())"/>
+            <i:local name="nodeInfoId" value="@toUserString(generateId())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@nodeStatId"
                       titleKey="IndexHealth.nodeStats"
                       content="@nodeStatsMap.get(nodeStats.getNode().getName()).as(String.class)"/>

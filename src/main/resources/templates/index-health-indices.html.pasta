@@ -18,7 +18,7 @@
                        items="@allShardRoutings.get(indexHealth.getIndex()).as(java.util.Map.class).entrySet()">
                     <i:for type="org.elasticsearch.cluster.routing.ShardRouting" var="routing"
                            items="@shardRouting.getValue().as(java.util.List.class)">
-                        <i:local name="shardId" value="@toUserString(call.generateLocalId())"/>
+                        <i:local name="shardId" value="@toUserString(generateId())"/>
                         <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@shardId"
                                   titleKey="IndexHealth.shardRouting"
                                   content="@toXContent(routing)"/>
@@ -30,8 +30,8 @@
                     </i:for>
                 </i:for>
             </td>
-            <i:local name="statusId" value="@toUserString(call.generateLocalId())"/>
-            <i:local name="metaDataId" value="@toUserString(call.generateLocalId())"/>
+            <i:local name="statusId" value="@toUserString(generateId())"/>
+            <i:local name="metaDataId" value="@toUserString(generateId())"/>
             <i:invoke template="/templates/index-health-infowindow.html.pasta" id="@statusId"
                       titleKey="IndexHealth.indexStatus"
                       content="@indexStatusMap.get(indexHealth.getIndex()).as(String.class)"/>
