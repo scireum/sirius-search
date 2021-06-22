@@ -98,7 +98,7 @@ public class RobustQueryParser implements Constraint {
     }
 
     protected void skipWhitespace(LookaheadReader reader) {
-        while (reader.current().isWhitespace()) {
+        while (reader.current().isWhitepace()) {
             reader.consume();
         }
     }
@@ -267,7 +267,7 @@ public class RobustQueryParser implements Constraint {
         String field = defaultField;
         boolean couldBeFieldNameSoFar = true;
         StringBuilder valueBuilder = new StringBuilder();
-        while (!reader.current().isEndOfInput() && !reader.current().isWhitespace() && !reader.current().is(')')) {
+        while (!reader.current().isEndOfInput() && !reader.current().isWhitepace() && !reader.current().is(')')) {
             if (reader.current().is(':') && valueBuilder.length() > 0 && couldBeFieldNameSoFar) {
                 field = valueBuilder.toString();
                 valueBuilder = new StringBuilder();
