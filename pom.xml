@@ -6,10 +6,10 @@
     <parent>
         <groupId>com.scireum</groupId>
         <artifactId>sirius-parent</artifactId>
-        <version>3.14</version>
+        <version>8.0.1</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.13.11</version>
+    <version>11.14.0</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -17,9 +17,12 @@
     </description>
 
     <properties>
-        <sirius.kernel>dev-20.0</sirius.kernel>
-        <sirius.web>dev-30.0</sirius.web>
-        <sirius.db>dev-21.6</sirius.db>
+        <sirius.kernel>dev-23.3.0</sirius.kernel>
+        <sirius.web>dev-36.0.2</sirius.web>
+        <sirius.db>dev-27.4.0</sirius.db>
+
+        <!-- Force build to complete with warnings, e.g: while using deprecated code -->
+        <maven.compiler.warnings></maven.compiler.warnings>
     </properties>
 
     <repositories>
