@@ -9,7 +9,7 @@
         <version>3.14</version>
     </parent>
     <artifactId>sirius-search</artifactId>
-    <version>11.13.11</version>
+    <version>11.13.12</version>
     <packaging>jar</packaging>
 
     <name>SIRIUS Search</name>
@@ -51,6 +51,11 @@
             <version>${sirius.kernel}</version>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.scireum</groupId>
+            <artifactId>parsii</artifactId>
+            <version>5.0.0-java9-backport</version>
         </dependency>
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
