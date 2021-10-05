@@ -630,12 +630,13 @@ public class IndexAccess {
      * @param id      the id of the desired entity
      * @param cache   the cache to resolve the entity.
      * @param <E>     the type of entities to fetch
-     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#empty()} if not found)
      */
     public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
                                                                  @Nonnull Class<E> type,
                                                                  @Nullable String id,
-                                                                 @Nonnull com.google.common.cache.Cache<String, Object> cache) {
+                                                                 @Nonnull
+                                                                         com.google.common.cache.Cache<String, Object> cache) {
         return Optional.ofNullable(fetch(routing, type, id, cache).getFirst());
     }
 
@@ -648,7 +649,7 @@ public class IndexAccess {
      * @param type    the type of the desired entity
      * @param id      the id of the desired entity
      * @param <E>     the type of entities to fetch
-     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#EMPTY} if not found)
+     * @return the resolved entity wrapped in an {@link java.util.Optional} (or {@link Optional#empty()} if not found)
      */
     public <E extends Entity> Optional<E> fetchOptionalFromCache(@Nullable String routing,
                                                                  @Nonnull Class<E> type,
